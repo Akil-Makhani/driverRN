@@ -1,0 +1,85 @@
+{
+  "expo": {
+    "name": "BST Driver",
+    "slug": "driverRN",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon/app_logo.png",
+    "scheme": "bstdriver",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bst.driver",
+      "googleServicesFile": "./firebase/GoogleService-Info.plist",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera so you can photograph the weight slip and invoice for a trip.",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photo library so you can attach the weight slip and invoice for a trip.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.bst.driver",
+      "versionCode": 1,
+      "softwareKeyboardLayoutMode": "resize",
+      "googleServicesFile": "./firebase/google-services.json",
+      "adaptiveIcon": {
+        "backgroundColor": "#004B64",
+        "foregroundImage": "./assets/images/icon/app_logo.png"
+      },
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/images/splash_logo.png",
+          "imageWidth": 250
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "This app accesses your photo library so you can attach the weight slip and invoice for a trip.",
+          "cameraPermission": "This app uses the camera so you can photograph the weight slip and invoice for a trip."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "usesCleartextTraffic": true
+          },
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {}
+    }
+  }
+}

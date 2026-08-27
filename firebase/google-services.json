@@ -1,0 +1,98 @@
+{
+  "project_info": {
+    "project_number": "85017163255",
+    "firebase_url": "https://bst-app-9b2b4-default-rtdb.firebaseio.com",
+    "project_id": "bst-app-9b2b4",
+    "storage_bucket": "bst-app-9b2b4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:85017163255:android:ff3479e355854c0c236af2",
+        "android_client_info": {
+          "package_name": "com.bst.driver"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJXxOMua2lfeQYcC-7D3OhRU36P-6XOLY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:85017163255:android:9f30665521171e0e236af2",
+        "android_client_info": {
+          "package_name": "com.example.bstdriver"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJXxOMua2lfeQYcC-7D3OhRU36P-6XOLY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:85017163255:android:f0423da1beb360ed236af2",
+        "android_client_info": {
+          "package_name": "com.twocoders.bst"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJXxOMua2lfeQYcC-7D3OhRU36P-6XOLY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

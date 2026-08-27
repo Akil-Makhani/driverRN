@@ -1,0 +1,12 @@
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.DS_Store
+android/
+ios/
+# firebase/ holds google-services.json + GoogleService-Info.plist, required to
+# build. They contain no secrets (the API keys are client identifiers), so they
+# are committed — matching how the Flutter project shipped them.
+expo-env.d.ts
