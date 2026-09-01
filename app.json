@@ -58,7 +58,8 @@
         "expo-image-picker",
         {
           "photosPermission": "This app accesses your photo library so you can attach the weight slip and invoice for a trip.",
-          "cameraPermission": "This app uses the camera so you can photograph the weight slip and invoice for a trip."
+          "cameraPermission": "This app uses the camera so you can photograph the weight slip and invoice for a trip.",
+          "microphonePermission": false
         }
       ],
       [
@@ -88,7 +89,11 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {}
-    }
+      "router": {},
+      "eas": {
+        "projectId": "f472f803-7822-4449-86dc-1fa8b7d0d32a"
+      }
+    },
+    "owner": "akilm"
   }
 }
