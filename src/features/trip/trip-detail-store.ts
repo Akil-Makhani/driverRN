@@ -72,6 +72,10 @@ interface TripDetailState {
   updateSubItem: (index: number, product: Product | null) => void;
   updateQty: (index: number, value: number) => void;
   updateWeight: (index: number, value: number) => void;
+  /** Appends a blank line for goods loaded that the customer never ordered. */
+  addItem: () => void;
+  /** Drops an added line. Only extra lines are removable — see isAddedItem. */
+  removeItem: (index: number) => void;
   setMajuriCharge: (v: string) => void;
   setKataparchiCharge: (v: string) => void;
 }
@@ -297,32 +301,43 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
 
   updateProduct(index, product) {
     const next = [...get().dispatchItems];
+    const ref = {
+      productId: product?.id,
+      name: product?.name,
+      code: product?.code,
+    };
     next[index] = {
       ...next[index],
       selectedProduct: product,
-      changeInProduct: {
-        productId: product?.id,
-        name: product?.name,
-        code: product?.code,
-      },
+      changeInProduct: ref,
       // A different product invalidates the chosen sub-item.
       selectedSubProduct: null,
       changeInSubItem: undefined,
     };
+    // An added line has no ordered counterpart, so `product` would otherwise
+    // stay empty and the API would receive a line it cannot identify.
+    if (isAddedItem(get().requestedItems[index])) {
+      next[index].product = ref;
+      next[index].subItem = undefined;
+    }
     set({ dispatchItems: next });
   },
 
   updateSubItem(index, product) {
     const next = [...get().dispatchItems];
+    const ref = {
+      productId: product?.id,
+      name: product?.name,
+      code: product?.code,
+    };
     next[index] = {
       ...next[index],
       selectedSubProduct: product,
-      changeInSubItem: {
-        productId: product?.id,
-        name: product?.name,
-        code: product?.code,
-      },
+      changeInSubItem: ref,
     };
+    if (isAddedItem(get().requestedItems[index])) {
+      next[index].subItem = ref;
+    }
     set({ dispatchItems: next });
   },
 
@@ -348,6 +363,50 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
     set({ dispatchItems: next });
   },
 
+  /**
+   * Adds a line for goods loaded that the customer did not order.
+   *
+   * The two arrays are index-paired — every delta is computed by comparing
+   * requested[i] with dispatched[i] — so an extra item is mirrored into both,
+   * with the requested side zeroed. That keeps the pairing intact and makes
+   * the difference read correctly as "all of this was unordered".
+   */
+  addItem() {
+    const { requestedItems, dispatchItems } = get();
+    const blankRequested: RequestedProduct = { qty: 0, weight: 0 };
+    set({
+      requestedItems: [...requestedItems, blankRequested],
+      dispatchItems: [
+        ...dispatchItems,
+        {
+          qty: 0,
+          weight: 0,
+          selectedProduct: null,
+          selectedSubProduct: null,
+          // Zero requested means the whole amount is a difference.
+          changeInQty: 0,
+          changeInWeight: 0,
+        },
+      ],
+    });
+  },
+
+  removeItem(index) {
+    const { requestedItems, dispatchItems } = get();
+    set({
+      requestedItems: requestedItems.filter((_, i) => i !== index),
+      dispatchItems: dispatchItems.filter((_, i) => i !== index),
+    });
+  },
+
   setMajuriCharge: (v) => set({ majuriCharge: v }),
   setKataparchiCharge: (v) => set({ kataparchiCharge: v }),
 }));
+
+/**
+ * True when the line was added by the driver rather than coming from the
+ * customer's order. Added lines carry no product on the requested side.
+ */
+export function isAddedItem(requested?: RequestedProduct): boolean {
+  return requested?.product?.productId == null;
+}

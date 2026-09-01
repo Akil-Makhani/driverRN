@@ -7,6 +7,7 @@ import { AppColors, GreenGradient, Primary, TextShade } from '@/core/constants/c
 import { TripStatusNumber } from '@/core/constants/enums';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { RouteButton } from '@/features/dashboard/route-button';
 import type { TripItem } from '@/types/trip';
 
 interface Props {
@@ -32,6 +33,7 @@ export function DashboardCell({ trip, onPress, onAcceptPress }: Props) {
           <View style={styles.tempo}>
             <Image source={Images.truck} style={styles.truckIcon} />
             <Text style={styles.tempoText}>{trip.tempoNumber ?? ''}</Text>
+            <RouteButton tripId={trip.id ?? ''} />
           </View>
         </View>
 

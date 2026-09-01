@@ -66,5 +66,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: AppColors.white,
   },
-  logo: { width: 250, height: 137, resizeMode: 'contain' },
+  // 801x234 source: matching its 3.42:1 ratio keeps the wordmark at full size.
+  // The Dart 250x137 box was taller than the art, so `contain` shrank it.
+  logo: { width: 280, height: 82, resizeMode: 'contain' },
 });

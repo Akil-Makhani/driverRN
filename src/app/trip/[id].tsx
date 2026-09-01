@@ -1,13 +1,7 @@
 /** Port of lib/screens/trip_detail/view/trip_detail.dart. */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppBar } from '@/components/app-bar';
 import { AppColors, Primary } from '@/core/constants/colors';
@@ -18,6 +12,12 @@ import {
   TripStatusNumber,
 } from '@/core/constants/enums';
 import { Strings } from '@/core/constants/strings';
+import {
+  activeDestination,
+  canShowRoute,
+  ensureLocationPermission,
+  openRoute,
+} from '@/core/utils/maps';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 import { BottomActionBar } from '@/features/trip/bottom-action-bar';
 import { CompanyDetails } from '@/features/trip/company-details';
@@ -58,12 +58,17 @@ export default function TripDetailScreen() {
     if (goBack) router.back();
   };
 
+  // Routes from the driver's current location to wherever the trip is headed
+  // next. The API sends address components rather than coordinates, so the
+  // link is built from text and geocoded by Maps.
   const openDirections = () => {
-    const { latitude, longitude } = trip?.pickupAddress ?? {};
-    if (!latitude || !longitude) return;
-    void Linking.openURL(
-      `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`,
-    );
+    void (async () => {
+      if (!(await ensureLocationPermission())) {
+        Alert.alert(Strings.viewRoute, Strings.locationPermissionDenied);
+        return;
+      }
+      await openRoute(activeDestination(trip));
+    })();
   };
 
   return (
@@ -123,10 +128,7 @@ export default function TripDetailScreen() {
 
           <ActionBar
             status={status}
-            hasCoordinates={
-              trip?.pickupAddress?.latitude != null &&
-              trip?.pickupAddress?.longitude != null
-            }
+            canRoute={canShowRoute(activeDestination(trip))}
             isOrderLoaded={trip?.isOrderLoaded ?? false}
             onDecline={() => void changeStatus(TripStatus.rejected, true)}
             onAccept={() => void changeStatus(TripStatus.accepted)}
@@ -160,7 +162,7 @@ export default function TripDetailScreen() {
  */
 function ActionBar({
   status,
-  hasCoordinates,
+  canRoute,
   isOrderLoaded,
   onDecline,
   onAccept,
@@ -171,7 +173,7 @@ function ActionBar({
   onDelivered,
 }: {
   status: number;
-  hasCoordinates: boolean;
+  canRoute: boolean;
   isOrderLoaded: boolean;
   onDecline: () => void;
   onAccept: () => void;
@@ -191,11 +193,11 @@ function ActionBar({
       );
 
     case TripStatusNumber.accepted:
-      // Directions are only offered when the pickup has coordinates.
+      // Directions are offered whenever both ends resolve to an address.
       return (
         <BottomActionBar
           secondary={
-            hasCoordinates
+            canRoute
               ? { title: Strings.getDirection, onPress: onDirections }
               : undefined
           }

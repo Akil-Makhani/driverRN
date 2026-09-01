@@ -6,7 +6,9 @@
  * actually loaded: per line the product, sub-item, quantity and weight, plus
  * the two trip-level charges.
  */
+import { Ionicons } from '@expo/vector-icons';
 import {
+  Alert,
   FlatList,
   Keyboard,
   Modal,
@@ -23,7 +25,7 @@ import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import type { DispatchedProduct, Product, RequestedProduct } from '@/types/trip';
 import { ProductPicker } from './product-picker';
-import { useTripDetailStore } from './trip-detail-store';
+import { isAddedItem, useTripDetailStore } from './trip-detail-store';
 
 interface Props {
   visible: boolean;
@@ -54,6 +56,9 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
             data={requestedItems}
             keyExtractor={(_, index) => String(index)}
             keyboardShouldPersistTaps="handled"
+            // Lets the list shrink to its content so the charges and actions
+            // stay visible, and scroll once the sheet hits its max height.
+            style={styles.list}
             renderItem={({ item, index }) => (
               <LoadRow
                 requested={item}
@@ -62,6 +67,15 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
                 products={products}
               />
             )}
+            ListFooterComponent={
+              <Pressable
+                onPress={() => useTripDetailStore.getState().addItem()}
+                style={styles.addButton}
+              >
+                <Ionicons name="add" size={18} color={AppColors.primary} />
+                <Text style={styles.addText}>{Strings.addItem}</Text>
+              </Pressable>
+            }
           />
 
           <View style={styles.chargesRow}>
@@ -83,7 +97,21 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
               <Text style={styles.cancelText}>{Strings.cancel}</Text>
             </Pressable>
             <View style={styles.actionGap} />
-            <Pressable onPress={onConfirm} style={styles.confirmButton}>
+            <Pressable
+              onPress={() => {
+                // An added line with no product chosen would reach the API as
+                // an unidentifiable item, so block it here.
+                const incomplete = requestedItems.some(
+                  (r, i) => isAddedItem(r) && !dispatchItems[i]?.selectedProduct,
+                );
+                if (incomplete) {
+                  Alert.alert(Strings.confirmLoad, Strings.selectProductFirst);
+                  return;
+                }
+                onConfirm();
+              }}
+              style={styles.confirmButton}
+            >
               <Text style={styles.confirmText}>{Strings.confirm}</Text>
             </Pressable>
           </View>
@@ -113,15 +141,34 @@ function LoadRow({
   const subItems =
     products.find((p) => p.id === dispatched?.selectedProduct?.id)?.subItems ?? [];
 
+  // Driver-added lines have no customer counterpart, so they show a removal
+  // control and an "extra" label in place of the ordered figures.
+  const isAdded = isAddedItem(requested);
+
   return (
     <View style={styles.row}>
       <View style={styles.rowHeader}>
-        <Text style={styles.rowHeaderCell}>{Strings.customerLoad.toUpperCase()}</Text>
-        <Text style={styles.rowHeaderCell}>{Strings.pickupLoad}</Text>
+        <Text style={styles.rowHeaderCell}>
+          {isAdded ? Strings.extraItem : Strings.customerLoad.toUpperCase()}
+        </Text>
+        <View style={styles.rowHeaderRight}>
+          <Text style={[styles.rowHeaderCell, styles.rowHeaderCellFlush]}>
+            {Strings.pickupLoad}
+          </Text>
+          {isAdded && (
+            <Pressable
+              onPress={() => useTripDetailStore.getState().removeItem(index)}
+              hitSlop={10}
+              accessibilityLabel={Strings.removeItem}
+            >
+              <Ionicons name="close-circle" size={20} color={AppColors.error500} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <RowLine
-        left={requested.product?.name ?? ''}
+        left={isAdded ? '—' : requested.product?.name ?? ''}
         right={
           <ProductPicker
             value={dispatched?.selectedProduct}
@@ -133,7 +180,7 @@ function LoadRow({
 
       {subItems.length > 0 && (
         <RowLine
-          left={requested.subItem?.name ?? ''}
+          left={isAdded ? '—' : requested.subItem?.name ?? ''}
           right={
             <ProductPicker
               value={dispatched?.selectedSubProduct}
@@ -148,7 +195,7 @@ function LoadRow({
         // BUG PARITY NOTE: Flutter labelled the quantity row "<qty>KG". Kept as
         // the raw quantity here — the unit was simply wrong, and the adjacent
         // weight row already carries KG.
-        left={`${Math.trunc(requested.qty ?? 0)}`}
+        left={isAdded ? '—' : `${Math.trunc(requested.qty ?? 0)}`}
         right={
           <NumberField
             value={dispatched?.qty}
@@ -157,7 +204,7 @@ function LoadRow({
         }
       />
       <RowLine
-        left={`${Math.trunc(requested.weight ?? 0)}KG`}
+        left={isAdded ? '—' : `${Math.trunc(requested.weight ?? 0)}KG`}
         right={
           <NumberField
             value={dispatched?.weight}
@@ -228,12 +275,15 @@ function ChargeInput({
 const styles = StyleSheet.create({
   scrim: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet: {
-    // Flutter showed this at heightFactor 0.70.
-    height: '70%',
+    // Flutter pinned this at heightFactor 0.70. Now that rows can be added,
+    // a fixed height clipped the new row behind the charges block, so the
+    // sheet grows with its content and caps at 90% of the screen instead.
+    maxHeight: '90%',
     backgroundColor: AppColors.white,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
   },
+  list: { flexGrow: 0, flexShrink: 1 },
   title: {
     ...Typography.h4.bold,
     color: AppColors.text,
@@ -254,6 +304,32 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     padding: 12,
     flex: 1,
+  },
+  // Inside rowHeaderRight the flex/padding come from the container.
+  rowHeaderCellFlush: { flex: 0, paddingRight: 0 },
+  rowHeaderRight: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 12,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    marginTop: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: Primary.c300,
+    backgroundColor: Primary.c100,
+  },
+  addText: {
+    ...Typography.button2.extraBold,
+    color: AppColors.primary,
+    marginLeft: 6,
   },
   line: { flexDirection: 'row', borderBottomWidth: 1, borderColor: Primary.c300 },
   // Flutter's column widths were 1.2 : 1.5.
