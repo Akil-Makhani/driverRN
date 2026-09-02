@@ -53,7 +53,9 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
           <Text style={styles.title}>{Strings.confirmLoad}</Text>
 
           <FlatList
-            data={requestedItems}
+            // Driven by dispatchItems: it holds a row per customer line *plus*
+            // any the driver added, so it is the longer of the two arrays.
+            data={dispatchItems}
             keyExtractor={(_, index) => String(index)}
             keyboardShouldPersistTaps="handled"
             // Lets the list shrink to its content so the charges and actions
@@ -61,9 +63,10 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
             style={styles.list}
             renderItem={({ item, index }) => (
               <LoadRow
-                requested={item}
-                dispatched={dispatchItems[index]}
+                requested={requestedItems[index]}
+                dispatched={item}
                 index={index}
+                requestedCount={requestedItems.length}
                 products={products}
               />
             )}
@@ -101,11 +104,23 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
               onPress={() => {
                 // An added line with no product chosen would reach the API as
                 // an unidentifiable item, so block it here.
-                const incomplete = requestedItems.some(
-                  (r, i) => isAddedItem(r) && !dispatchItems[i]?.selectedProduct,
+                const incomplete = dispatchItems.some(
+                  (d, i) =>
+                    isAddedItem(i, requestedItems.length) && !d.selectedProduct,
                 );
                 if (incomplete) {
                   Alert.alert(Strings.confirmLoad, Strings.selectProductFirst);
+                  return;
+                }
+                // A zero weight silently under-bills: the API sums dispatched
+                // weights into totals.actualWeight, so an unweighed extra line
+                // contributes nothing to the order.
+                const unweighed = dispatchItems.some(
+                  (d, i) =>
+                    isAddedItem(i, requestedItems.length) && !(d.weight && d.weight > 0),
+                );
+                if (unweighed) {
+                  Alert.alert(Strings.confirmLoad, Strings.enterWeightFirst);
                   return;
                 }
                 onConfirm();
@@ -129,11 +144,14 @@ function LoadRow({
   requested,
   dispatched,
   index,
+  requestedCount,
   products,
 }: {
-  requested: RequestedProduct;
+  /** Absent for a driver-added row — there is no customer line to compare to. */
+  requested?: RequestedProduct;
   dispatched?: DispatchedProduct;
   index: number;
+  requestedCount: number;
   products: Product[];
 }) {
   // Sub-items belong to the *selected* product, so changing the product
@@ -143,7 +161,7 @@ function LoadRow({
 
   // Driver-added lines have no customer counterpart, so they show a removal
   // control and an "extra" label in place of the ordered figures.
-  const isAdded = isAddedItem(requested);
+  const isAdded = isAddedItem(index, requestedCount);
 
   return (
     <View style={styles.row}>
@@ -168,23 +186,29 @@ function LoadRow({
       </View>
 
       <RowLine
-        left={isAdded ? '—' : requested.product?.name ?? ''}
+        left={isAdded ? '—' : requested?.product?.name ?? ''}
         right={
           <ProductPicker
             value={dispatched?.selectedProduct}
             options={products}
+            placeholder={isAdded ? Strings.selectProduct : undefined}
             onChange={(p) => useTripDetailStore.getState().updateProduct(index, p)}
           />
         }
       />
 
-      {subItems.length > 0 && (
+      {/* Always rendered on an added row, even before a product is chosen, so
+          the row keeps a stable height. Letting it appear only once sub-items
+          existed shifted the qty/weight fields down mid-edit, which is how
+          weights were being submitted as 0. */}
+      {(subItems.length > 0 || isAdded) && (
         <RowLine
-          left={isAdded ? '—' : requested.subItem?.name ?? ''}
+          left={isAdded ? '—' : requested?.subItem?.name ?? ''}
           right={
             <ProductPicker
               value={dispatched?.selectedSubProduct}
               options={subItems}
+              placeholder={Strings.selectSize}
               onChange={(p) => useTripDetailStore.getState().updateSubItem(index, p)}
             />
           }
@@ -195,7 +219,7 @@ function LoadRow({
         // BUG PARITY NOTE: Flutter labelled the quantity row "<qty>KG". Kept as
         // the raw quantity here — the unit was simply wrong, and the adjacent
         // weight row already carries KG.
-        left={isAdded ? '—' : `${Math.trunc(requested.qty ?? 0)}`}
+        left={isAdded ? '—' : `${Math.trunc(requested?.qty ?? 0)}`}
         right={
           <NumberField
             value={dispatched?.qty}
@@ -204,7 +228,7 @@ function LoadRow({
         }
       />
       <RowLine
-        left={isAdded ? '—' : `${Math.trunc(requested.weight ?? 0)}KG`}
+        left={isAdded ? '—' : `${Math.trunc(requested?.weight ?? 0)}KG`}
         right={
           <NumberField
             value={dispatched?.weight}
@@ -237,7 +261,13 @@ function NumberField({
   return (
     <TextInput
       style={styles.numberInput}
-      defaultValue={value != null ? String(Math.trunc(value)) : ''}
+      // Controlled: `defaultValue` only seeds the first render, so a row added
+      // or removed after mount kept the previous row's text while the store
+      // held something else. A blank shows for 0 so an added line reads as
+      // empty-and-required rather than a filled-in zero.
+      value={value ? String(Math.trunc(value)) : ''}
+      placeholder="0"
+      placeholderTextColor={TextShade.c500}
       onChangeText={(text) => onChange(Number.parseInt(text, 10) || 0)}
       keyboardType="number-pad"
       returnKeyType="done"

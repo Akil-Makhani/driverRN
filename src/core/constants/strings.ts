@@ -93,6 +93,9 @@ export const Strings = {
   removeItem: 'Remove item',
   extraItem: 'EXTRA ITEM',
   selectProductFirst: 'Choose a product for every added item before confirming.',
+  enterWeightFirst: 'Enter a weight for every added item before confirming.',
+  selectProduct: 'Select product',
+  selectSize: 'Select size',
   locationPermissionDenied:
     'Location access is needed to route from where you are. Enable it in Settings to use directions.',
   vehicleThere: 'VEHICLE THERE',

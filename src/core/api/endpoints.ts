@@ -2,8 +2,13 @@
 
 // Dev:  https://api.dev.bstm.in/v2
 // UAT:  https://api.uat.bstm.in/v2
-// Production (active, matches the Flutter build):
-export const API_BASE_URL = 'https://api.bstm.in/v2';
+// Prod: https://api.bstm.in/v2
+//
+// Point at a local bst-api by setting EXPO_PUBLIC_API_URL in .env — on the
+// Android emulator use http://10.0.2.2:3000/v2, since localhost there is the
+// emulated device itself, not the host machine.
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? 'https://api.bstm.in/v2';
 
 export const DOWNLOAD_IMAGE_BASE_URL = 'https://dcaut6thq5oko.cloudfront.net/';
 

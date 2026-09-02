@@ -316,7 +316,7 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
     };
     // An added line has no ordered counterpart, so `product` would otherwise
     // stay empty and the API would receive a line it cannot identify.
-    if (isAddedItem(get().requestedItems[index])) {
+    if (isAddedItem(index, get().requestedItems.length)) {
       next[index].product = ref;
       next[index].subItem = undefined;
     }
@@ -335,7 +335,7 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
       selectedSubProduct: product,
       changeInSubItem: ref,
     };
-    if (isAddedItem(get().requestedItems[index])) {
+    if (isAddedItem(index, get().requestedItems.length)) {
       next[index].subItem = ref;
     }
     set({ dispatchItems: next });
@@ -366,24 +366,25 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
   /**
    * Adds a line for goods loaded that the customer did not order.
    *
-   * The two arrays are index-paired — every delta is computed by comparing
-   * requested[i] with dispatched[i] — so an extra item is mirrored into both,
-   * with the requested side zeroed. That keeps the pairing intact and makes
-   * the difference read correctly as "all of this was unordered".
+   * Only `dispatchItems` grows. `requested` is the customer's authoritative
+   * order — the API's calculateSubOrderProductDifferences builds it from the
+   * sub-order and every downstream stage walks it position-for-position, while
+   * the driver's PATCH does a blunt Object.assign over the stored document. So
+   * appending here would overwrite that record with a line the customer never
+   * ordered. The extra row lives only in `dispatched`, leaving the arrays
+   * different lengths by design.
    */
   addItem() {
-    const { requestedItems, dispatchItems } = get();
-    const blankRequested: RequestedProduct = { qty: 0, weight: 0 };
     set({
-      requestedItems: [...requestedItems, blankRequested],
       dispatchItems: [
-        ...dispatchItems,
+        ...get().dispatchItems,
         {
           qty: 0,
           weight: 0,
           selectedProduct: null,
           selectedSubProduct: null,
-          // Zero requested means the whole amount is a difference.
+          // Nothing was ordered, so the whole amount is the difference. Kept
+          // in step with qty/weight by updateQty/updateWeight.
           changeInQty: 0,
           changeInWeight: 0,
         },
@@ -392,11 +393,9 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
   },
 
   removeItem(index) {
-    const { requestedItems, dispatchItems } = get();
-    set({
-      requestedItems: requestedItems.filter((_, i) => i !== index),
-      dispatchItems: dispatchItems.filter((_, i) => i !== index),
-    });
+    // Added rows exist only past the end of requestedItems, so removing one
+    // never disturbs the customer's lines.
+    set({ dispatchItems: get().dispatchItems.filter((_, i) => i !== index) });
   },
 
   setMajuriCharge: (v) => set({ majuriCharge: v }),
@@ -404,9 +403,10 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
 }));
 
 /**
- * True when the line was added by the driver rather than coming from the
- * customer's order. Added lines carry no product on the requested side.
+ * True when the dispatched line at `index` was added by the driver rather than
+ * coming from the customer's order. Added lines sit past the end of
+ * `requestedItems`, which is never extended.
  */
-export function isAddedItem(requested?: RequestedProduct): boolean {
-  return requested?.product?.productId == null;
+export function isAddedItem(index: number, requestedCount: number): boolean {
+  return index >= requestedCount;
 }

@@ -10,3 +10,7 @@ ios/
 # build. They contain no secrets (the API keys are client identifiers), so they
 # are committed — matching how the Flutter project shipped them.
 expo-env.d.ts
+
+# Local API overrides — machine-specific, never committed.
+.env
+.env.local
