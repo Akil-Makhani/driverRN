@@ -1,5 +1,5 @@
 /** Port of lib/screens/trip_detail/subview/trip_status_top_view.dart. */
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Images } from '@/core/constants/assets';
 import { AppColors, TextShade } from '@/core/constants/colors';
@@ -8,7 +8,14 @@ import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 
 /** The green banner explaining what the driver should do next. */
-export function TripStatusTopView({ status }: { status: number }) {
+export function TripStatusTopView({
+  status,
+  onKnowMorePress,
+}: {
+  status: number;
+  /** Opens the fuller explanation. Flutter drew this as a dead image. */
+  onKnowMorePress?: () => void;
+}) {
   const { title, subtitle } = copyFor(status);
 
   return (
@@ -17,7 +24,14 @@ export function TripStatusTopView({ status }: { status: number }) {
       <View style={styles.textColumn}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>{title}</Text>
-          <Image source={Images.knowMore} style={styles.knowMore} />
+          <Pressable
+            onPress={onKnowMorePress}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={Strings.knowMore}
+          >
+            <Image source={Images.knowMore} style={styles.knowMore} />
+          </Pressable>
         </View>
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>

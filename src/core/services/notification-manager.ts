@@ -69,6 +69,20 @@ export const NotificationManager = {
    */
   async requestPermission(): Promise<boolean> {
     await NotificationManager.createChannel();
+
+    // Android 13+ gates notifications behind the POST_NOTIFICATIONS runtime
+    // permission. messaging().requestPermission() is Firebase's iOS API and
+    // does not raise that dialog, so the prompt never appeared and the
+    // permission stayed denied. expo-notifications asks the OS correctly on
+    // both platforms.
+    if (Platform.OS === 'android') {
+      const existing = await Notifications.getPermissionsAsync();
+      if (existing.granted) return true;
+      if (!existing.canAskAgain) return false;
+      const requested = await Notifications.requestPermissionsAsync();
+      return requested.granted;
+    }
+
     const status = await messaging().requestPermission();
     return (
       status === messaging.AuthorizationStatus.AUTHORIZED ||

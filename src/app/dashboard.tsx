@@ -18,6 +18,7 @@ import { AppColors, Primary } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { NotificationManager } from '@/core/services/notification-manager';
+import { ensureLocationPermission } from '@/core/utils/maps';
 import { DashboardCell } from '@/features/dashboard/dashboard-cell';
 import {
   DashboardEmptyView,
@@ -57,6 +58,17 @@ export default function DashboardScreen() {
     void useDashboardStore.getState().getProducts();
   }, []);
 
+  /**
+   * Going on duty is when the driver starts needing directions, so location is
+   * requested here rather than at the first map tap. Refusing does not block
+   * the toggle — Maps still routes using its own permission, so the duty
+   * change goes through either way.
+   */
+  const handleDutyChange = async (value: boolean) => {
+    if (value) await ensureLocationPermission();
+    await useDashboardStore.getState().setDuty(value);
+  };
+
   // A push while the app is open refreshes the list (replaces
   // dashboardRefreshNotifier); tapping one opens that trip.
   useEffect(
@@ -89,7 +101,7 @@ export default function DashboardScreen() {
           <View style={styles.dutyRow}>
             <Switch
               value={dutyValue}
-              onValueChange={(v) => void useDashboardStore.getState().setDuty(v)}
+              onValueChange={(v) => void handleDutyChange(v)}
               trackColor={{ true: AppColors.success500, false: Primary.c300 }}
               thumbColor={AppColors.white}
             />

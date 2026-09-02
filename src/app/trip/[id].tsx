@@ -22,6 +22,7 @@ import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 import { BottomActionBar } from '@/features/trip/bottom-action-bar';
 import { CompanyDetails } from '@/features/trip/company-details';
 import { ConfirmLoadSheet } from '@/features/trip/confirm-load-sheet';
+import { KnowMoreSheet } from '@/features/trip/know-more-sheet';
 import { OrderDetails } from '@/features/trip/order-details';
 import { PickupLoadingDetail } from '@/features/trip/pickup-loading-detail';
 import { ShipmentStatusTracker } from '@/features/trip/shipment-status-tracker';
@@ -32,6 +33,7 @@ export default function TripDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [knowMoreOpen, setKnowMoreOpen] = useState(false);
 
   const isLoading = useTripDetailStore((s) => s.isLoading);
   const trip = useTripDetailStore((s) => s.tripDetailData);
@@ -61,12 +63,11 @@ export default function TripDetailScreen() {
   // Routes from the driver's current location to wherever the trip is headed
   // next. The API sends address components rather than coordinates, so the
   // link is built from text and geocoded by Maps.
+  // Permission is normally granted at the On Duty toggle; asking again here
+  // covers a refusal or revocation. Routing proceeds regardless.
   const openDirections = () => {
     void (async () => {
-      if (!(await ensureLocationPermission())) {
-        Alert.alert(Strings.viewRoute, Strings.locationPermissionDenied);
-        return;
-      }
+      await ensureLocationPermission();
       await openRoute(activeDestination(trip));
     })();
   };
@@ -89,7 +90,10 @@ export default function TripDetailScreen() {
         <>
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.divider} />
-            <TripStatusTopView status={status} />
+            <TripStatusTopView
+              status={status}
+              onKnowMorePress={() => setKnowMoreOpen(true)}
+            />
             <ShipmentStatusTracker status={status} />
             <View style={styles.divider} />
 
@@ -142,6 +146,13 @@ export default function TripDetailScreen() {
           />
         </>
       )}
+
+      <KnowMoreSheet
+        visible={knowMoreOpen}
+        status={status}
+        isOrderLoaded={trip?.isOrderLoaded}
+        onClose={() => setKnowMoreOpen(false)}
+      />
 
       <ConfirmLoadSheet
         visible={sheetOpen}

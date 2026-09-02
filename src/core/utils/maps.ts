@@ -86,6 +86,11 @@ export async function openRoute(
     api: '1',
     destination: to,
     travelmode: 'driving',
+    // Ask Maps to open straight into navigation. Without it, `travelmode` is
+    // only a hint: when Maps cannot resolve a driving route immediately it
+    // falls back to whichever tab it can render (Public transport, typically),
+    // which is not what a truck driver needs.
+    dir_action: 'navigate',
   });
   const from = addressQuery(origin);
   if (from) params.set('origin', from);

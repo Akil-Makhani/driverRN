@@ -8,7 +8,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Images } from '@/core/constants/assets';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
-import { Typography, textSize50ExtraBold } from '@/core/constants/typography';
+import { Typography } from '@/core/constants/typography';
 import { useSession } from '@/core/session';
 import type { TripItem } from '@/types/trip';
 
@@ -60,10 +60,6 @@ export function DashboardEmptyView() {
     <View style={styles.empty}>
       <View style={styles.emptyCircle}>
         <Text style={styles.emptyCircleText}>{Strings.noTripAssigned}</Text>
-      </View>
-      <View style={styles.emptyFooter}>
-        <Text style={styles.emptyTension}>{Strings.tension}</Text>
-        <Text style={styles.emptyCrafted}>{Strings.craftedWith}</Text>
       </View>
     </View>
   );
@@ -126,12 +122,5 @@ const styles = StyleSheet.create({
     ...Typography.h1.extraBold,
     color: TextShade.c400,
     textAlign: 'center',
-  },
-  emptyFooter: { marginTop: 40 },
-  emptyTension: { ...textSize50ExtraBold, color: TextShade.c400 },
-  emptyCrafted: {
-    ...Typography.subtitle1.medium,
-    color: TextShade.c600,
-    marginTop: 10,
   },
 });

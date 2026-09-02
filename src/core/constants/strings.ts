@@ -35,8 +35,6 @@ export const Strings = {
   deliverAll: 'DELIVER ALL',
   acceptTrip: 'Accept Trip',
   noTripAssigned: 'No Trip\nAssigned',
-  tension: 'Tension mat lo hojayega!',
-  craftedWith: 'Crafted with ❤️ in Morbi, India',
 
   // Login Screen
   loginWelcomeMessage: 'Welcome to BST',
@@ -74,6 +72,25 @@ export const Strings = {
     'On arrival at the delivery location, update the status to delivered',
   successfullyDelivered: 'Successfully delivered',
   successfullyDeliveredDesc: 'Order has beed successfully delivered.',
+  // "Know more" sheet — the fuller explanation behind each status banner.
+  knowMore: 'Know More',
+  knowMoreAcceptTitle: 'Accept this trip',
+  knowMoreAcceptBody:
+    'This trip has been assigned to you. Review the pickup address, product and weight, then tap ACCEPT to take it on, or DECLINE to send it back to the office.\n\nOnce accepted, the trip stays on your dashboard until it is delivered.',
+  knowMorePickupTitle: 'Reach the pickup point',
+  knowMorePickupBody:
+    'Drive to the pickup address shown under Order Details. Tap GET DIRECTION for turn-by-turn navigation from where you are.\n\nWhen you arrive, tap VEHICLE THERE so the office knows the vehicle is on site.',
+  knowMoreLoadingTitle: 'Confirm what you loaded',
+  knowMoreLoadingBody:
+    'Tap CONFIRM LOADING and check every line against what actually went on the truck. Change the product, size, quantity or weight if it differs, and use Add Item for anything loaded that was not ordered.\n\nAdd the Majuri and Kataparchi charges if they apply, then confirm to mark the trip in transit.',
+  knowMoreTransitTitle: 'On the way to delivery',
+  knowMoreTransitBody:
+    'The load is recorded and you are on the way. Upload the weight slip and invoice photos if you have not already.\n\nWhen you reach the delivery location, tap DELIVERED to close the trip.',
+  knowMoreDeliveredTitle: 'Trip complete',
+  knowMoreDeliveredBody:
+    'This trip is delivered and counted towards your completed trips. No further action is needed.\n\nYou can still view it any time under Trip History.',
+  gotIt: 'GOT IT',
+
   statusAccept: 'Accept',
   statusPickup: 'Pickup',
   statusInTransit: 'In Transit',

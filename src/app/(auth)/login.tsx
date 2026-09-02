@@ -115,7 +115,9 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppColors.white },
-  scroll: { flexGrow: 1, paddingTop: 20 },
+  // `justifyContent: flex-end` sits the artwork just above the sheet rather
+  // than pinned to the top with a gap below it, matching the design.
+  scroll: { flexGrow: 1, justifyContent: 'flex-end', paddingTop: 20 },
   sheet: {
     backgroundColor: AppColors.white,
     borderTopLeftRadius: 16,

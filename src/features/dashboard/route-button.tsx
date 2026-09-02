@@ -33,11 +33,10 @@ export function RouteButton({ tripId }: Props) {
     if (isLoading || !tripId) return;
     setIsLoading(true);
     try {
-      // Ask before navigating so the driver's position anchors the route.
-      if (!(await ensureLocationPermission())) {
-        Alert.alert(Strings.viewRoute, Strings.locationPermissionDenied);
-        return;
-      }
+      // Normally already granted at the On Duty toggle; this catches the case
+      // where it was refused or revoked. Routing still proceeds either way —
+      // Maps uses its own permission — so a refusal only costs the blue dot.
+      await ensureLocationPermission();
 
       const response = await DashboardRepository.getTripDetails(tripId);
       // Navigate from the driver's current location to wherever this trip is
