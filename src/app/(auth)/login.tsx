@@ -8,12 +8,12 @@ import {
   Image,
   Keyboard,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Images } from '@/core/constants/assets';
@@ -54,15 +54,22 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView
+      {/* The whole screen scrolls, sheet included, so a focused input can lift
+          clear of the keyboard. With the sheet outside the ScrollView the
+          keyboard simply covered it. `bottomOffset` leaves a gap above the
+          keyboard, matching TruckRN's AuthScaffold. */}
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.scroll}
+        bottomOffset={20}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <LoginTopImages />
-      </ScrollView>
+        {/* Flexible so at rest the artwork fills the space above the sheet. */}
+        <View style={styles.topBlock}>
+          <LoginTopImages />
+        </View>
 
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + 5 }]}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + 5 }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerText}>
             <Text style={styles.title}>{Strings.loginWelcomeMessage}</Text>
@@ -102,7 +109,8 @@ export default function LoginScreen() {
         >
           <Text style={styles.buttonText}>{Strings.login}</Text>
         </Pressable>
-      </View>
+        </View>
+      </KeyboardAwareScrollView>
 
       {isLoading && (
         <View style={styles.loadingOverlay} pointerEvents="auto">
@@ -115,9 +123,12 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppColors.white },
-  // `justifyContent: flex-end` sits the artwork just above the sheet rather
-  // than pinned to the top with a gap below it, matching the design.
-  scroll: { flexGrow: 1, justifyContent: 'flex-end', paddingTop: 20 },
+  // Fills the viewport at rest so the artwork block can push the sheet to the
+  // bottom; grows taller and scrolls once the keyboard is up.
+  scroll: { flexGrow: 1 },
+  // Flexible spacer: `justifyContent: flex-end` keeps the artwork just above
+  // the sheet rather than pinned to the top with a gap below it.
+  topBlock: { flex: 1, justifyContent: 'flex-end', paddingTop: 20 },
   sheet: {
     backgroundColor: AppColors.white,
     borderTopLeftRadius: 16,

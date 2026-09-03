@@ -10,8 +10,10 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   Alert,
   FlatList,
+  KeyboardAvoidingView,
   Keyboard,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -49,6 +51,11 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
       onRequestClose={onCancel}
     >
       <Pressable style={styles.scrim} onPress={Keyboard.dismiss}>
+        {/* Lifts the sheet above the keyboard: the Majuri/Kataparchi inputs sit
+            at its bottom edge and were otherwise covered while being typed. */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 10 }]}>
           <Text style={styles.title}>{Strings.confirmLoad}</Text>
 
@@ -131,6 +138,7 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
             </Pressable>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Pressable>
     </Modal>
   );

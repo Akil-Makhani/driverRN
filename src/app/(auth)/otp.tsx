@@ -11,12 +11,12 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { OtpInput } from 'react-native-otp-entry';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Images } from '@/core/constants/assets';
@@ -52,15 +52,19 @@ export default function OtpScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView
+      {/* Same structure as login: the sheet scrolls with the page so the OTP
+          boxes lift clear of the keyboard instead of sitting under it. */}
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.scroll}
+        bottomOffset={20}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <LoginTopImages />
-      </ScrollView>
+        <View style={styles.topBlock}>
+          <LoginTopImages />
+        </View>
 
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + 5 }]}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + 5 }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerText}>
             <Text style={styles.title}>{Strings.verifyMobile}</Text>
@@ -115,7 +119,8 @@ export default function OtpScreen() {
         <Pressable onPress={onVerify} disabled={isLoading} style={styles.button}>
           <Text style={styles.buttonText}>{Strings.verify}</Text>
         </Pressable>
-      </View>
+        </View>
+      </KeyboardAwareScrollView>
 
       {isLoading && (
         <View style={styles.loadingOverlay}>
@@ -128,9 +133,8 @@ export default function OtpScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppColors.white },
-  // Matches login: the artwork sits just above the sheet rather than pinned
-  // to the top with a gap below it.
-  scroll: { flexGrow: 1, justifyContent: 'flex-end', paddingTop: 20 },
+  scroll: { flexGrow: 1 },
+  topBlock: { flex: 1, justifyContent: 'flex-end', paddingTop: 20 },
   sheet: {
     backgroundColor: AppColors.white,
     borderTopLeftRadius: 16,
