@@ -30,6 +30,7 @@ import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { useSession } from '@/core/session';
+import { LocationTracker } from '@/core/services/location-tracker';
 import { useAuthStore } from '@/features/auth/auth-store';
 
 interface Props {
@@ -57,6 +58,8 @@ export function Sidebar({ visible, onClose }: Props) {
   const handleLogout = async () => {
     setDialog(null);
     onClose();
+    // Stop logging position — tracking must not outlive the session.
+    void LocationTracker.stop();
     await useAuthStore.getState().logout();
     useAuthStore.getState().resetLogin();
     useAuthStore.getState().resetOtp();
@@ -66,6 +69,7 @@ export function Sidebar({ visible, onClose }: Props) {
   const handleDelete = async () => {
     setDialog(null);
     onClose();
+    void LocationTracker.stop();
     await useAuthStore.getState().deleteAccount();
     useAuthStore.getState().resetLogin();
     useAuthStore.getState().resetOtp();

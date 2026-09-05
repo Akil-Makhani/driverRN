@@ -17,6 +17,7 @@ import { Sidebar } from '@/components/sidebar';
 import { AppColors, Primary } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { LocationTracker } from '@/core/services/location-tracker';
 import { NotificationManager } from '@/core/services/notification-manager';
 import { ensureLocationPermission } from '@/core/utils/maps';
 import { DashboardCell } from '@/features/dashboard/dashboard-cell';
@@ -59,6 +60,34 @@ export default function DashboardScreen() {
   }, []);
 
   /**
+   * Resume tracking for a driver who was already on duty when the app opened —
+   * the toggle handler only covers a change made in this session.
+   *
+   * The provider tags each ping with the trip in progress, preferring an
+   * in-transit one since that is the leg whose route matters most.
+   */
+  useEffect(() => {
+    if (useDashboardStore.getState().selectedDutyValue) {
+      void LocationTracker.start();
+    }
+    // Deliberately no cleanup: tracking is tied to duty, not to this screen
+    // being mounted. Stopping here would end it whenever the driver opened a
+    // trip. Logout and the duty toggle stop it instead.
+  }, []);
+
+  /**
+   * Persist which trip a ping belongs to. The background task runs in its own
+   * JS context with no access to this store, so the tag has to go through
+   * storage. Prefers an in-transit trip — that is the leg whose route matters.
+   */
+  useEffect(() => {
+    const trip = inTransitTrips[0] ?? activeTrips[0];
+    LocationTracker.setCurrentTrip(
+      trip ? { tripId: trip.id, statusNumber: trip.statusNumber } : null,
+    );
+  }, [activeTrips, inTransitTrips]);
+
+  /**
    * Going on duty is when the driver starts needing directions, so location is
    * requested here rather than at the first map tap. Refusing does not block
    * the toggle — Maps still routes using its own permission, so the duty
@@ -67,6 +96,10 @@ export default function DashboardScreen() {
   const handleDutyChange = async (value: boolean) => {
     if (value) await ensureLocationPermission();
     await useDashboardStore.getState().setDuty(value);
+    // Position logging follows duty: on duty the driver is working and the
+    // trail matters; off duty it would just be tracking their private time.
+    if (value) await LocationTracker.start();
+    else await LocationTracker.stop();
   };
 
   // A push while the app is open refreshes the list (replaces

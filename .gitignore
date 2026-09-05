@@ -14,3 +14,10 @@ expo-env.d.ts
 # Local API overrides — machine-specific, never committed.
 .env
 .env.local
+
+# Release signing key and its passwords. Losing these locks you out of Play
+# updates forever; committing them lets anyone publish as you.
+credentials/
+*.jks
+*.keystore
+credentials.json

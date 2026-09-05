@@ -41,6 +41,7 @@ export const ApiUrls = {
   uploadUrl: '/driver/documents/upload-url',
   deleteDocument: '/driver/documents?fileKey=',
   getProduct: '/driver/trips/products/all',
+  logLocation: '/driver/locations',
 
   // Path builders for the endpoints Flutter interpolated at the call site.
   tripDetails: (tripId: string) => `/driver/trips/${tripId}`,
