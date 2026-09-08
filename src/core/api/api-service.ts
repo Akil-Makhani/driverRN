@@ -97,7 +97,11 @@ async function request<T = any>(
         parsed && typeof parsed === 'object' && typeof parsed.message === 'string'
           ? parsed.message
           : text;
-      throw new UnauthorisedException(message);
+      throw new UnauthorisedException(
+        message,
+        parsed && typeof parsed === 'object' ? parsed.data : undefined,
+        response.status,
+      );
     }
 
     default:

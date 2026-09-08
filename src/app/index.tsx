@@ -18,6 +18,7 @@ import {
   takePendingTrip,
 } from '@/core/services/notification-manager';
 import { useAuthStore } from '@/features/auth/auth-store';
+import { useRegistrationStore } from '@/features/auth/registration-store';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 
 export default function SplashScreen() {
@@ -38,6 +39,21 @@ export default function SplashScreen() {
 
       const ok = await useAuthStore.getState().loadProfile();
       if (!ok) {
+        // No session. If a registration submitted from this device is still
+        // waiting on the admin, ask what was decided so login can open with
+        // the answer already in hand. Returns immediately when this device
+        // has never registered, which is the common case.
+        await useRegistrationStore.getState().checkPendingStatus();
+        router.replace('/(auth)/login');
+        return;
+      }
+
+      // A valid token is not on its own a right to the dashboard: that is for
+      // approved drivers only, and an account added by hand on the fleet
+      // Drivers page can hold one without ever having been approved.
+      // ensureApproved ends the session and raises the waiting or rejected
+      // popup when it has to, so login opens with the answer already in hand.
+      if (!(await useAuthStore.getState().ensureApproved())) {
         router.replace('/(auth)/login');
         return;
       }

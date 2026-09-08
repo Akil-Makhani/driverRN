@@ -1,14 +1,16 @@
 import messaging from '@react-native-firebase/messaging';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { onRegistrationDecision } from '@/core/services/notification-manager';
 import { useAppFonts } from '@/core/theme/use-app-fonts';
+import { useRegistrationStore } from '@/features/auth/registration-store';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -28,6 +30,17 @@ export default function RootLayout() {
     if (fontsLoaded || fontError) void SplashScreen.hideAsync();
   }, [fontsLoaded, fontError]);
 
+  // Subscribed at the root, not in a screen: a driver waiting on approval sits
+  // on login or registration, and only the root is mounted for both. The store
+  // holds the result, and whichever of those screens is showing renders it.
+  useEffect(
+    () =>
+      onRegistrationDecision((status, reason) =>
+        useRegistrationStore.getState().showPushedDecision(status, reason),
+      ),
+    [],
+  );
+
   if (!fontsLoaded && !fontError) return null;
 
   return (
@@ -40,6 +53,7 @@ export default function RootLayout() {
             <Stack.Screen name="index" />
             <Stack.Screen name="(auth)/login" />
             <Stack.Screen name="(auth)/otp" />
+            <Stack.Screen name="(auth)/register" />
             <Stack.Screen name="dashboard" />
             <Stack.Screen name="history" />
             <Stack.Screen name="profile" />

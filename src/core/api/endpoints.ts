@@ -42,7 +42,20 @@ export const ApiUrls = {
   deleteDocument: '/driver/documents?fileKey=',
   getProduct: '/driver/trips/products/all',
 
+  // Pre-account registration. These four are the only endpoints that carry no
+  // Authorization header — a driver applying for an account has no token yet,
+  // which is the whole point of the flow.
+  // The OTP pair is separate from sendOTP/verifyOTP above: those refuse a
+  // number with no account, which is every driver who is about to register.
+  registerSendOtp: '/driver/registration/send-otp',
+  registerVerifyOtp: '/driver/registration/verify-otp',
+  register: '/driver/registration',
+  lookupVehicle: '/driver/registration/lookup/vehicle',
+  lookupLicence: '/driver/registration/lookup/driver',
+
   // Path builders for the endpoints Flutter interpolated at the call site.
+  registrationStatus: (mobileNo: string) =>
+    `/driver/registration/status?mobileNo=${encodeURIComponent(mobileNo)}`,
   tripDetails: (tripId: string) => `/driver/trips/${tripId}`,
   tripStatus: (tripId: string, status: string) =>
     `/driver/trips/${tripId}/${status}`,

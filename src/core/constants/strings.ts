@@ -134,4 +134,75 @@ export const Strings = {
   cancel: 'CANCEL',
   confirm: 'CONFIRM',
   enterAmount: 'Enter Amount',
+  // Registration Screen. New in the RN app: the Flutter build had no
+  // self-registration flow, so unlike everything above there is no
+  // strings.dart counterpart these have to match.
+  // Sits above the REGISTER button under LOG IN, saying who that button is for.
+  registerLoginHint: 'New driver? Register first — an admin has to approve you before you can log in.',
+  registerCta: 'REGISTER',
+  // The register screen's own mobile step, which is separate from the login
+  // field on purpose: the two screens ask for the number for different reasons.
+  registerMobileTitle: 'Driver Registration',
+  registerMobileSubtitle: 'Enter your mobile number to start.\nWe will send you an OTP to verify it.',
+  registerMobileLabel: 'Mobile Number',
+  registerSendOtp: 'SEND OTP',
+  registerHaveAccount: 'Already registered? Go back and log in.',
+  registerTitle: 'Driver Registration',
+  registerSubtitle:
+    'Fill in your details below. An admin will review them and approve your account.',
+  registerDriverName: 'Driver Name',
+  registerDriverNameHint: 'As printed on your licence',
+  registerMobile: 'Mobile Number',
+  registerMobileVerified: 'Verified with the OTP you just entered.',
+  registerVehicleNumber: 'Vehicle Number',
+  registerVehicleHint: 'UP32KH0320',
+  registerLicenceNumber: 'Driver Licence Number',
+  registerLicenceHint: 'GJ18 20220001846',
+  registerDob: 'Date of Birth',
+  registerDobHint: 'YYYY-MM-DD',
+  registerSubmit: 'SUBMIT FOR APPROVAL',
+  registerBackToLogin: 'Back to login',
+
+  // Inline validation. These catch a typo before the round trip; ULIP
+  // remains the authority on whether a number really exists.
+  registerNameValidation: 'Please enter your full name',
+  registerVehicleValidation: 'Enter a valid vehicle number, e.g. UP32KH0320',
+  registerLicenceValidation: 'Enter a valid licence number, e.g. GJ18 20220001846',
+  registerDobValidation: 'Enter your date of birth as YYYY-MM-DD',
+  registerDobAgeValidation: 'A driver must be at least 18 years old',
+  somethingWentWrong: 'Something went Wrong',
+
+  // The panels that show back what the vahan / sarthi-driver lookups found.
+  registerVehicleDetails: 'Vehicle Details',
+  registerLicenceDetails: 'Licence Details',
+  registerVerifying: 'Fetching details...',
+  registerVerifyFailed: 'Could not fetch details. You can still submit.',
+  registerOwner: 'Owner',
+  registerModel: 'Model',
+  registerVehicleClass: 'Class',
+  registerFitnessUpto: 'Fitness upto',
+  registerInsuranceUpto: 'Insurance upto',
+  registerLicenceHolder: 'Holder',
+  registerLicenceValidUpto: 'Valid upto',
+  registerLicenceClasses: 'Vehicle classes',
+  registerRto: 'RTO',
+
+  // The outcome popups.
+  registerRequiredTitle: 'Registration pending',
+  registerRequiredMessage: 'This number has not been registered yet. Please complete your registration first — an admin will review it and approve your account.',
+  registerNow: 'REGISTER NOW',
+  registerWaitingTitle: 'Waiting for approval',
+  registerPendingMessage: 'Your registration has been sent for approval.',
+  registerWaitingMessage: 'Your registration is still being reviewed by the admin. You will be notified as soon as a decision is made.',
+  registerApprovedTitle: 'Registration approved',
+  registerApprovedMessage: 'Your registration has been approved. You can now log in with your mobile number.',
+  registerRejectedTitle: 'Registration rejected',
+  registerRejectedMessage: 'Your registration was not approved by the admin.',
+  registerRejectedReasonLabel: 'Reason',
+  registerExistsTitle: 'Already registered',
+  registerExistsMessage: 'This vehicle or licence is already registered with us.',
+  registerOk: 'OK',
+  registerGoToLogin: 'GO TO LOGIN',
+  registerEditAndResubmit: 'EDIT DETAILS',
+
 } as const;

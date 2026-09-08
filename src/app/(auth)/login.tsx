@@ -16,6 +16,7 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { RegistrationStatusDialog } from '@/components/registration-status-dialog';
 import { Images } from '@/core/constants/assets';
 import { AppColors, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
@@ -23,6 +24,7 @@ import { Typography } from '@/core/constants/typography';
 import { digitsOnly, groupDigits } from '@/core/utils/number-format';
 import { useAuthStore } from '@/features/auth/auth-store';
 import { LoginTopImages } from '@/features/auth/login-top-images';
+import { useRegistrationStore } from '@/features/auth/registration-store';
 
 const MOBILE_LENGTH = 10;
 
@@ -34,6 +36,9 @@ export default function LoginScreen() {
   const invalidMobile = useAuthStore((s) => s.invalidMobile);
   const errorMessage = useAuthStore((s) => s.errorMessage);
   const isLoading = useAuthStore((s) => s.isLoading);
+  // Raised either by the splash screen's launch-time check or by a failed
+  // login below; this screen only has to render whatever the store holds.
+  const outcome = useRegistrationStore((s) => s.outcome);
 
   const onSubmit = async () => {
     if (mobile.length !== MOBILE_LENGTH) {
@@ -48,6 +53,20 @@ export default function LoginScreen() {
       useAuthStore.getState().startTimer();
       router.push({ pathname: '/(auth)/otp', params: { mobile } });
     }
+    // A number with no account does not fail here: sendOTP quietly switches to
+    // the registration OTP and returns true, and the OTP screen then opens the
+    // sign-up form instead of the dashboard. Anything that does fail — a
+    // blocked account, no network — is already in errorMessage.
+  };
+
+  /**
+   * Registration gets its own screen with its own number field. The number in
+   * the field above is for logging in; carrying it over made signing up look
+   * like something that happened to whatever had been typed for login.
+   */
+  const onRegister = () => {
+    Keyboard.dismiss();
+    router.push('/(auth)/register-mobile');
   };
 
   const showError = invalidMobile || errorMessage != null;
@@ -109,6 +128,19 @@ export default function LoginScreen() {
         >
           <Text style={styles.buttonText}>{Strings.login}</Text>
         </Pressable>
+
+        {/* Registration is its own button rather than something LOG IN falls
+            into, because the two are different errands: one gets an approved
+            driver in, the other starts the wait for approval. */}
+        <View style={styles.divider} />
+        <Text style={styles.registerHint}>{Strings.registerLoginHint}</Text>
+        <Pressable
+          onPress={onRegister}
+          disabled={isLoading}
+          style={styles.registerButton}
+        >
+          <Text style={styles.registerButtonText}>{Strings.registerCta}</Text>
+        </Pressable>
         </View>
       </KeyboardAwareScrollView>
 
@@ -117,6 +149,26 @@ export default function LoginScreen() {
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       )}
+
+      <RegistrationStatusDialog
+        outcome={outcome}
+        onDismiss={() => useRegistrationStore.getState().dismissOutcome()}
+        // Already on login — closing the popup is the whole action.
+        onGoToLogin={() => useRegistrationStore.getState().dismissOutcome()}
+        // Both start at the register screen rather than the form: submitting
+        // needs a verification only minutes old, and a driver who reached this
+        // popup from login has not done one. Re-entering the number there is
+        // what sends the OTP; for a rejection, verifying it lands them back on
+        // the form with the rejected details already filled in.
+        onEdit={() => {
+          useRegistrationStore.getState().dismissOutcome();
+          onRegister();
+        }}
+        onRegister={() => {
+          useRegistrationStore.getState().dismissOutcome();
+          onRegister();
+        }}
+      />
     </View>
   );
 }
@@ -177,6 +229,30 @@ const styles = StyleSheet.create({
   buttonTight: { marginTop: 10 },
   buttonLoose: { marginTop: 15 },
   buttonText: { ...Typography.button2.extraBold, color: AppColors.white },
+  // Separates "get me in" from "sign me up" so the two buttons do not read as
+  // a pair of equal choices.
+  divider: {
+    height: 1,
+    backgroundColor: TextShade.c200,
+    marginTop: 20,
+  },
+  registerHint: {
+    ...Typography.caption.regular,
+    color: TextShade.c600,
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  // Outlined, not filled: registering is the secondary errand on this screen.
+  registerButton: {
+    marginTop: 10,
+    borderRadius: 10,
+    padding: 15,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: AppColors.primary,
+    backgroundColor: AppColors.white,
+  },
+  registerButtonText: { ...Typography.button2.extraBold, color: AppColors.primary },
   loadingOverlay: {
     ...StyleSheet.absoluteFill,
     alignItems: 'center',

@@ -12,6 +12,7 @@ const storage = createMMKV({ id: 'bst-driver-storage' });
 
 const ACCESS_TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
+const PENDING_REGISTRATION_KEY = 'pending_registration_mobile';
 
 export const Preference = {
   raw: storage,
@@ -28,6 +29,23 @@ export const Preference = {
   },
   getRefreshToken(): string | undefined {
     return storage.getString(REFRESH_TOKEN_KEY);
+  },
+
+  /**
+   * Mobile number of a registration that is awaiting the admin decision.
+   * Deliberately not part of clearAuthData(): this outlives the tokens in
+   * both directions — it exists before there has ever been a token, and an
+   * approved driver who logs out has still registered. The store clears it
+   * once the decision has been shown.
+   */
+  savePendingRegistration(mobile: string): void {
+    storage.set(PENDING_REGISTRATION_KEY, mobile);
+  },
+  getPendingRegistration(): string | undefined {
+    return storage.getString(PENDING_REGISTRATION_KEY);
+  },
+  clearPendingRegistration(): void {
+    storage.remove(PENDING_REGISTRATION_KEY);
   },
 
   /** Logout / delete-account. Mirrors clearAuthData(). */

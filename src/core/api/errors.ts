@@ -9,10 +9,29 @@
 export class AppException extends Error {
   readonly prefix: string;
 
-  constructor(message?: string, prefix = '') {
+  /**
+   * The `data` field of the error envelope, when the server sent one. Most
+   * endpoints answer a failure with prose alone and leave this undefined; the
+   * registration endpoints put the deciding value here (which of Pending or
+   * Approved a 409 conflict was), because the caller has to branch on it
+   * rather than just print it.
+   */
+  readonly data?: unknown;
+
+  /**
+   * The HTTP status. UnauthorisedException covers 401/403/404/409 together,
+   * and the login flow has to tell two of them apart: 404 means no account
+   * yet, which sends the driver into registration, while 403 means a blocked
+   * account, which must not.
+   */
+  readonly status?: number;
+
+  constructor(message?: string, prefix = '', data?: unknown, status?: number) {
     super(`${prefix}${message ?? ''}`);
     this.name = new.target.name;
     this.prefix = prefix;
+    this.data = data;
+    this.status = status;
   }
 }
 
@@ -36,7 +55,7 @@ export class BadRequestException extends AppException {
  * (e.g. the invalid-OTP message).
  */
 export class UnauthorisedException extends AppException {
-  constructor(message?: string) {
-    super(message, '');
+  constructor(message?: string, data?: unknown, status?: number) {
+    super(message, '', data, status);
   }
 }

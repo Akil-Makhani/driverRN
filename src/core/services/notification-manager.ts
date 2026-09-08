@@ -147,3 +147,39 @@ export const NotificationManager = {
     };
   },
 } as const;
+
+/**
+ * Listens for the admin decision on a pending registration.
+ *
+ * Separate from register() above because that one is wired up by the
+ * dashboard, and a driver waiting on approval never reaches the dashboard —
+ * they are sitting on the login or registration screen. The root layout
+ * subscribes to this instead, so the decision lands whatever is on screen.
+ *
+ * Only the running app is covered here. A decision that arrives while the app
+ * is closed needs no listener: the splash screen asks the server for the
+ * current status on every launch, which reaches the same answer.
+ */
+export function onRegistrationDecision(
+  handler: (status: string, reason?: string) => void,
+): () => void {
+  const isDecision = (m?: FirebaseMessagingTypes.RemoteMessage | null): boolean =>
+    m?.data?.type === 'driver-registration';
+
+  const read = (m: FirebaseMessagingTypes.RemoteMessage): void => {
+    const reason = m.data?.rejectionReason;
+    handler(String(m.data?.status ?? ''), reason ? String(reason) : undefined);
+  };
+
+  const unsubscribeMessage = messaging().onMessage(async (m) => {
+    if (isDecision(m)) read(m);
+  });
+  const unsubscribeOpened = messaging().onNotificationOpenedApp((m) => {
+    if (isDecision(m)) read(m);
+  });
+
+  return () => {
+    unsubscribeMessage();
+    unsubscribeOpened();
+  };
+}
