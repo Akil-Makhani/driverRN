@@ -162,10 +162,20 @@ let appStateSub: { remove: () => void } | null = null;
  * Starts background tracking. Safe to call repeatedly — an already-running
  * task is left alone rather than restarted.
  *
+ * `confirmDisclosure` is shown before the OS background-permission prompt and
+ * must resolve true for that prompt to appear. Google Play requires a
+ * prominent in-app disclosure ahead of any ACCESS_BACKGROUND_LOCATION request,
+ * and rejected version 1.1.0 for prompting without one — so the gate is
+ * mandatory, not optional politeness. Callers with no UI to show (a resume
+ * path, say) must pass nothing, which skips the request entirely rather than
+ * prompting undisclosed.
+ *
  * Returns false when background permission was refused; foreground pings still
  * work in that case, they simply stop when the app is backgrounded.
  */
-export async function startTracking(): Promise<boolean> {
+export async function startTracking(
+  confirmDisclosure?: () => Promise<boolean>,
+): Promise<boolean> {
   try {
     const foreground = await Location.getForegroundPermissionsAsync();
     if (!foreground.granted) return false;
@@ -181,11 +191,29 @@ export async function startTracking(): Promise<boolean> {
 
     // Background permission is requested only here, after the driver has gone
     // on duty — asking at launch, with no context, gets refused.
-    const background = await Location.requestBackgroundPermissionsAsync();
+    const background = await Location.getBackgroundPermissionsAsync();
     if (!background.granted) {
-      // Take one fix now so going on duty still records something.
-      await captureOnce('status-change');
-      return false;
+      // Only prompt when the OS would actually show a dialog. Once the driver
+      // has permanently denied, re-running the disclosure just nags them with
+      // a screen whose Allow button can no longer do anything.
+      if (!background.canAskAgain) {
+        await captureOnce('status-change');
+        return false;
+      }
+
+      // The disclosure gates the prompt. No gate means no informed consent was
+      // obtained, so the request is not made at all.
+      if (!confirmDisclosure || !(await confirmDisclosure())) {
+        await captureOnce('status-change');
+        return false;
+      }
+
+      const requested = await Location.requestBackgroundPermissionsAsync();
+      if (!requested.granted) {
+        // Take one fix now so going on duty still records something.
+        await captureOnce('status-change');
+        return false;
+      }
     }
 
     await Location.startLocationUpdatesAsync(LOCATION_TASK, {

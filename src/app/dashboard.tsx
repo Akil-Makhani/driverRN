@@ -1,6 +1,6 @@
 /** Port of lib/screens/dashboard/view/dashboard_view.dart. */
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { AppBar } from '@/components/app-bar';
+import { LocationDisclosureDialog } from '@/components/location-disclosure-dialog';
 import { NotificationBell } from '@/components/notification-bell';
 import { Sidebar } from '@/components/sidebar';
 import { AppColors, Primary } from '@/core/constants/colors';
@@ -36,6 +37,48 @@ type Row = { kind: 'deliverAll' } | { kind: 'trip'; trip: TripItem };
 export default function DashboardScreen() {
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [disclosureVisible, setDisclosureVisible] = useState(false);
+
+  /**
+   * Resolver for the disclosure currently on screen.
+   *
+   * The tracker asks for consent inside an async call, but the answer arrives
+   * from a rendered modal, so the promise is held open here until the driver
+   * taps. A ref rather than state: resolving must not depend on a re-render
+   * having flushed.
+   */
+  const disclosureResolve = useRef<((granted: boolean) => void) | null>(null);
+
+  const answerDisclosure = useCallback((granted: boolean) => {
+    setDisclosureVisible(false);
+    disclosureResolve.current?.(granted);
+    disclosureResolve.current = null;
+  }, []);
+
+  /**
+   * Shows the prominent disclosure and resolves with the driver's answer. The
+   * tracker will only reach the OS permission prompt if this returns true —
+   * that ordering is what Google Play requires.
+   */
+  const confirmLocationDisclosure = useCallback(() => {
+    // A second call while one is open would strand the first promise; reuse is
+    // not needed, so refuse rather than leak it.
+    if (disclosureResolve.current) return Promise.resolve(false);
+    return new Promise<boolean>((resolve) => {
+      disclosureResolve.current = resolve;
+      setDisclosureVisible(true);
+    });
+  }, []);
+
+  // Unmounting with a disclosure open (logout, for one) must not leave the
+  // tracker awaiting a promise that can never settle.
+  useEffect(
+    () => () => {
+      disclosureResolve.current?.(false);
+      disclosureResolve.current = null;
+    },
+    [],
+  );
 
   const isLoading = useDashboardStore((s) => s.isLoading);
   const activeTrips = useDashboardStore((s) => s.activeTrips);
@@ -68,6 +111,10 @@ export default function DashboardScreen() {
    */
   useEffect(() => {
     if (useDashboardStore.getState().selectedDutyValue) {
+      // No disclosure gate: this runs on app open, not on a driver action. If
+      // permission was already granted tracking simply resumes; if it was not,
+      // the request waits for the next duty toggle rather than firing a
+      // permission prompt at someone who has just opened the app.
       void LocationTracker.start();
     }
     // Deliberately no cleanup: tracking is tied to duty, not to this screen
@@ -98,7 +145,7 @@ export default function DashboardScreen() {
     await useDashboardStore.getState().setDuty(value);
     // Position logging follows duty: on duty the driver is working and the
     // trail matters; off duty it would just be tracking their private time.
-    if (value) await LocationTracker.start();
+    if (value) await LocationTracker.start(confirmLocationDisclosure);
     else await LocationTracker.stop();
   };
 
@@ -201,6 +248,12 @@ export default function DashboardScreen() {
       </View>
 
       <Sidebar visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
+
+      <LocationDisclosureDialog
+        visible={disclosureVisible}
+        onAccept={() => answerDisclosure(true)}
+        onDecline={() => answerDisclosure(false)}
+      />
     </View>
   );
 }
