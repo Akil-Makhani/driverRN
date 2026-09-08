@@ -6,8 +6,11 @@
  * The two detail panels are the point of the ULIP lookups: rather than making
  * the driver trust that they typed their vehicle and licence numbers
  * correctly, the form shows back whose vehicle and whose licence it matched
- * before they submit. A lookup that fails is not an error — the backend files
- * the request either way — so the panel says so and the button stays enabled.
+ * before they submit. Both have to match: submitting runs whichever lookup has
+ * not succeeded and refuses until both have, so a number ULIP cannot find is
+ * corrected here, by the driver holding the papers, rather than reaching an
+ * admin who has nothing to check it against. A failed panel therefore offers
+ * TRY AGAIN — it is a step to repeat, not a notice to read past.
  */
 import { useRouter } from 'expo-router';
 import {
@@ -23,11 +26,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { RegistrationStatusDialog } from '@/components/registration-status-dialog';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
-import { digitsOnly, groupDigits } from '@/core/utils/number-format';
+import { groupDigits } from '@/core/utils/number-format';
+import { useAuthStore } from '@/features/auth/auth-store';
 import {
   type FieldKey,
   formatDobInput,
@@ -50,7 +53,8 @@ export default function RegisterScreen() {
   const vehicleLookup = useRegistrationStore((s) => s.vehicleLookup);
   const licenceInfo = useRegistrationStore((s) => s.licenceInfo);
   const licenceLookup = useRegistrationStore((s) => s.licenceLookup);
-  const outcome = useRegistrationStore((s) => s.outcome);
+  // Set when this form was opened carrying a rejected registration's details.
+  const statusInfo = useRegistrationStore((s) => s.statusInfo);
 
   const set = (key: FieldKey) => (value: string) =>
     useRegistrationStore.getState().setField(key, value);
@@ -61,9 +65,40 @@ export default function RegisterScreen() {
     router.replace('/(auth)/login');
   };
 
+  /**
+   * A filed registration goes to the waiting screen, not back to login: there
+   * is nothing on login for a driver who cannot log in yet, and the decision
+   * arrives on the waiting screen. `replace`, so the form they have just sent
+   * is not sitting one back-press behind it.
+   *
+   * 'needs-otp' is the other real ending: the mobile verification is good for
+   * fifteen minutes and the two ULIP lookups can outlast it. The form is kept
+   * exactly as typed and a fresh OTP is sent, so re-verifying is four digits
+   * rather than the whole form again.
+   */
   const onSubmit = async () => {
     Keyboard.dismiss();
-    await useRegistrationStore.getState().submit();
+    const result = await useRegistrationStore.getState().submit();
+
+    if (result === 'submitted') {
+      router.replace('/(auth)/pending-approval');
+      return;
+    }
+
+    if (result === 'needs-otp') {
+      const mobile = useRegistrationStore.getState().form.mobileNo;
+      const sent = await useAuthStore.getState().startRegistration(mobile);
+      if (!sent.ok) {
+        // Could not even send the code. The submitError already on screen
+        // says what went wrong; there is nowhere useful to send them.
+        return;
+      }
+      useAuthStore.getState().resetOtp();
+      useAuthStore.getState().startTimer();
+      // `reverify` tells the OTP screen to come back here rather than open a
+      // second copy of this screen on top of the one being filled in.
+      router.push({ pathname: '/(auth)/otp', params: { mobile, reverify: '1' } });
+    }
   };
 
   return (
@@ -83,6 +118,17 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.form}>
+          {statusInfo?.status === 'Rejected' ? (
+            <View style={styles.rejectedBanner}>
+              <Text style={styles.rejectedTitle}>{Strings.registerRejectedBanner}</Text>
+              {statusInfo.rejectionReason ? (
+                <Text style={styles.rejectedReason}>
+                  {`${Strings.registerRejectedReasonLabel}: ${statusInfo.rejectionReason}`}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+
           <Field
             label={Strings.registerDriverName}
             placeholder={Strings.registerDriverNameHint}
@@ -132,6 +178,7 @@ export default function RegisterScreen() {
                   ]
                 : []
             }
+            onRetry={() => void useRegistrationStore.getState().lookupVehicle()}
           />
 
           <Field
@@ -169,6 +216,7 @@ export default function RegisterScreen() {
                   ]
                 : []
             }
+            onRetry={() => void useRegistrationStore.getState().lookupLicence()}
           />
 
           {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
@@ -192,15 +240,6 @@ export default function RegisterScreen() {
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       )}
-
-      <RegistrationStatusDialog
-        outcome={outcome}
-        // Nothing else to do on this screen once the request is in, so the
-        // popup closing is also the cue to hand the driver back to login.
-        onDismiss={outcome?.kind === 'rejected' ? () => useRegistrationStore.getState().dismissOutcome() : goToLogin}
-        onGoToLogin={goToLogin}
-        onEdit={() => useRegistrationStore.getState().dismissOutcome()}
-      />
     </View>
   );
 }
@@ -286,13 +325,15 @@ interface LookupPanelProps {
   state: 'idle' | 'loading' | 'done' | 'failed';
   /** [label, value] pairs; entries with no value are dropped. */
   rows: [string, string | undefined][];
+  /** Runs the lookup again — the way out of a failure, since submit needs it. */
+  onRetry: () => void;
 }
 
 /**
  * Renders nothing until a lookup has been attempted, so the form is not
  * littered with empty boxes for fields the driver has not filled in yet.
  */
-function LookupPanel({ title, state, rows }: LookupPanelProps) {
+function LookupPanel({ title, state, rows, onRetry }: LookupPanelProps) {
   if (state === 'idle') return null;
 
   const filled = rows.filter(([, v]) => v != null && v !== '');
@@ -309,7 +350,12 @@ function LookupPanel({ title, state, rows }: LookupPanelProps) {
       ) : null}
 
       {state === 'failed' ? (
-        <Text style={styles.panelMuted}>{Strings.registerVerifyFailed}</Text>
+        <>
+          <Text style={styles.panelFailed}>{Strings.registerVerifyFailed}</Text>
+          <Pressable onPress={onRetry} style={styles.panelRetry} hitSlop={6}>
+            <Text style={styles.panelRetryText}>{Strings.registerRetryLookup}</Text>
+          </Pressable>
+        </>
       ) : null}
 
       {state === 'done'
@@ -336,6 +382,19 @@ const styles = StyleSheet.create({
   title: { ...Typography.h3.bold, color: AppColors.text, marginTop: 8 },
   subtitle: { ...Typography.body2.regular, color: TextShade.c700, marginTop: 6 },
   form: { paddingHorizontal: 16, paddingTop: 8 },
+
+  rejectedBanner: {
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#FEF3F2',
+  },
+  rejectedTitle: { ...Typography.body2.bold, color: AppColors.error600 },
+  rejectedReason: {
+    ...Typography.body2.regular,
+    color: AppColors.text,
+    marginTop: 6,
+  },
 
   field: { marginTop: 16 },
   label: { ...Typography.body2.bold, color: AppColors.text, marginBottom: 6 },
@@ -379,6 +438,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginLeft: 8,
   },
+  /** A failure blocks the submit, so it is coloured like the blocker it is. */
+  panelFailed: {
+    ...Typography.body2.regular,
+    color: AppColors.error600,
+    marginTop: 8,
+  },
+  panelRetry: { alignSelf: 'flex-start', marginTop: 8, paddingVertical: 4 },
+  panelRetryText: { ...Typography.caption.extraBold, color: AppColors.primary },
 
   submitError: {
     ...Typography.body2.regular,

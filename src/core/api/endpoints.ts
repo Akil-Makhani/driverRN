@@ -42,7 +42,7 @@ export const ApiUrls = {
   deleteDocument: '/driver/documents?fileKey=',
   getProduct: '/driver/trips/products/all',
 
-  // Pre-account registration. These four are the only endpoints that carry no
+  // Pre-account registration. These are the only endpoints that carry no
   // Authorization header — a driver applying for an account has no token yet,
   // which is the whole point of the flow.
   // The OTP pair is separate from sendOTP/verifyOTP above: those refuse a
@@ -50,6 +50,10 @@ export const ApiUrls = {
   registerSendOtp: '/driver/registration/send-otp',
   registerVerifyOtp: '/driver/registration/verify-otp',
   register: '/driver/registration',
+  // Trades an approved registration for a session, using the secret this
+  // device sent when it submitted — so approval opens the app instead of a
+  // login screen. Public like the rest, but the secret is the credential.
+  registerSession: '/driver/registration/session',
   lookupVehicle: '/driver/registration/lookup/vehicle',
   lookupLicence: '/driver/registration/lookup/driver',
 

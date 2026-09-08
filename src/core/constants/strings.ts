@@ -160,8 +160,18 @@ export const Strings = {
   registerLicenceHint: 'GJ18 20220001846',
   registerDob: 'Date of Birth',
   registerDobHint: 'YYYY-MM-DD',
+  // Sits above the form when it opens carrying a rejected registration's
+  // details. Said here rather than in a popup: the reason is worth reading
+  // while the fields it is about are on screen and being corrected.
+  registerRejectedBanner:
+    'Your last registration was not approved. Correct the details below and submit again.',
   registerSubmit: 'SUBMIT FOR APPROVAL',
   registerBackToLogin: 'Back to login',
+  // The mobile verification is good for 15 minutes, which a driver waiting on
+  // the two ULIP lookups can outlast. Said as a step, not a failure, because
+  // the app takes them straight back to the OTP with the form still filled in.
+  registerVerifyExpired:
+    'Your mobile verification has expired. We are sending you a new OTP — your details are saved.',
 
   // Inline validation. These catch a typo before the round trip; ULIP
   // remains the authority on whether a number really exists.
@@ -176,7 +186,16 @@ export const Strings = {
   registerVehicleDetails: 'Vehicle Details',
   registerLicenceDetails: 'Licence Details',
   registerVerifying: 'Fetching details...',
-  registerVerifyFailed: 'Could not fetch details. You can still submit.',
+  // Both lookups have to succeed before the form can be sent, so a failure is
+  // a step to repeat rather than something to shrug at and carry on past.
+  registerVerifyFailed: 'Could not fetch details. Check what you entered, or try again.',
+  registerRetryLookup: 'TRY AGAIN',
+  registerConfirmVehicle:
+    'We could not confirm this vehicle number yet. Check it and try again before submitting.',
+  registerConfirmLicence:
+    'We could not confirm this licence number and date of birth yet. Check them and try again before submitting.',
+  registerConfirmBoth:
+    'We could not confirm your vehicle and licence details yet. Check them and try again before submitting.',
   registerOwner: 'Owner',
   registerModel: 'Model',
   registerVehicleClass: 'Class',
@@ -192,17 +211,36 @@ export const Strings = {
   registerRequiredMessage: 'This number has not been registered yet. Please complete your registration first — an admin will review it and approve your account.',
   registerNow: 'REGISTER NOW',
   registerWaitingTitle: 'Waiting for approval',
-  registerPendingMessage: 'Your registration has been sent for approval.',
-  registerWaitingMessage: 'Your registration is still being reviewed by the admin. You will be notified as soon as a decision is made.',
   registerApprovedTitle: 'Registration approved',
   registerApprovedMessage: 'Your registration has been approved. You can now log in with your mobile number.',
   registerRejectedTitle: 'Registration rejected',
   registerRejectedMessage: 'Your registration was not approved by the admin.',
   registerRejectedReasonLabel: 'Reason',
+  // The form was refused because the vehicle or licence is on someone else's
+  // record. Titled as an error, not as an approval — the message under it is
+  // the server's, and says which of the two is already saved.
+  registerErrorTitle: 'Registration error',
   registerExistsTitle: 'Already registered',
   registerExistsMessage: 'This vehicle or licence is already registered with us.',
   registerOk: 'OK',
   registerGoToLogin: 'GO TO LOGIN',
-  registerEditAndResubmit: 'EDIT DETAILS',
+  registerBackToLoginCta: 'BACK TO LOGIN',
+
+  // The waiting screen. Submitting used to end at a popup and a trip back to
+  // login, which left the driver holding nothing — no confirmation they could
+  // return to, and a LOG IN button that would not let them in. This screen is
+  // where a pending driver lives instead, and the decision arrives on it.
+  pendingBody:
+    'We have your details. An admin will review them and approve your account — this usually takes a few hours.',
+  // The big status words, in the circle the dashboard uses for "no trip".
+  pendingCircleWaiting: 'Waiting for\nApproval',
+  pendingSubmittedTitle: 'What you submitted',
+  pendingVehicle: 'Vehicle',
+  pendingLicence: 'Licence',
+  pendingSubmittedAt: 'Submitted',
+  pendingNotifyNote:
+    'You will get a notification as soon as a decision is made. You can close the app — we check again every time you open it.',
+  pendingCheckStatus: 'CHECK STATUS',
+  pendingCheckFailed: 'Could not reach the server. Check your connection and try again.',
 
 } as const;

@@ -1,14 +1,16 @@
 /**
  * The pre-account half of UserRepository: everything a driver can do before
- * they have a login. Nothing here touches the session or Preference tokens,
- * because a driver at this stage has neither — the only thing worth
- * remembering locally is which mobile number is awaiting a decision, and that
- * is the store's job, not the repository's.
+ * they have a login. Nothing here touches the session or the stored tokens,
+ * because a driver at this stage has neither — which mobile number is awaiting
+ * a decision is the store's business, and the one thing this file does read
+ * from storage is the device secret, because that is part of the request body
+ * rather than something the caller should have to know about.
  */
 import messaging from '@react-native-firebase/messaging';
 
 import { ApiService } from '../api/api-service';
 import { ApiUrls } from '../api/endpoints';
+import { Preference } from '../storage/preference';
 import type { CommonResponse } from '@/types/api';
 import {
   type DriverLicenceInfo,
@@ -67,6 +69,10 @@ export const RegistrationRepository = {
       vehicleNumber: form.vehicleNumber.trim().toUpperCase(),
       driverLicenceNumber: form.driverLicenceNumber.trim(),
       dob: form.dob.trim(),
+      // Sent once, here, and traded back for a session the moment the admin
+      // approves — which is what lets approval open the app instead of asking
+      // for a login OTP on the number this form has already proved.
+      deviceSecret: Preference.getOrCreateDeviceSecret(),
     };
     if (fcmToken) body.fcmToken = fcmToken;
 

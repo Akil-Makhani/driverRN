@@ -42,6 +42,42 @@ export const UserRepository = {
     return model;
   },
 
+  /**
+   * The second way into a session, for a driver whose registration has just
+   * been approved: the device secret their phone sent with the form stands in
+   * for the login OTP, so approval opens the app rather than asking them to
+   * prove — with a second code — the number they proved to register.
+   *
+   * Lives here rather than with the other registration calls because what it
+   * does is log someone in, and persisting a session is this file's job. The
+   * server answers in the same shape verifyOTP does, which is why both end in
+   * the same three lines.
+   */
+  async claimApprovedSession(
+    mobile: string,
+    deviceSecret: string,
+  ): Promise<UserResponse> {
+    let fcmToken: string | null = null;
+    try {
+      fcmToken = await messaging().getToken();
+    } catch (e) {
+      if (__DEV__) console.log('Error getting FCM token:', e);
+    }
+
+    const body: Record<string, unknown> = { mobileNo: mobile, deviceSecret };
+    if (fcmToken) body.fcmToken = fcmToken;
+
+    const model = parseUserResponse(
+      await ApiService.post(ApiUrls.registerSession, body),
+    );
+    if (model.status === 'success' && model.data) {
+      useSession.getState().updateSession(model.data);
+      Preference.saveAccessToken(model.data.accessToken);
+      Preference.saveRefreshToken(model.data.refreshToken);
+    }
+    return model;
+  },
+
   async profile(): Promise<UserResponse> {
     const model = parseUserResponse(await ApiService.get(ApiUrls.profile));
     if (model.data) {
