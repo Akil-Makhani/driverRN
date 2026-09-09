@@ -1,14 +1,18 @@
 /** 1:1 port of lib/services/api_urls.dart. */
 
-// Dev:  https://api.dev.bstm.in/v2
-// UAT:  https://api.uat.bstm.in/v2
-// Prod: https://api.bstm.in/v2
+// Staging: https://staging-api.theallwaysdigital.com/v2
+// Prod:    https://api.bstm.in/v2
+//
+// Staging is the default because it is the only deployment carrying the driver
+// registration endpoints; api.bstm.in still answers 404 for all of them, so a
+// build pointed there cannot register anyone. Move this back to prod once the
+// registration branch is deployed there.
 //
 // Point at a local bst-api by setting EXPO_PUBLIC_API_URL in .env — on the
 // Android emulator use http://10.0.2.2:3000/v2, since localhost there is the
 // emulated device itself, not the host machine.
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? 'https://api.bstm.in/v2';
+  process.env.EXPO_PUBLIC_API_URL ?? 'https://staging-api.theallwaysdigital.com/v2';
 
 export const DOWNLOAD_IMAGE_BASE_URL = 'https://dcaut6thq5oko.cloudfront.net/';
 
