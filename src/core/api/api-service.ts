@@ -80,18 +80,31 @@ async function request<T = any>(
     }
   };
 
+  // The server's machine-readable error tag, when it sends one. Callers that
+  // must branch on *which* failure it was (a lost broadcast race vs a dead
+  // session) read this rather than string-matching the human message.
+  const errorCode = (): string | undefined => {
+    const parsed = parse();
+    return parsed && typeof parsed === 'object' && typeof parsed.code === 'string'
+      ? parsed.code
+      : undefined;
+  };
+
   switch (response.status) {
     case 200:
     case 201:
       return parse() as T;
 
     case 400:
-      throw new BadRequestException(text);
+      throw new BadRequestException(text, 400, errorCode());
 
     case 401:
     case 403:
     case 404:
-    case 409: {
+    case 409:
+    // 410 Gone joins the group for expired job offers: the offer was real, the
+    // driver was simply too late. Same "show the server's message" handling.
+    case 410: {
       const parsed = parse();
       const message =
         parsed && typeof parsed === 'object' && typeof parsed.message === 'string'
@@ -99,14 +112,16 @@ async function request<T = any>(
           : text;
       throw new UnauthorisedException(
         message,
-        parsed && typeof parsed === 'object' ? parsed.data : undefined,
         response.status,
+        errorCode(),
+        parsed && typeof parsed === 'object' ? parsed.data : undefined,
       );
     }
 
     default:
       throw new FetchDataException(
         `Error occurred while Communication with Server with Status Code : ${response.status}`,
+        response.status,
       );
   }
 }

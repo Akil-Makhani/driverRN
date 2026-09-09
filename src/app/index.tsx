@@ -17,6 +17,7 @@ import {
   NotificationManager,
   takePendingTrip,
 } from '@/core/services/notification-manager';
+import { UserRepository } from '@/core/services/user-repository';
 import { useAuthStore } from '@/features/auth/auth-store';
 import { useRegistrationStore } from '@/features/auth/registration-store';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
@@ -57,6 +58,19 @@ export default function SplashScreen() {
         router.replace('/(auth)/login');
         return;
       }
+
+      /**
+       * Tell the server this device's push token and notification channel on
+       * every launch, not only when the duty switch flips.
+       *
+       * Both were previously written at login and on the duty transition, so a
+       * driver who stayed logged in across an app update never reported the
+       * new channel — and an update is exactly when the channel changes. The
+       * server then pushed to a channel this install had already deleted, which
+       * Android drops in silence. Re-registering is a no-op server-side when
+       * nothing changed.
+       */
+      void UserRepository.registerFcmToken();
 
       // Seed the duty switch from the profile before the dashboard paints.
       useDashboardStore.getState().syncDutyFromSession();

@@ -293,7 +293,7 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
       // 409 — this vehicle or licence is already on file. The server puts the
       // record's status in `data` so the popup can say whether the driver is
       // waiting on review or should simply go and log in.
-      if (e instanceof UnauthorisedException && e.status === 409) {
+      if (e instanceof UnauthorisedException && e.statusCode === 409) {
         const status = (e.data as { status?: RegistrationStatus } | undefined)?.status;
         set({
           outcome: {

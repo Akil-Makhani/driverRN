@@ -118,6 +118,21 @@ export const Strings = {
   vehicleThere: 'VEHICLE THERE',
   accept: 'Accept',
   decline: 'Decline',
+  // Handing an accepted order back. Only offered before Vehicle There — after
+  // that the server refuses it, so the wording says so up front.
+  // Sentence case: this one is a menu row, not a button.
+  cancelTripMenu: 'Cancel this trip',
+  moreOptions: 'More options',
+  cancelTripTitle: 'Cancel this trip?',
+  cancelTripBody:
+    'The order goes back to all on-duty drivers and someone else can take it. '
+    + 'You will not be able to cancel once you mark Vehicle There.',
+  cancelTripConfirm: 'Yes, cancel',
+  cancelTripDismiss: 'Keep trip',
+  cancelTripFailed: 'Could not cancel this trip',
+  sideBarCancelledTrips: 'Cancelled Trips',
+  cancelledTripsEmpty: 'You have not cancelled any trips.',
+  cancelledTripsSubtitle: 'Trips you handed back before Vehicle There',
   confirmLoading: 'CONFIRM LOADING',
   pickupLoading: 'Pickup Loading details',
   uploadPhoto: 'Upload Photo',
@@ -205,4 +220,32 @@ export const Strings = {
   registerGoToLogin: 'GO TO LOGIN',
   registerEditAndResubmit: 'EDIT DETAILS',
 
+  // Broadcast dispatch (new — no Flutter counterpart)
+  newOrderTitle: 'NEW ORDER',
+  offerPickup: 'PICKUP',
+  offerDrop: 'DROP',
+  offerAway: 'away',
+  offerAccept: 'ACCEPT',
+  offerReject: 'REJECT',
+  offerExpiresIn: 'Expires in',
+  offerSeconds: 's',
+  offerTaken: 'Another driver took this order',
+  offerExpiredNotice: 'The order expired before you answered',
+  offerCancelledNotice: 'This order was cancelled',
+  offerFailedNotice: 'Could not accept the order. Please try again.',
+  offerWaiting: 'Confirming…',
+  offerYouEarn: 'YOU EARN',
+  offerFare: 'ORDER FARE',
+  offerLoad: 'LOAD',
+  offerMinimise: 'Dismiss for now',
+  offerPending: 'NEW ORDERS',
+  offerTapToOpen: 'Tap to view',
+
+  // Live tracking
+  liveTracking: 'Live Tracking',
+  trackingOffline: 'Reconnecting…',
+  trackingOn: 'Customer can see you live',
+  trackingPermissionNeeded:
+    'Background location is off, so the customer only sees you while this app is open. Enable "Allow all the time" in Settings for full tracking.',
+  youAreHere: 'You',
 } as const;

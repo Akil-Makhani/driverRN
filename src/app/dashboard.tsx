@@ -26,6 +26,7 @@ import {
   DeliverAllCell,
 } from '@/features/dashboard/dashboard-parts';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
+import { PendingOffersStrip } from '@/features/job/pending-offers-strip';
 import { useNotificationStore } from '@/features/notification/notification-store';
 import type { TripItem } from '@/types/trip';
 
@@ -120,6 +121,10 @@ export default function DashboardScreen() {
         <View style={styles.topWrap}>
           <DashboardTopView completedTripCount={completedTripCount} />
         </View>
+
+        {/* Offers the driver pushed aside. Renders nothing when there are
+            none, so the dashboard is unchanged for everyone else. */}
+        <PendingOffersStrip />
 
         {isLoading && isEmpty ? (
           <View style={styles.center}>

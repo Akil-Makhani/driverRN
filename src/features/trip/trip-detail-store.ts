@@ -16,6 +16,7 @@ import { create } from 'zustand';
 import * as ImagePicker from 'expo-image-picker';
 
 import { downloadUrl } from '@/core/api/endpoints';
+import { AppException } from '@/core/api/errors';
 import { DocumentType, type DocumentTypeValue } from '@/core/constants/enums';
 import { Strings } from '@/core/constants/strings';
 import { DashboardRepository } from '@/core/services/dashboard-repository';
@@ -28,6 +29,12 @@ import type {
   RequestedProduct,
   TripDetailsData,
 } from '@/types/trip';
+
+/** What a status PATCH did, so the screen can report a refusal to the driver. */
+export interface StatusChangeResult {
+  ok: boolean;
+  message?: string;
+}
 
 /**
  * A weight slip / invoice as the screen needs it: something to render and the
@@ -61,7 +68,7 @@ interface TripDetailState {
 
   clearFiles: () => void;
   getTrip: (tripId: string, products: Product[]) => Promise<void>;
-  statusChanged: (tripId: string, status: string) => Promise<void>;
+  statusChanged: (tripId: string, status: string) => Promise<StatusChangeResult>;
   updateTrip: (tripId: string) => Promise<void>;
   inTransit: (tripId: string, status: string) => Promise<void>;
 
@@ -170,10 +177,18 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
       if (isSuccess(response) && response.data) {
         set({ tripDetailData: response.data });
       }
+      set({ isLoading: false });
+      return { ok: isSuccess(response), message: response.message };
     } catch (e) {
       if (__DEV__) console.log('statusChanged failed:', e);
+      set({ isLoading: false });
+      // The server refuses a cancel that arrives after Vehicle There with a
+      // 409 and a sentence written for the driver. Swallowing it left the
+      // screen looking like the tap did nothing, so it is handed back for the
+      // caller to show.
+      const message = e instanceof AppException ? e.message : undefined;
+      return { ok: false, message };
     }
-    set({ isLoading: false });
   },
 
   async updateTrip(tripId) {

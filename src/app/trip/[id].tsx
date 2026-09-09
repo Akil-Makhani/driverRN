@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AppBar } from '@/components/app-bar';
+import { OverflowMenu } from '@/components/overflow-menu';
 import { AppColors, Primary } from '@/core/constants/colors';
 import {
   DocumentType,
@@ -20,12 +21,14 @@ import {
 } from '@/core/utils/maps';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 import { BottomActionBar } from '@/features/trip/bottom-action-bar';
+import { CancelTripDialog } from '@/features/trip/cancel-trip-dialog';
 import { CompanyDetails } from '@/features/trip/company-details';
 import { ConfirmLoadSheet } from '@/features/trip/confirm-load-sheet';
 import { KnowMoreSheet } from '@/features/trip/know-more-sheet';
 import { OrderDetails } from '@/features/trip/order-details';
 import { PickupLoadingDetail } from '@/features/trip/pickup-loading-detail';
 import { ShipmentStatusTracker } from '@/features/trip/shipment-status-tracker';
+import { TripLiveMap } from '@/features/trip/trip-live-map';
 import { TripStatusTopView } from '@/features/trip/trip-status-top-view';
 import { useTripDetailStore } from '@/features/trip/trip-detail-store';
 
@@ -34,6 +37,7 @@ export default function TripDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [knowMoreOpen, setKnowMoreOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const isLoading = useTripDetailStore((s) => s.isLoading);
   const trip = useTripDetailStore((s) => s.tripDetailData);
@@ -54,10 +58,34 @@ export default function TripDetailScreen() {
 
   const status = trip?.statusNumber ?? TripStatusNumber.assigned;
 
+  /**
+   * Handing an accepted trip back is offered on tempo trips only, and only
+   * before Vehicle There — the server enforces the same window. Computed here
+   * rather than inside the action bar because the app bar's menu needs it too.
+   */
+  const canCancel =
+    trip?.orderKind === 'tempo' && status === TripStatusNumber.accepted;
+
   const changeStatus = async (next: string, goBack = false) => {
-    await useTripDetailStore.getState().statusChanged(id, next);
+    const result = await useTripDetailStore.getState().statusChanged(id, next);
+    if (!result.ok) {
+      // Mostly the cancel-after-Vehicle-There refusal, which carries a
+      // sentence written for the driver; keep them on the trip either way.
+      Alert.alert(Strings.cancelTripFailed, result.message);
+      return;
+    }
     // The dashboard refetches on focus, so a decline can just pop.
     if (goBack) router.back();
+  };
+
+  /**
+   * Handing back a trip the driver already accepted. Offered only on tempo
+   * trips and only before Vehicle There — the server enforces the same window,
+   * this just stops the driver reaching for a button that would be refused.
+   */
+  const confirmCancel = () => {
+    setCancelOpen(false);
+    void changeStatus(TripStatus.rejected, true);
   };
 
   // Routes from the driver's current location to wherever the trip is headed
@@ -80,6 +108,21 @@ export default function TripDetailScreen() {
         onLeadingPress={() => router.back()}
         variant="white"
         centerTitle={false}
+        actions={
+          canCancel ? (
+            <OverflowMenu
+              accessibilityLabel={Strings.moreOptions}
+              items={[
+                {
+                  title: Strings.cancelTripMenu,
+                  icon: 'close-circle-outline',
+                  destructive: true,
+                  onPress: () => setCancelOpen(true),
+                },
+              ]}
+            />
+          ) : undefined
+        }
       />
 
       {isLoading && trip == null ? (
@@ -95,6 +138,11 @@ export default function TripDetailScreen() {
               onKnowMorePress={() => setKnowMoreOpen(true)}
             />
             <ShipmentStatusTracker status={status} />
+
+            {/* Renders itself away outside accepted…in-transit, so the trip
+                screen does not need to duplicate that condition. */}
+            <TripLiveMap trip={trip} />
+
             <View style={styles.divider} />
 
             <View style={styles.section}>
@@ -146,6 +194,12 @@ export default function TripDetailScreen() {
           />
         </>
       )}
+
+      <CancelTripDialog
+        visible={cancelOpen}
+        onConfirm={confirmCancel}
+        onCancel={() => setCancelOpen(false)}
+      />
 
       <KnowMoreSheet
         visible={knowMoreOpen}
@@ -205,6 +259,8 @@ function ActionBar({
 
     case TripStatusNumber.accepted:
       // Directions are offered whenever both ends resolve to an address.
+      // Cancelling lives in the app bar's overflow menu, not here — see
+      // components/overflow-menu.tsx for why it is not a button in this row.
       return (
         <BottomActionBar
           secondary={

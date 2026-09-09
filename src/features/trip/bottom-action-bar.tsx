@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppColors, Primary } from '@/core/constants/colors';
+import { PrimaryButton } from '@/core/constants/buttons';
 import { Typography } from '@/core/constants/typography';
 
 interface Props {
@@ -15,6 +16,11 @@ interface Props {
   primary: { title: string; onPress: () => void };
 }
 
+/**
+ * Every slot here moves the trip forward. Destructive actions deliberately do
+ * not live in this bar — cancelling an accepted trip sits in the app bar's
+ * overflow menu instead, because a driver taps this bar from memory.
+ */
 export function BottomActionBar({ secondary, primary }: Props) {
   const insets = useSafeAreaInsets();
 
@@ -65,11 +71,7 @@ const styles = StyleSheet.create({
   secondaryText: { ...Typography.button2.extraBold, color: AppColors.primary },
   primaryButton: {
     flex: 1,
-    height: 50,
-    borderRadius: 8,
-    backgroundColor: AppColors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    ...PrimaryButton.shape,
   },
-  primaryText: { ...Typography.button2.extraBold, color: AppColors.white },
+  primaryText: { ...PrimaryButton.label },
 });
