@@ -19,6 +19,7 @@ import { RegistrationRepository } from '@/core/services/registration-repository'
 import { Preference } from '@/core/storage/preference';
 import { Strings } from '@/core/constants/strings';
 import { isSuccess } from '@/types/api';
+import { isRegistrationComplete } from '@/types/registration';
 import type {
   DriverLicenceInfo,
   RegistrationForm,
@@ -80,6 +81,26 @@ interface RegistrationState {
   /** True when the most recent check could not reach the server. */
   checkFailed: boolean;
 
+  /**
+   * Set when the registration on file is only a verified mobile number — the
+   * driver skipped the details step. Read off statusInfo rather than stored
+   * separately would mean every screen repeating the same fallback, and the
+   * one place it matters (the waiting screen) needs it on every render.
+   */
+  isDetailsPending: boolean;
+
+  /**
+   * True when nothing has reached the server yet — the number is verified and
+   * the details are outstanding, but the deployment has no endpoint to file
+   * that half-registration with, so this phone is the only thing that knows.
+   *
+   * It changes two things. The form must POST the whole registration rather
+   * than PATCH a record that does not exist; and the waiting screen must not
+   * claim a decision is coming, because nobody has been asked for one. Both
+   * resolve themselves the moment the driver submits the form.
+   */
+  isLocalDraft: boolean;
+
   setField: (key: FieldKey, value: string) => void;
   validate: () => boolean;
   /**
@@ -89,6 +110,37 @@ interface RegistrationState {
    * no button to press.
    */
   submit: () => Promise<'submitted' | 'needs-otp' | 'failed'>;
+
+  /**
+   * Files the registration on the number alone, the moment its OTP verifies.
+   * From here the driver may fill the form in, skip it, or close the app, and
+   * still come back to a flow that remembers where they were — which is the
+   * whole point: the details step is no longer the thing standing between a
+   * driver and having started.
+   *
+   * Where "filed" happens depends on the deployment. A server carrying
+   * /registration/start takes it, and the record is real from this moment. One
+   * that does not answers 404, and the same fact is kept on the phone instead
+   * (see isLocalDraft) — so the skip works either way, and the only difference
+   * is whether an admin can see the driver before the form is submitted.
+   *
+   * Resolves false only when neither could be done, which leaves the caller on
+   * the form with no skip offered — the old single-submit flow, unchanged.
+   */
+  startRegistration: (mobileNo: string) => Promise<boolean>;
+
+  /**
+   * Fills the form in from the registration being waited on, for the driver
+   * returning to complete details they skipped. Without this the form opens
+   * blank on a fresh launch — including its locked mobile field, which is the
+   * one value it cannot ask for, since editing it would undo the verification
+   * that filed the registration in the first place.
+   *
+   * Anything the driver has already typed this session wins: they may have
+   * been partway through the form when they backed out of it, and the record
+   * on file has nothing better to offer than what is in front of them.
+   */
+  prepareDetailsForm: () => void;
 
   lookupVehicle: () => Promise<void>;
   lookupLicence: () => Promise<void>;
@@ -269,6 +321,8 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
   statusInfo: null,
   lastCheckedAt: null,
   checkFailed: false,
+  isDetailsPending: false,
+  isLocalDraft: false,
 
   setField(key, value) {
     const form = { ...get().form, [key]: value };
@@ -295,6 +349,82 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
     const errors = validateForm(get().form);
     set({ errors });
     return Object.keys(errors).length === 0;
+  },
+
+  async startRegistration(mobileNo) {
+    // Whether the server has a record of this, which is what tells the rest of
+    // the flow apart: with one, the form completes it and the waiting screen
+    // may expect a decision; without, the phone is the only thing that knows
+    // and the form still has the whole registration to send.
+    let onServer = false;
+
+    try {
+      const res = await RegistrationRepository.start(mobileNo);
+      onServer = isSuccess(res);
+    } catch (e) {
+      if (e instanceof UnauthorisedException && e.status === 409) {
+        // Already on file, by an earlier attempt or by a driver coming back to
+        // a registration they left unfinished. Not a failure of this step but
+        // this step already done, so the only open question is how much of it
+        // is filled in. Asking is worth the round trip: assuming empty would
+        // have the waiting screen demand details the driver has already given,
+        // which is the one thing that state must never do.
+        const filed = await RegistrationRepository.status(mobileNo).catch(() => null);
+        if (filed) {
+          Preference.clearDetailsPending();
+          get().showPending(mobileNo, filed);
+          return true;
+        }
+        // On file but unreadable. Treat it as unfinished, which is what
+        // brought them here; the next status check settles it either way.
+        onServer = true;
+      }
+      // Anything else — a 404 from a deployment without this endpoint, a dead
+      // network — leaves onServer false and falls through to the local draft.
+      // Deliberately not told apart: what the driver needs is the same in
+      // every case, and it is the one thing this can still give them.
+    }
+
+    // Kept whichever way it went, because both are a registration in progress
+    // that the next launch has to find. The difference is only where the rest
+    // of it lives.
+    Preference.saveDetailsPending(mobileNo);
+    if (onServer) Preference.savePendingRegistration(mobileNo);
+
+    set({
+      pendingMobile: mobileNo,
+      statusInfo: {
+        status: 'Pending',
+        // Nothing has been filled in yet, which is precisely what the waiting
+        // screen has to know: it asks for the details instead of promising a
+        // decision. A later status check replaces this with the server's copy.
+        isComplete: false,
+      },
+      isDetailsPending: true,
+      isLocalDraft: !onServer,
+      lastCheckedAt: null,
+      checkFailed: false,
+      outcome: null,
+    });
+    return true;
+  },
+
+  prepareDetailsForm() {
+    const { pendingMobile, statusInfo, form } = get();
+    if (!pendingMobile) return;
+
+    set({
+      form: {
+        ...form,
+        mobileNo: pendingMobile,
+        driverName: form.driverName || statusInfo?.driverName || '',
+        vehicleNumber: form.vehicleNumber || statusInfo?.vehicleNumber || '',
+        driverLicenceNumber:
+          form.driverLicenceNumber || statusInfo?.driverLicenceNumber || '',
+      },
+      errors: {},
+      submitError: null,
+    });
   },
 
   async lookupVehicle() {
@@ -407,7 +537,17 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
     set({ isSubmitting: true, submitError: null });
     const { form } = get();
     try {
-      const res = await RegistrationRepository.register(form);
+      // Two ways in, settled by whether the server holds a record to complete.
+      // A local draft has none — the OTP step could not file one — so it takes
+      // the POST that files the whole registration, which is also the path for
+      // any deployment without the two-step endpoints.
+      const completing =
+        !get().isLocalDraft &&
+        get().pendingMobile === form.mobileNo &&
+        get().statusInfo != null;
+      const res = completing
+        ? await RegistrationRepository.submitDetails(form.mobileNo, form)
+        : await RegistrationRepository.register(form);
       set({ isSubmitting: false });
       if (!isSuccess(res)) {
         set({ submitError: res?.message ?? Strings.somethingWentWrong });
@@ -417,6 +557,10 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
       // Remember the number so the next launch can ask what the admin decided
       // without making the driver type it again.
       Preference.savePendingRegistration(form.mobileNo);
+      // Whatever was outstanding is now submitted, on the server, and asked
+      // after by the pending mobile above — so the local note has nothing left
+      // to remember and would only re-raise a prompt that has been answered.
+      Preference.clearDetailsPending();
       // Seeded from the form rather than fetched back: the waiting screen can
       // show what was just submitted immediately, and the first status check
       // it runs replaces this with the server's own copy.
@@ -427,8 +571,16 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
           driverName: form.driverName.trim(),
           vehicleNumber: form.vehicleNumber.trim().toUpperCase(),
           driverLicenceNumber: form.driverLicenceNumber.trim(),
-          submittedAt: new Date().toISOString(),
+          // Kept from the record this completes, so the waiting screen still
+          // says when the driver joined the queue rather than resetting it to
+          // the moment they finally filled the form in.
+          submittedAt: get().statusInfo?.submittedAt ?? new Date().toISOString(),
+          isComplete: true,
         },
+        // The details are in. Whatever brought them here, the waiting screen
+        // stops asking for them, and the registration is now the server's.
+        isDetailsPending: false,
+        isLocalDraft: false,
         lastCheckedAt: null,
         checkFailed: false,
         outcome: null,
@@ -453,12 +605,20 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
           // Seeded from the form so the waiting screen has a name to show
           // immediately; its own status check fills in the rest, submitted
           // date included, which is the one thing the form cannot know.
+          //
+          // A POST that collides with the driver's own record is a record that
+          // already carries these details — the second tap of a double press,
+          // or a return to a form that went through. Complete, therefore, and
+          // marked so, or the waiting screen would ask for what it just sent.
           get().showPending(form.mobileNo, {
             status: 'Pending',
             driverName: form.driverName.trim(),
             vehicleNumber: form.vehicleNumber.trim().toUpperCase(),
             driverLicenceNumber: form.driverLicenceNumber.trim(),
+            isComplete: true,
           });
+          Preference.clearDetailsPending();
+          set({ isLocalDraft: false });
           return 'submitted';
         }
 
@@ -586,6 +746,10 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
           // The reason rides along in statusInfo, and the form prints it above
           // the fields, where it is of use while they are being corrected.
           statusInfo: info,
+          // A rejected registration is being corrected, not completed — the
+          // form is open on it, so nothing should be asking for details.
+          isDetailsPending: false,
+          isLocalDraft: false,
         });
         return 'rejected';
       }
@@ -604,7 +768,39 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
 
   async checkPendingStatus() {
     const mobile = Preference.getPendingRegistration();
-    if (!mobile) return 'none';
+    // A registration this phone started but could not file — the OTP was
+    // verified and the form skipped on a deployment with nowhere to put that.
+    // Looked at first because the two can both be set, and the filed one is
+    // the better answer whenever it is.
+    const draft = Preference.getDetailsPending();
+
+    if (!mobile) {
+      if (!draft) return 'none';
+
+      // Nothing to ask the server about this number, except whether it has
+      // since become a registration in its own right — an admin entering it,
+      // or the driver finishing the form on another phone. Worth one call,
+      // because the alternative is asking a driver to fill in details that are
+      // already held.
+      const filed = await RegistrationRepository.status(draft).catch(() => null);
+      if (filed) {
+        Preference.clearDetailsPending();
+        get().showPending(draft, filed);
+        return filed.status;
+      }
+
+      // Still only this phone's word for it, which is the ordinary case and
+      // exactly what the waiting screen is for: it will ask for the details.
+      set({
+        pendingMobile: draft,
+        statusInfo: { status: 'Pending', isComplete: false },
+        isDetailsPending: true,
+        isLocalDraft: true,
+        lastCheckedAt: null,
+        checkFailed: false,
+      });
+      return 'Pending';
+    }
 
     // Set before the call so the waiting screen has a number to re-check with
     // even when this first attempt is the one that fails.
@@ -629,11 +825,16 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
     // having submitted from this device, and the next launch should still
     // know which number to ask about.
     Preference.savePendingRegistration(mobileNo);
+    // Only keep what is already held if it belongs to this number, or the
+    // screen would show one driver's details under another's registration.
+    const kept = info ?? (get().pendingMobile === mobileNo ? get().statusInfo : null);
     set({
       pendingMobile: mobileNo,
-      // Only keep what is already held if it belongs to this number, or the
-      // screen would show one driver's details under another's registration.
-      statusInfo: info ?? (get().pendingMobile === mobileNo ? get().statusInfo : null),
+      statusInfo: kept,
+      isDetailsPending: kept != null && !isRegistrationComplete(kept),
+      // Reached with a record the server answered for, so whatever this phone
+      // was holding on its own has been superseded by the real thing.
+      isLocalDraft: false,
       checkFailed: false,
       outcome: null,
     });
@@ -641,7 +842,15 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
 
   clearPending() {
     Preference.clearPendingRegistration();
-    set({ pendingMobile: null, statusInfo: null, lastCheckedAt: null, checkFailed: false });
+    Preference.clearDetailsPending();
+    set({
+      pendingMobile: null,
+      statusInfo: null,
+      lastCheckedAt: null,
+      checkFailed: false,
+      isDetailsPending: false,
+      isLocalDraft: false,
+    });
   },
 
   showRegistrationRequired() {
@@ -664,11 +873,26 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
     try {
       const info = await RegistrationRepository.status(mobileNo);
       set({ isCheckingStatus: false, lastCheckedAt: Date.now(), checkFailed: false });
+      // No record. For a local draft that is the expected answer, not a loss:
+      // nothing was ever filed, and the draft this phone holds is left exactly
+      // as it was so the waiting screen goes on asking for the details. The
+      // callers that treat 'none' as "forget this number" only ever pass one
+      // the server filed in the first place.
       if (!info) return 'none';
 
       // Held whatever the answer, so the waiting screen keeps rendering the
       // registration underneath the popup that announces its decision.
-      set({ statusInfo: info });
+      //
+      // This is also the authority on whether the details are in: a driver who
+      // completed the form on another device, or an admin who filled it in for
+      // them, both show up here and nowhere else — and either way the local
+      // draft, which only ever stood in for an answer like this, is done.
+      Preference.clearDetailsPending();
+      set({
+        statusInfo: info,
+        isDetailsPending: !isRegistrationComplete(info),
+        isLocalDraft: false,
+      });
 
       if (info.status === 'Approved') {
         // The decision has been delivered; there is nothing left to wait for,
@@ -711,6 +935,11 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
       statusInfo: info
         ? { ...info, status, rejectionReason: reason?.trim() || info.rejectionReason }
         : info,
+      // A decision has landed, so the details are no longer what this driver
+      // is being asked for — whichever way it went, and even if they never
+      // filled them in. The popup, not a form prompt, is what they act on now.
+      isDetailsPending: false,
+      isLocalDraft: false,
       outcome:
         status === 'Approved'
           ? { kind: 'approved', message: Strings.registerApprovedMessage }

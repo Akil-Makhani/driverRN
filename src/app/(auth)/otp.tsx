@@ -70,6 +70,16 @@ export default function OtpScreen() {
     }
 
     useAuthStore.getState().stopTimer();
+
+    // A first-time registration is filed here, on the number alone, before the
+    // form is ever shown. That is what lets the form be skipped: from this
+    // point the driver is in the queue, and the details are something the
+    // waiting screen can go on asking for. 'rejected' is left out because that
+    // number already has a record, which this would only collide with.
+    if (next === 'form') {
+      await useRegistrationStore.getState().startRegistration(mobile);
+    }
+
     // 'form' and 'rejected' both have a form to fill in. 'pending' belongs on
     // the waiting screen, which is where that registration now lives.
     // 'approved' has nothing to do but read the popup, which login renders.

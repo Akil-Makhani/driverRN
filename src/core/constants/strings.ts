@@ -155,9 +155,12 @@ export const Strings = {
   registerMobile: 'Mobile Number',
   registerMobileVerified: 'Verified with the OTP you just entered.',
   registerVehicleNumber: 'Vehicle Number',
-  registerVehicleHint: 'UP32KH0320',
+  // Masked rather than a specimen number: a real-looking registration in the
+  // box reads as a value already filled in, and a driver who takes it for one
+  // submits somebody else's vehicle.
+  registerVehicleHint: 'XXXXXXXXXX',
   registerLicenceNumber: 'Driver Licence Number',
-  registerLicenceHint: 'GJ18 20220001846',
+  registerLicenceHint: 'XXXX XXXXXXXXXXX',
   registerDob: 'Date of Birth',
   registerDobHint: 'YYYY-MM-DD',
   // Sits above the form when it opens carrying a rejected registration's
@@ -166,6 +169,12 @@ export const Strings = {
   registerRejectedBanner:
     'Your last registration was not approved. Correct the details below and submit again.',
   registerSubmit: 'SUBMIT FOR APPROVAL',
+  // The way past the form for a driver who does not have their papers to hand.
+  // Their place in the queue is already taken by the OTP step, so this is a
+  // "later", not a "never" — the waiting screen keeps asking for the rest.
+  registerSkip: 'SKIP FOR NOW',
+  registerSkipNote:
+    'No papers on you? Skip this and fill it in later — but an admin can only approve you once these details are in.',
   registerBackToLogin: 'Back to login',
   // The mobile verification is good for 15 minutes, which a driver waiting on
   // the two ULIP lookups can outlast. Said as a step, not a failure, because
@@ -234,6 +243,11 @@ export const Strings = {
     'We have your details. An admin will review them and approve your account — this usually takes a few hours.',
   // The big status words, in the circle the dashboard uses for "no trip".
   pendingCircleWaiting: 'Waiting for\nApproval',
+  // Stands in for the name on the waiting screen's driver card until the form
+  // supplies a real one. The card is the dashboard's own, and an empty line
+  // above the number reads as something failing to load rather than as a
+  // detail not yet given.
+  pendingDriverFallback: 'Driver',
   pendingSubmittedTitle: 'What you submitted',
   pendingVehicle: 'Vehicle',
   pendingLicence: 'Licence',
@@ -242,5 +256,28 @@ export const Strings = {
     'You will get a notification as soon as a decision is made. You can close the app — we check again every time you open it.',
   pendingCheckStatus: 'CHECK STATUS',
   pendingCheckFailed: 'Could not reach the server. Check your connection and try again.',
+
+  // Shown on the waiting screen to a driver who skipped the details step. An
+  // admin cannot decide on a registration that is only a mobile number, so
+  // this is the one thing on that screen worth doing — said as the next step
+  // it is, and given the primary button, with waiting demoted beneath it.
+  pendingIncompleteTitle: 'Your details are not filled in yet',
+  pendingIncompleteBody:
+    'We only have your mobile number. Add your vehicle and licence details so an admin can review and approve you.',
+  pendingCompleteDetails: 'COMPLETE YOUR DETAILS',
+  pendingCircleIncomplete: 'Details\nPending',
+  // Replaces pendingBody for the same driver: nothing is being reviewed yet,
+  // so promising a decision in a few hours would be a lie.
+  pendingIncompleteWait:
+    'Nothing has been sent for review yet. Once your details are in, an admin will approve your account — usually within a few hours.',
+  // The waiting screen's own title, for a driver who has not sent anything to
+  // wait on. "Waiting for approval" over a registration nobody has been shown
+  // would be the screen telling them a lie about where they stand.
+  registerIncompleteTitle: 'Finish registering',
+  // Replaces the "you will be notified" note while the details are missing:
+  // a decision cannot arrive, so the only thing worth promising is that what
+  // they have done so far is not lost.
+  pendingIncompleteNote:
+    'Your mobile number is verified and saved on this phone. Add the rest whenever you have your papers with you.',
 
 } as const;

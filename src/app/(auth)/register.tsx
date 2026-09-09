@@ -1,7 +1,14 @@
 /**
  * Driver self-registration — the screen a driver reaches from login when they
- * do not have an account yet. Submits to the public POST /driver/registration,
- * which files a 'Pending' record for an admin to approve or reject.
+ * do not have an account yet, and the one it sends them back to when the
+ * details are still outstanding.
+ *
+ * The registration itself is no longer made here: verifying the OTP files it,
+ * on the number alone, and this fills in the rest. That is what makes SKIP
+ * honest rather than a way of throwing the form away — a driver without their
+ * papers to hand keeps their place in the queue and comes back to this screen
+ * from the waiting screen, which goes on asking until the details are in.
+ * Leaving by any route therefore lands on the waiting screen, never on login.
  *
  * The two detail panels are the point of the ULIP lookups: rather than making
  * the driver trust that they typed their vehicle and licence numbers
@@ -55,12 +62,31 @@ export default function RegisterScreen() {
   const licenceLookup = useRegistrationStore((s) => s.licenceLookup);
   // Set when this form was opened carrying a rejected registration's details.
   const statusInfo = useRegistrationStore((s) => s.statusInfo);
+  // True once the OTP step has filed a registration this form is completing —
+  // which is what makes leaving without submitting a "later" rather than an
+  // abandonment, and so what SKIP and the back arrow are conditional on.
+  const isDetailsPending = useRegistrationStore((s) => s.isDetailsPending);
 
   const set = (key: FieldKey) => (value: string) =>
     useRegistrationStore.getState().setField(key, value);
 
-  const goToLogin = () => {
+  /**
+   * Everything that leaves this form without submitting it: SKIP, the back
+   * arrow, and the link at the foot. Where it goes depends on whether there is
+   * a registration behind the form — with one, the waiting screen is the
+   * driver's home and the place that asks for these details again; without
+   * one, nothing was filed and login is all there is.
+   *
+   * The form is deliberately not reset on the way out: coming back to a
+   * half-typed vehicle number is worth more than a clean form, and the OTP
+   * path blanks it for a genuinely new registration anyway.
+   */
+  const leaveForm = () => {
     useRegistrationStore.getState().dismissOutcome();
+    if (useRegistrationStore.getState().pendingMobile) {
+      router.replace('/(auth)/pending-approval');
+      return;
+    }
     useRegistrationStore.getState().reset();
     router.replace('/(auth)/login');
   };
@@ -110,7 +136,10 @@ export default function RegisterScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <Pressable onPress={() => router.back()} hitSlop={10} style={styles.back}>
+          {/* Deliberately not router.back(): behind this screen is the OTP
+              screen and the number that has already been verified, which is
+              not somewhere a driver can usefully return to. */}
+          <Pressable onPress={leaveForm} hitSlop={10} style={styles.back}>
             <Ionicons name="arrow-back" size={24} color={AppColors.text} />
           </Pressable>
           <Text style={styles.title}>{Strings.registerTitle}</Text>
@@ -229,9 +258,22 @@ export default function RegisterScreen() {
             <Text style={styles.buttonText}>{Strings.registerSubmit}</Text>
           </Pressable>
 
-          <Pressable onPress={goToLogin} style={styles.backLink} hitSlop={6}>
-            <Text style={styles.backLinkText}>{Strings.registerBackToLogin}</Text>
-          </Pressable>
+          {/* Only offered once there is a registration to come back to. On the
+              fallback path — a server that filed nothing at the OTP step —
+              this form is still the only thing that registers anyone, and
+              skipping it would leave the driver with nothing at all. */}
+          {isDetailsPending ? (
+            <>
+              <Pressable onPress={leaveForm} style={styles.skipButton}>
+                <Text style={styles.skipButtonText}>{Strings.registerSkip}</Text>
+              </Pressable>
+              <Text style={styles.skipNote}>{Strings.registerSkipNote}</Text>
+            </>
+          ) : (
+            <Pressable onPress={leaveForm} style={styles.backLink} hitSlop={6}>
+              <Text style={styles.backLinkText}>{Strings.registerBackToLogin}</Text>
+            </Pressable>
+          )}
         </View>
       </KeyboardAwareScrollView>
 
@@ -462,6 +504,24 @@ const styles = StyleSheet.create({
   buttonText: { ...Typography.button2.extraBold, color: AppColors.white },
   backLink: { marginTop: 12, alignItems: 'center', paddingVertical: 8 },
   backLinkText: { ...Typography.button2.extraBold, color: Primary.c900 },
+
+  /** Outlined, not filled: submitting is the thing to do, this is the way past it. */
+  skipButton: {
+    marginTop: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Primary.c300,
+    padding: 15,
+    alignItems: 'center',
+  },
+  skipButtonText: { ...Typography.button2.extraBold, color: Primary.c900 },
+  skipNote: {
+    ...Typography.caption.regular,
+    color: TextShade.c600,
+    marginTop: 10,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 
   loadingOverlay: {
     ...StyleSheet.absoluteFill,

@@ -54,6 +54,15 @@ export const ApiUrls = {
   registerSendOtp: '/driver/registration/send-otp',
   registerVerifyOtp: '/driver/registration/verify-otp',
   register: '/driver/registration',
+  // Files a registration the moment its OTP verifies, with nothing but the
+  // number — so a driver who has no papers on them is in the queue rather than
+  // stranded on a form they cannot finish. The record is Pending and
+  // incomplete; an admin cannot decide on it until the details arrive.
+  registerStart: '/driver/registration/start',
+  // The details, whenever the driver gets round to them. Same body `register`
+  // takes minus the mobile number, which the record already holds — a PATCH
+  // rather than a second POST because the record it completes already exists.
+  registerDetails: '/driver/registration/details',
   // Trades an approved registration for a session, using the secret this
   // device sent when it submitted — so approval opens the app instead of a
   // login screen. Public like the rest, but the secret is the credential.

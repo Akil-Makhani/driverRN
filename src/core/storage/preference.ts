@@ -14,6 +14,7 @@ const ACCESS_TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 const PENDING_REGISTRATION_KEY = 'pending_registration_mobile';
 const DEVICE_SECRET_KEY = 'registration_device_secret';
+const DETAILS_PENDING_KEY = 'registration_details_pending';
 
 /** 32 bytes as hex — the length the API requires of a device secret. */
 const SECRET_BYTES = 32;
@@ -74,6 +75,27 @@ export const Preference = {
   },
   clearPendingRegistration(): void {
     storage.remove(PENDING_REGISTRATION_KEY);
+  },
+
+  /**
+   * A number whose OTP has been verified but whose details have not been
+   * filled in — the driver skipped that step. Held here rather than inferred
+   * from the server because there may be nothing on the server to infer it
+   * from: a deployment without the two-step registration endpoints files
+   * nothing until the whole form is submitted, and this is what stops the
+   * skipped step from being forgotten the moment the app is closed.
+   *
+   * Cleared when the details are finally submitted, and when the registration
+   * is decided — both of which end the thing it is tracking.
+   */
+  saveDetailsPending(mobile: string): void {
+    storage.set(DETAILS_PENDING_KEY, mobile);
+  },
+  getDetailsPending(): string | undefined {
+    return storage.getString(DETAILS_PENDING_KEY);
+  },
+  clearDetailsPending(): void {
+    storage.remove(DETAILS_PENDING_KEY);
   },
 
   /**

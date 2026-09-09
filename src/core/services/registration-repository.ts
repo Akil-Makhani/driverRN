@@ -14,6 +14,7 @@ import { Preference } from '../storage/preference';
 import type { CommonResponse } from '@/types/api';
 import {
   type DriverLicenceInfo,
+  type RegistrationDetails,
   type RegistrationForm,
   type RegistrationStatusInfo,
   type VehicleInfo,
@@ -21,6 +22,42 @@ import {
   parseRegistrationStatus,
   parseVehicleInfo,
 } from '@/types/registration';
+
+/**
+ * The two things every registration write carries, whichever endpoint it goes
+ * to: the secret that will later be traded for a session, and the token the
+ * decision is pushed to. Shared because all three writes now need them —
+ * `start` is the first to reach the server, so it cannot be the one that
+ * leaves them out.
+ */
+async function deviceBody(): Promise<Record<string, unknown>> {
+  let fcmToken: string | null = null;
+  try {
+    fcmToken = await messaging().getToken();
+  } catch (e) {
+    if (__DEV__) console.log('Error getting FCM token:', e);
+  }
+
+  return {
+    // Sent with the first write and traded back for a session the moment the
+    // admin approves — which is what lets approval open the app instead of
+    // asking for a login OTP on a number already proved. Re-sent on the later
+    // writes too: the same device gets the same secret back, so a driver who
+    // registered here and completed here still ends up holding it.
+    deviceSecret: Preference.getOrCreateDeviceSecret(),
+    ...(fcmToken ? { fcmToken } : {}),
+  };
+}
+
+/** The five form fields, normalised the way the server expects them. */
+function detailsBody(details: RegistrationDetails): Record<string, unknown> {
+  return {
+    driverName: details.driverName.trim(),
+    vehicleNumber: details.vehicleNumber.trim().toUpperCase(),
+    driverLicenceNumber: details.driverLicenceNumber.trim(),
+    dob: details.dob.trim(),
+  };
+}
 
 export const RegistrationRepository = {
   /**
@@ -50,33 +87,55 @@ export const RegistrationRepository = {
   },
 
   /**
-   * Submits the form. The FCM token rides along so the backend can push the
-   * admin's decision straight to this device — there is no Driver record to
-   * look a token up on until the driver is approved. A device that refused
-   * notification permission simply sends no token, exactly as verifyOTP does.
+   * Files the registration the moment its OTP verifies, on the number alone.
+   * The record it creates is Pending and incomplete: it holds the driver's
+   * place and gives the app somewhere to come back to, but an admin has
+   * nothing to decide on until {@link submitDetails} fills in the rest.
+   *
+   * Carries the same device secret and FCM token {@link register} does,
+   * because it is now the first of the two to reach the server and those are
+   * what let approval push to this phone and open the app on it.
+   */
+  async start(mobileNo: string): Promise<CommonResponse> {
+    return await ApiService.post(ApiUrls.registerStart, {
+      mobileNo: mobileNo.trim(),
+      ...(await deviceBody()),
+    });
+  },
+
+  /**
+   * Completes a registration already on file. PATCH rather than POST because
+   * the record exists — `start` or a previous submission made it — and this
+   * only fills in what was skipped.
+   */
+  async submitDetails(
+    mobileNo: string,
+    details: RegistrationDetails,
+  ): Promise<CommonResponse> {
+    return await ApiService.patch(ApiUrls.registerDetails, {
+      mobileNo: mobileNo.trim(),
+      ...detailsBody(details),
+      ...(await deviceBody()),
+    });
+  },
+
+  /**
+   * Submits the form in one go. Still the path for a driver who fills
+   * everything in before leaving the form, and the fallback for a server that
+   * does not carry the two-step endpoints — the store falls back to this when
+   * `start` is not there.
+   *
+   * The FCM token rides along so the backend can push the admin's decision
+   * straight to this device — there is no Driver record to look a token up on
+   * until the driver is approved. A device that refused notification
+   * permission simply sends no token, exactly as verifyOTP does.
    */
   async register(form: RegistrationForm): Promise<CommonResponse> {
-    let fcmToken: string | null = null;
-    try {
-      fcmToken = await messaging().getToken();
-    } catch (e) {
-      if (__DEV__) console.log('Error getting FCM token:', e);
-    }
-
-    const body: Record<string, unknown> = {
-      driverName: form.driverName.trim(),
+    return await ApiService.post(ApiUrls.register, {
       mobileNo: form.mobileNo.trim(),
-      vehicleNumber: form.vehicleNumber.trim().toUpperCase(),
-      driverLicenceNumber: form.driverLicenceNumber.trim(),
-      dob: form.dob.trim(),
-      // Sent once, here, and traded back for a session the moment the admin
-      // approves — which is what lets approval open the app instead of asking
-      // for a login OTP on the number this form has already proved.
-      deviceSecret: Preference.getOrCreateDeviceSecret(),
-    };
-    if (fcmToken) body.fcmToken = fcmToken;
-
-    return await ApiService.post(ApiUrls.register, body);
+      ...detailsBody(form),
+      ...(await deviceBody()),
+    });
   },
 
   /** Null means this number has never been submitted, not that the call failed. */
