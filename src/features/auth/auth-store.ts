@@ -15,12 +15,28 @@ import { create } from 'zustand';
 
 import { UnauthorisedException } from '@/core/api/errors';
 import { Strings } from '@/core/constants/strings';
+import { Dispatch } from '@/core/realtime/dispatch';
+import { LocationTracker } from '@/core/services/location-tracker';
 import { RegistrationRepository } from '@/core/services/registration-repository';
 import { UserRepository } from '@/core/services/user-repository';
 import { useSession } from '@/core/session';
 import { Preference } from '@/core/storage/preference';
 import { useRegistrationStore } from '@/features/auth/registration-store';
 import type { RegistrationStatusInfo } from '@/types/registration';
+
+/**
+ * Shuts down everything that outlives a screen, on the way out of the session.
+ *
+ * Both of these keep running with no UI attached — a socket holding a token
+ * that is about to be revoked, and an Android foreground service quietly
+ * reporting the ex-driver's position to a trip they no longer have. Neither is
+ * torn down by clearing the session, and duty never flips to false on this
+ * path, so the duty subscription would not catch it either.
+ */
+async function endDriverSession(): Promise<void> {
+  Dispatch.stop();
+  await LocationTracker.stop();
+}
 
 interface AuthState {
   // ── Login ────────────────────────────────────────────────
@@ -194,7 +210,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // not a failure. Send the registration OTP instead and carry on to the
       // same OTP screen; verifying it opens the sign-up form rather than the
       // dashboard. Every other status (403 blocked, above all) stays an error.
-      if (e instanceof UnauthorisedException && e.status === 404) {
+      if (e instanceof UnauthorisedException && e.statusCode === 404) {
         try {
           await RegistrationRepository.sendOtp(mobile);
           set({ isLoading: false, errorMessage: null, otpPurpose: 'registration' });
@@ -331,6 +347,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   async logout() {
     try {
       await UserRepository.logout();
+      await endDriverSession();
       useSession.getState().clearSession();
       return true;
     } catch {
@@ -343,6 +360,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   async deleteAccount() {
     try {
       await UserRepository.deleteAccount();
+      await endDriverSession();
       useSession.getState().clearSession();
       return true;
     } catch {

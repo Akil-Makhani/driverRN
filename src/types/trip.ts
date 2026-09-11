@@ -338,6 +338,12 @@ export interface TripDetailsData {
   id?: string;
   subOrderId?: string;
   orderId?: string;
+  /**
+   * Which module the trip came from. Only the tempo flow offers the driver a
+   * cancel after accepting, so the manual truck screen keeps exactly the
+   * buttons it always had.
+   */
+  orderKind?: string;
   statusNumber?: number;
   state?: TripState;
   deliveries: Delivery[];
@@ -366,6 +372,7 @@ export const parseTripDetailsResponse = (j: any): TripDetailsResponse => ({
         id: str(j.data._id),
         subOrderId: str(j.data.subOrderId),
         orderId: str(j.data.orderId),
+        orderKind: str(j.data.orderKind),
         statusNumber: num(j.data.statusNumber),
         state: j.data.state ? parseTripState(j.data.state) : undefined,
         deliveries: list(j.data.deliveries, parseDelivery),

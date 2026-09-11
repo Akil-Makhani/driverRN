@@ -14,6 +14,18 @@
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? 'https://staging-api.theallwaysdigital.com/v2';
 
+/**
+ * Socket.IO origin for the live dispatch channel (job offers, race results,
+ * location streaming).
+ *
+ * Deliberately the bare origin, not `API_BASE_URL`: Socket.IO appends its own
+ * `/socket.io/` path, and the `/v2` REST prefix is not part of it. Defaulting
+ * off `API_BASE_URL` keeps a local `.env` override working with one variable —
+ * point `EXPO_PUBLIC_API_URL` at your machine and the socket follows.
+ */
+export const SOCKET_URL =
+  process.env.EXPO_PUBLIC_SOCKET_URL ?? API_BASE_URL.replace(/\/v2\/?$/, '');
+
 export const DOWNLOAD_IMAGE_BASE_URL = 'https://dcaut6thq5oko.cloudfront.net/';
 
 /**
@@ -34,6 +46,8 @@ export const ApiUrls = {
   logout: '/driver/account/logout',
   deleteAccount: '/driver/account/delete-account',
   profile: '/driver/account/profile',
+  /** Re-registers this device's push token; see UserRepository.registerFcmToken. */
+  fcmToken: '/driver/account/fcm-token',
   duty: '/driver/duty',
   listTrips: '/driver/trips',
   history: '/driver/trips/history/',
@@ -70,6 +84,17 @@ export const ApiUrls = {
   lookupVehicle: '/driver/registration/lookup/vehicle',
   lookupLicence: '/driver/registration/lookup/driver',
 
+  // ── Broadcast dispatch ─────────────────────────────────────
+  // Offers reach the app over the socket; these exist so a driver who was
+  // offline, backgrounded, or mid-reconnect still sees what is open, and so
+  // accept/reject go over HTTP where the response is the authoritative
+  // won/lost answer rather than a fire-and-forget emit.
+  openJobs: '/driver/jobs/open',
+  jobAccept: (jobId: string) => `/driver/jobs/${jobId}/accept`,
+  jobReject: (jobId: string) => `/driver/jobs/${jobId}/reject`,
+  /** Batched location fixes, the fallback path when the socket is down. */
+  locationPing: '/driver/location',
+
   // Path builders for the endpoints Flutter interpolated at the call site.
   registrationStatus: (mobileNo: string) =>
     `/driver/registration/status?mobileNo=${encodeURIComponent(mobileNo)}`,
@@ -80,4 +105,7 @@ export const ApiUrls = {
     `/driver/notifications/${page}/${perPage}`,
   historyPage: (page: number, perPage: number) =>
     `/driver/trips/history/${page}/${perPage}`,
+  /** Trips this driver cancelled — the Cancelled Trips screen. */
+  cancelledPage: (page: number, perPage: number) =>
+    `/driver/trips/cancelled/${page}/${perPage}`,
 } as const;

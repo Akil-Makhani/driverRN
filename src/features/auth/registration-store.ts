@@ -362,7 +362,7 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
       const res = await RegistrationRepository.start(mobileNo);
       onServer = isSuccess(res);
     } catch (e) {
-      if (e instanceof UnauthorisedException && e.status === 409) {
+      if (e instanceof UnauthorisedException && e.statusCode === 409) {
         // Already on file, by an earlier attempt or by a driver coming back to
         // a registration they left unfinished. Not a failure of this step but
         // this step already done, so the only open question is how much of it
@@ -592,7 +592,7 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
       // 409 — this vehicle or licence is already on file. The server puts the
       // record's status and whose number it is in `data`, which is enough to
       // tell the two very different meanings apart.
-      if (e instanceof UnauthorisedException && e.status === 409) {
+      if (e instanceof UnauthorisedException && e.statusCode === 409) {
         const conflict = e.data as
           | { status?: RegistrationStatus; mobileNo?: string }
           | undefined;
@@ -649,7 +649,7 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
 
       // 401 — the server will not take the form because the mobile is not
       // proved. Two quite different things arrive as this one status.
-      if (e instanceof UnauthorisedException && e.status === 401) {
+      if (e instanceof UnauthorisedException && e.statusCode === 401) {
         // The first is a submission that already went through: a verification
         // is spent by the registration it files, so submitting a second time
         // fails exactly like an expired one. Asking the server what it holds

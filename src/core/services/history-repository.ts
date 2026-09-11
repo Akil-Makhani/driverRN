@@ -12,4 +12,15 @@ export const TripHistoryRepository = {
       await ApiService.get(ApiUrls.historyPage(page, perPage)),
     );
   },
+
+  /**
+   * Same shape as tripHistory, filtered to cancelled trips server-side.
+   * Filtering here instead would break paging — a page of ten trips can hold
+   * no cancelled ones at all and the list would look finished.
+   */
+  async cancelledTrips(page: number, perPage: number): Promise<TripHistoryResponse> {
+    return parseTripHistoryResponse(
+      await ApiService.get(ApiUrls.cancelledPage(page, perPage)),
+    );
+  },
 } as const;

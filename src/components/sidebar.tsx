@@ -11,6 +11,7 @@
  * Dart copy could drift out of sync with it after a notification deep-link.
  */
 import { Ionicons } from '@expo/vector-icons';
+import * as Application from 'expo-application';
 import { usePathname, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -37,7 +38,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Destination = '/dashboard' | '/history' | '/profile';
+type Destination = '/dashboard' | '/history' | '/cancelled' | '/profile';
 
 export function Sidebar({ visible, onClose }: Props) {
   const router = useRouter();
@@ -108,6 +109,12 @@ export function Sidebar({ visible, onClose }: Props) {
             onPress={() => go('/history')}
           />
           <SidebarCell
+            icon="close-circle"
+            title={Strings.sideBarCancelledTrips}
+            selected={pathname === '/cancelled'}
+            onPress={() => go('/cancelled')}
+          />
+          <SidebarCell
             icon="person"
             title={Strings.sideBarProfile}
             selected={pathname === '/profile'}
@@ -123,11 +130,18 @@ export function Sidebar({ visible, onClose }: Props) {
 
         <Pressable
           onPress={() => setDialog('logout')}
-          style={[styles.logoutButton, { marginBottom: insets.bottom + 30 }]}
+          style={styles.logoutButton}
         >
           <Ionicons name="log-out-outline" size={20} color={AppColors.primary} />
           <Text style={styles.logoutText}>{Strings.logout}</Text>
         </Pressable>
+
+        {/* Which build this phone is actually running. Two drivers reporting
+            different behaviour is nearly always two different builds, and
+            without this there is no way to tell them apart from the outside. */}
+        <Text style={[styles.version, { marginBottom: insets.bottom + 20 }]}>
+          {`v${Application.nativeApplicationVersion ?? ''} (${Application.nativeBuildVersion ?? ''})`}
+        </Text>
       </View>
 
       <ConfirmDialog
@@ -219,5 +233,11 @@ const styles = StyleSheet.create({
     ...Typography.button2.extraBold,
     color: AppColors.primary,
     marginLeft: 10,
+  },
+  version: {
+    ...Typography.caption.regular,
+    color: TextShade.c500,
+    textAlign: 'center',
+    marginTop: 12,
   },
 });

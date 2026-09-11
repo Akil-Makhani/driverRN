@@ -1,8 +1,9 @@
 /** Replaces lib/screens/dashboard/view_model/dashboard_view_model.dart. */
 import { create } from 'zustand';
 
-import { TripStatus } from '@/core/constants/enums';
+import { TripStatus, TripStatusNumber } from '@/core/constants/enums';
 import { DashboardRepository } from '@/core/services/dashboard-repository';
+import { LocationTracker } from '@/core/services/location-tracker';
 import { useSession } from '@/core/session';
 import { isSuccess } from '@/types/api';
 import type { Product, TripIdModel, TripItem } from '@/types/trip';
@@ -22,6 +23,30 @@ interface DashboardState {
   getTrips: () => Promise<void>;
   acceptTrip: (tripId: string) => Promise<void>;
   deliverAll: (model: TripIdModel) => Promise<void>;
+}
+
+/**
+ * The trip the customer is currently watching, and therefore the one whose
+ * location should be streaming.
+ *
+ * In-transit wins over merely-accepted: that is the leg with a customer
+ * refreshing a map, whereas a trip accepted but not yet collected is still the
+ * driver's own business. Everything outside accepted…in-transit — unassigned,
+ * or delivered — streams nothing.
+ */
+function trackableTripId(
+  active: TripItem[],
+  inTransit: TripItem[],
+): string | undefined {
+  const live = inTransit.find((t) => t.id);
+  if (live) return live.id;
+
+  return active.find(
+    (t) =>
+      t.id &&
+      (t.statusNumber ?? 0) >= TripStatusNumber.accepted &&
+      (t.statusNumber ?? 0) < TripStatusNumber.delivered,
+  )?.id;
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
@@ -65,11 +90,19 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
     try {
       const response = await DashboardRepository.getTrips();
       if (isSuccess(response)) {
+        const active = response.data?.active ?? [];
+        const inTransit = response.data?.inTransit ?? [];
         set({
-          activeTrips: response.data?.active ?? [],
-          inTransitTrips: response.data?.inTransit ?? [],
+          activeTrips: active,
+          inTransitTrips: inTransit,
           completedTripCount: response.data?.completedTripCount ?? 0,
         });
+
+        // Reconciled on every refresh rather than toggled at each status
+        // change. The trip list is the one place that always knows the truth,
+        // including after a restart mid-trip or a delivery closed from the
+        // admin panel — both of which leave a status-change hook unfired.
+        void LocationTracker.sync(trackableTripId(active, inTransit));
       }
     } catch (e) {
       if (__DEV__) console.log('getTrips failed:', e);

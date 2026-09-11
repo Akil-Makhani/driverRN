@@ -17,9 +17,54 @@ import messaging, {
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+import {
+  OFFER_CHANNEL_ID,
+  RETIRED_CHANNEL_IDS,
+} from '@/core/constants/notification-channels';
+import { UserRepository } from './user-repository';
+
 /** Matches the AndroidManifest channel the Flutter app declared. */
 const CHANNEL_ID = 'high_importance_channel';
 const CHANNEL_NAME = 'High Importance Notifications';
+
+/**
+ * Broadcast order offers get their own channel, separate from trip updates.
+ *
+ * Two reasons it cannot share the existing one. It needs the siren as its
+ * sound, and an Android channel's sound is fixed at creation — changing it on
+ * an existing channel is ignored by the OS forever after. And a driver who
+ * mutes trip-update pings must not thereby mute the offers that pay them;
+ * per-channel control is the only way Android lets them have both.
+ *
+ * The sound name is the res/raw resource created by the expo-notifications
+ * config plugin from assets/sounds/new_order_siren.wav — hence no extension
+ * handling here, and hence a prebuild being required after adding it.
+ *
+ * That file runs the full length of an offer window on purpose: Android plays
+ * a notification sound through exactly once, so its duration IS how long the
+ * phone rings for a driver whose app is closed.
+ *
+ * Underscores, not hyphens: an Android resource name must match
+ * [a-z0-9_] and prebuild refuses the whole build over a hyphen.
+ */
+
+const OFFER_CHANNEL_NAME = 'New Order Offers';
+const OFFER_SOUND = 'new_order_siren.wav';
+
+
+/** `data.type` on a push, telling the app what the payload is. */
+export const PushType = {
+  jobOffer: 'job_offer',
+  jobTaken: 'job_taken',
+  jobCancelled: 'job_cancelled',
+} as const;
+
+/** Push types the dispatch layer owns, rather than the generic trip-update path. */
+const DISPATCH_TYPES = new Set<string>([
+  PushType.jobOffer,
+  PushType.jobTaken,
+  PushType.jobCancelled,
+]);
 
 /** A tapped push waiting for the router to be ready. Consume with `takePendingTrip`. */
 let pendingTripId: string | null = null;
@@ -50,15 +95,86 @@ Notifications.setNotificationHandler({
 });
 
 export const NotificationManager = {
-  /** Creates the Android channel. No-op elsewhere. */
+  /** Creates the Android channels. No-op elsewhere. */
   async createChannel(): Promise<void> {
     if (Platform.OS !== 'android') return;
+
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
       name: CHANNEL_NAME,
       description: 'High importance notifications for order updates',
       importance: Notifications.AndroidImportance.MAX,
       showBadge: true,
       enableVibrate: true,
+    });
+
+    // Drop superseded channels before creating the current one.
+    for (const retired of RETIRED_CHANNEL_IDS) {
+      try {
+        await Notifications.deleteNotificationChannelAsync(retired);
+      } catch {
+        // Never created on this install, or already gone. Nothing to do.
+      }
+    }
+
+    await Notifications.setNotificationChannelAsync(OFFER_CHANNEL_ID, {
+      name: OFFER_CHANNEL_NAME,
+      description: 'New orders offered to on-duty drivers',
+      importance: Notifications.AndroidImportance.MAX,
+      sound: OFFER_SOUND,
+      showBadge: true,
+      enableVibrate: true,
+      // Matches the siren's beat, so a phone in a pocket buzzes in time with
+      // the sound rather than against it.
+      vibrationPattern: [0, 700, 500, 700, 500],
+      // An offer expires in thirty seconds. Letting it wait behind Do Not
+      // Disturb would mean the driver only ever sees expired work.
+      bypassDnd: true,
+      lockscreenVisibility:
+        Notifications.AndroidNotificationVisibility.PUBLIC,
+    });
+  },
+
+  /** Where an offer notification is posted. Shared with the background handler. */
+  offerChannelId: OFFER_CHANNEL_ID,
+
+  /**
+   * Runs for a push that arrives while the app is backgrounded or killed.
+   *
+   * There is no UI and no store here — the JS context is headless and dies as
+   * soon as this resolves. The only job is to make the phone ring, so that the
+   * driver opens the app; the offer itself is then picked up by the resync on
+   * foreground.
+   *
+   * The server should send a `notification` block for offers, in which case FCM
+   * has already displayed it and this does nothing. The local fallback exists
+   * for data-only sends, where nothing would otherwise be shown at all.
+   */
+  async handleBackgroundMessage(
+    message: FirebaseMessagingTypes.RemoteMessage,
+  ): Promise<void> {
+    const data = (message.data ?? {}) as Record<string, any>;
+    if (data.type !== PushType.jobOffer) return;
+    if (message.notification) return;
+
+    // The channel is normally created at first launch, but a push can arrive
+    // in a process that has never run the app's startup path. Creating it is
+    // idempotent, and posting to a missing channel is silently dropped.
+    await NotificationManager.createChannel();
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: typeof data.title === 'string' ? data.title : 'New order available',
+        body:
+          typeof data.body === 'string'
+            ? data.body
+            : 'Open the app to accept it before another driver does.',
+        data,
+        sound: OFFER_SOUND,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+      },
+      // A bare channel trigger delivers immediately on that channel, which is
+      // what carries the siren sound and the DND bypass.
+      trigger: { channelId: OFFER_CHANNEL_ID },
     });
   },
 
@@ -106,13 +222,32 @@ export const NotificationManager = {
    * @param onForeground fired for a push received while the app is open, so
    *   the dashboard can refetch (replaces dashboardRefreshNotifier).
    * @param onOpen fired when a push is tapped, with the trip id if it has one.
+   * @param onDispatch fired for broadcast-dispatch pushes (offers and their
+   *   outcomes), which bypass the generic path entirely — see below.
+   *
+   * Multiple callers may register; FCM supports several onMessage listeners,
+   * so the dashboard and the dispatch layer each subscribe to what they need
+   * instead of one of them routing for the other.
    */
   register(opts: {
     onForeground?: () => void;
     onOpen?: (tripId: string | null) => void;
+    onDispatch?: (type: string, data: Record<string, any>) => void;
   }): () => void {
     const unsubscribeMessage = messaging().onMessage(async (message) => {
       if (__DEV__) console.log('FCM foreground:', message.notification?.title);
+
+      const data = (message.data ?? {}) as Record<string, any>;
+      const type = typeof data.type === 'string' ? data.type : undefined;
+
+      if (type && DISPATCH_TYPES.has(type)) {
+        // Deliberately no banner and no trip refetch. The overlay is already
+        // taking the whole screen and the siren is already playing, so a
+        // notification here would only stack a second sound on top of it.
+        opts.onDispatch?.(type, data);
+        return;
+      }
+
       opts.onForeground?.();
       // FCM does not raise a system notification for a foreground message, so
       // present one locally to match the Flutter app.
@@ -136,8 +271,12 @@ export const NotificationManager = {
         if (message) setPendingTrip(tripIdOf(message));
       });
 
+    // FCM rotates tokens on its own — a reinstall, cleared app data, a restore
+    // onto a new phone. This used to only log, which meant the server kept
+    // pushing to a dead token and the driver silently stopped getting offers.
     const unsubscribeRefresh = messaging().onTokenRefresh(() => {
-      if (__DEV__) console.log('FCM token refreshed');
+      if (__DEV__) console.log('FCM token refreshed; re-registering');
+      void UserRepository.registerFcmToken();
     });
 
     return () => {

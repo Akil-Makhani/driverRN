@@ -8,6 +8,7 @@
  */
 import messaging from '@react-native-firebase/messaging';
 
+import { OFFER_CHANNEL_ID } from '../constants/notification-channels';
 import { ApiService } from '../api/api-service';
 import { ApiUrls } from '../api/endpoints';
 import { Preference } from '../storage/preference';
@@ -32,6 +33,11 @@ export const UserRepository = {
 
     const body: Record<string, unknown> = { mobileNumber: mobile, otp };
     if (fcmToken) body.fcmToken = fcmToken;
+    // Which offer channel this install created. Android pins a channel's sound
+    // at creation, so a new siren means a new channel id — and a push naming a
+    // channel this device never created is dropped silently. Telling the server
+    // what we actually have is what stops that.
+    body.offerChannelId = OFFER_CHANNEL_ID;
 
     const model = parseUserResponse(await ApiService.post(ApiUrls.verifyOTP, body));
     if (model.status === 'success' && model.data) {
@@ -101,4 +107,30 @@ export const UserRepository = {
     Preference.clearAuthData();
     return raw;
   },
+  /**
+   * Tells the server this device's current push token.
+   *
+   * The token is sent at login too, but FCM rotates it independently of the
+   * session — a reinstall, cleared app data, a restore onto a new phone. The
+   * driver stays logged in and the app looks healthy while the server pushes
+   * to a dead token and offers silently stop arriving. Calling this whenever
+   * duty is switched on, and whenever Firebase hands over a new token, keeps
+   * the stored one current.
+   *
+   * Failure is swallowed: this is best-effort background housekeeping, and the
+   * socket still delivers offers while the app is open.
+   */
+  async registerFcmToken(): Promise<void> {
+    try {
+      const fcmToken = await messaging().getToken();
+      if (!fcmToken) return;
+      await ApiService.put(ApiUrls.fcmToken, {
+        fcmToken,
+        offerChannelId: OFFER_CHANNEL_ID,
+      });
+    } catch (e) {
+      if (__DEV__) console.log('registerFcmToken failed:', e);
+    }
+  },
+
 } as const;

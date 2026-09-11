@@ -121,3 +121,33 @@ export async function openLocation(address?: Address | null): Promise<void> {
   const params = new URLSearchParams({ api: '1', query });
   await Linking.openURL(`https://www.google.com/maps/search/?${params.toString()}`);
 }
+
+/**
+ * The headline for an address in a list or card — the name a driver recognises.
+ *
+ * Falls back down the specificity ladder rather than rendering an empty row:
+ * an offer that shows a blank pickup is worse than one showing just the city.
+ */
+export function addressTitle(address?: Address | null): string {
+  if (!address) return '';
+  return (
+    address.companyName?.trim() ||
+    address.buildingName?.trim() ||
+    address.locality?.trim() ||
+    address.city?.trim() ||
+    ''
+  );
+}
+
+/**
+ * The supporting line beneath `addressTitle`, with whatever the title already
+ * used removed so the two do not repeat the same words.
+ */
+export function addressSubtitle(address?: Address | null): string {
+  if (!address) return '';
+  const title = addressTitle(address);
+  return [address.buildingName, address.locality, address.city, address.pincode]
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part) && part !== title)
+    .join(', ');
+}
