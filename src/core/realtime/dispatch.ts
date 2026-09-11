@@ -70,8 +70,9 @@ function enable(): void {
   registerPushHandling();
   DispatchSocket.connect();
   // Report where the driver is while they wait, so the server can offer them
-  // the work nearest them and show a real driving time to the pickup.
-  void LocationTracker.startDutyPings();
+  // the work nearest them and show a real driving time to the pickup — and so
+  // the office's route log covers the shift.
+  void LocationTracker.startDuty();
   // The socket's own `connect` handler also resyncs, but that only fires once
   // it is actually up. Asking immediately means a driver clocking on with a
   // flaky connection still sees what is open.
@@ -85,7 +86,7 @@ function disable(): void {
   stopJobListener();
   unregisterPush?.();
   unregisterPush = null;
-  LocationTracker.stopDutyPings();
+  void LocationTracker.stopDuty();
   DispatchSocket.disconnect();
   // Clearing the queue matters as much as closing the socket: an offer left on
   // screen after clocking off is one the driver can still tap accept on, and

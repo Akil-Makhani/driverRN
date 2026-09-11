@@ -16,9 +16,11 @@
  *     offers at a junction is a safety problem, not a feature.
  */
 import { router } from 'expo-router';
+import { AppState } from 'react-native';
 import { create } from 'zustand';
 
 import { JobRepository } from '@/core/services/job-repository';
+import { NotificationManager } from '@/core/services/notification-manager';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 import { Siren } from '@/core/services/siren';
 import { DispatchSocket, SocketEvent } from '@/core/realtime/socket';
@@ -64,6 +66,8 @@ interface JobState {
   notice: JobOutcomeNotice | null;
 
   receive: (raw: unknown) => void;
+  /** Re-decides whether the siren rings; for changes outside the store, like the app state. */
+  refreshSiren: () => void;
   /** Pushes the card aside without answering it. */
   minimise: (jobId: string) => void;
   /** Brings a pushed-aside offer back to the front. */
@@ -94,7 +98,12 @@ export const useJobStore = create<JobState>((set, get) => {
     // seen and pushed aside; carrying on ringing for it would be nagging, and
     // the driver would just turn the phone down and miss the next one too.
     const facing = offers.some((o) => !minimisedIds.includes(o.id));
-    if (facing && acceptingId === null) void Siren.start();
+    // Out of the foreground the offer notification is the alarm. The duty
+    // location service keeps this process and its socket alive behind a locked
+    // screen, so an offer lands here AND as a push, and ringing for both played
+    // two sirens over each other.
+    const inForeground = AppState.currentState === 'active';
+    if (facing && acceptingId === null && inForeground) void Siren.start();
     else void Siren.stop();
   };
 
@@ -146,6 +155,8 @@ export const useJobStore = create<JobState>((set, get) => {
       });
       syncSiren();
     },
+
+    refreshSiren: syncSiren,
 
     minimise(jobId) {
       const { minimisedIds } = get();
@@ -284,9 +295,24 @@ export function startJobListener(): () => void {
     DispatchSocket.onConnectionChange((isConnected) => {
       if (isConnected) void useJobStore.getState().syncOpenJobs();
     }),
+    onForegroundChange(),
   ];
 
   return stopJobListener;
+}
+
+/**
+ * Hands the alarm between the OS and the app as the app moves in and out of
+ * the foreground, so exactly one of them rings at a time.
+ */
+function onForegroundChange(): () => void {
+  const subscription = AppState.addEventListener('change', (state) => {
+    // Silence the tray first. The in-app siren is the same sound, and starting
+    // it on top of a notification still ringing is the doubling this prevents.
+    if (state === 'active') void NotificationManager.dismissOfferNotifications();
+    useJobStore.getState().refreshSiren();
+  });
+  return () => subscription.remove();
 }
 
 export function stopJobListener(): void {

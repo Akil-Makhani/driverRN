@@ -51,6 +51,18 @@ const CHANNEL_NAME = 'High Importance Notifications';
 const OFFER_CHANNEL_NAME = 'New Order Offers';
 const OFFER_SOUND = 'new_order_siren.wav';
 
+/**
+ * The title every offer notification carries — bst-api's sendOfferPushes sends
+ * exactly this, and the local fallback below defaults to it.
+ *
+ * It doubles as the only way to recognise an offer notification FCM posted
+ * itself: expo-notifications sees those as foreign, with the title and body
+ * but neither the push's data nor its channel. Change it on the server and
+ * dismissOfferNotifications() stops finding them, which brings back two sirens
+ * playing over each other.
+ */
+const OFFER_TITLE = 'New order available';
+
 
 /** `data.type` on a push, telling the app what the payload is. */
 export const PushType = {
@@ -163,7 +175,7 @@ export const NotificationManager = {
 
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: typeof data.title === 'string' ? data.title : 'New order available',
+        title: typeof data.title === 'string' ? data.title : OFFER_TITLE,
         body:
           typeof data.body === 'string'
             ? data.body
@@ -176,6 +188,30 @@ export const NotificationManager = {
       // what carries the siren sound and the DND bypass.
       trigger: { channelId: OFFER_CHANNEL_ID },
     });
+  },
+
+  /**
+   * Removes offer notifications from the tray, which also cuts off the siren
+   * the OS is still playing for them.
+   *
+   * The OS rings for an offer while the app is in the background, and the
+   * in-app siren takes over once it is in front. Without this, opening the app
+   * mid-ring leaves the notification's 29-second siren running underneath the
+   * in-app one — two copies of the alert, out of step with each other.
+   */
+  async dismissOfferNotifications(): Promise<void> {
+    try {
+      const presented = await Notifications.getPresentedNotificationsAsync();
+      const offers = presented.filter(
+        ({ request: { content } }) =>
+          content.data?.type === PushType.jobOffer || content.title === OFFER_TITLE,
+      );
+      await Promise.all(
+        offers.map((n) => Notifications.dismissNotificationAsync(n.request.identifier)),
+      );
+    } catch (e) {
+      if (__DEV__) console.log('dismissOfferNotifications failed:', e);
+    }
   },
 
   /**

@@ -2,7 +2,7 @@
   "expo": {
     "name": "BST Driver",
     "slug": "driverRN",
-    "version": "1.0.5",
+    "version": "1.0.7",
     "orientation": "portrait",
     "icon": "./assets/images/icon/app_logo.png",
     "scheme": "bstdriver",
@@ -16,19 +16,24 @@
         "NSCameraUsageDescription": "This app uses the camera so you can photograph the weight slip and invoice for a trip.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photo library so you can attach the weight slip and invoice for a trip.",
         "NSLocationWhenInUseUsageDescription": "This app uses your location to give you driving directions to the pickup and delivery addresses for a trip.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app shares your location with the customer while you are carrying their order, so they can see where their delivery is.",
-        "NSLocationAlwaysUsageDescription": "This app shares your location with the customer while you are carrying their order, so they can see where their delivery is.",
-        "UIBackgroundModes": ["location", "remote-notification"],
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app records your location while you are on duty or carrying an order, so the office can follow the vehicle along its route and the customer can see where their delivery is.",
+        "NSLocationAlwaysUsageDescription": "This app records your location while you are on duty or carrying an order, so the office can follow the vehicle along its route and the customer can see where their delivery is.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
         "googleMapsApiKey": "REPLACE_WITH_IOS_GOOGLE_MAPS_API_KEY"
       },
-      "buildNumber": "1"
+      "buildNumber": "6"
     },
     "android": {
+      "allowBackup": false,
       "package": "com.bst.driver",
-      "versionCode": 6,
+      "versionCode": 8,
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./firebase/google-services.json",
       "adaptiveIcon": {
@@ -56,9 +61,10 @@
       },
       "predictiveBackGestureEnabled": false
     },
-    "web": {
-      "output": "static"
-    },
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "plugins": [
       "expo-router",
       [
@@ -81,7 +87,7 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "This app uses your location to give you driving directions to the pickup and delivery addresses for a trip.",
-          "locationAlwaysAndWhenInUsePermission": "This app shares your location with the customer while you are carrying their order, so they can see where their delivery is.",
+          "locationAlwaysAndWhenInUsePermission": "This app records your location while you are on duty or carrying an order, so the office can follow the vehicle along its route and the customer can see where their delivery is.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }
@@ -89,7 +95,9 @@
       [
         "expo-notifications",
         {
-          "sounds": ["./assets/sounds/new_order_siren.wav"]
+          "sounds": [
+            "./assets/sounds/new_order_siren.wav"
+          ]
         }
       ],
       [

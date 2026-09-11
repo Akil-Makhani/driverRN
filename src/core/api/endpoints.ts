@@ -55,6 +55,7 @@ export const ApiUrls = {
   uploadUrl: '/driver/documents/upload-url',
   deleteDocument: '/driver/documents?fileKey=',
   getProduct: '/driver/trips/products/all',
+  logLocation: '/driver/locations',
 
   // Pre-account registration. These four are the only endpoints that carry no
   // Authorization header — a driver applying for an account has no token yet,

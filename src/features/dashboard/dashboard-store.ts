@@ -34,19 +34,19 @@ interface DashboardState {
  * driver's own business. Everything outside accepted…in-transit — unassigned,
  * or delivered — streams nothing.
  */
-function trackableTripId(
+function trackableTrip(
   active: TripItem[],
   inTransit: TripItem[],
-): string | undefined {
+): TripItem | undefined {
   const live = inTransit.find((t) => t.id);
-  if (live) return live.id;
+  if (live) return live;
 
   return active.find(
     (t) =>
       t.id &&
       (t.statusNumber ?? 0) >= TripStatusNumber.accepted &&
       (t.statusNumber ?? 0) < TripStatusNumber.delivered,
-  )?.id;
+  );
 }
 
 export const useDashboardStore = create<DashboardState>((set, get) => ({
@@ -102,7 +102,8 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         // change. The trip list is the one place that always knows the truth,
         // including after a restart mid-trip or a delivery closed from the
         // admin panel — both of which leave a status-change hook unfired.
-        void LocationTracker.sync(trackableTripId(active, inTransit));
+        const trip = trackableTrip(active, inTransit);
+        void LocationTracker.sync(trip?.id, trip?.statusNumber);
       }
     } catch (e) {
       if (__DEV__) console.log('getTrips failed:', e);

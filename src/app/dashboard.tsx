@@ -1,6 +1,6 @@
 /** Port of lib/screens/dashboard/view/dashboard_view.dart. */
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -12,11 +12,13 @@ import {
 } from 'react-native';
 
 import { AppBar } from '@/components/app-bar';
+import { LocationDisclosureDialog } from '@/components/location-disclosure-dialog';
 import { NotificationBell } from '@/components/notification-bell';
 import { Sidebar } from '@/components/sidebar';
 import { AppColors, Primary } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { LocationTracker } from '@/core/services/location-tracker';
 import { NotificationManager } from '@/core/services/notification-manager';
 import { ensureLocationPermission } from '@/core/utils/maps';
 import { DashboardCell } from '@/features/dashboard/dashboard-cell';
@@ -36,6 +38,48 @@ type Row = { kind: 'deliverAll' } | { kind: 'trip'; trip: TripItem };
 export default function DashboardScreen() {
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [disclosureVisible, setDisclosureVisible] = useState(false);
+
+  /**
+   * Resolver for the disclosure currently on screen.
+   *
+   * The tracker asks for consent inside an async call, but the answer arrives
+   * from a rendered modal, so the promise is held open here until the driver
+   * taps. A ref rather than state: resolving must not depend on a re-render
+   * having flushed.
+   */
+  const disclosureResolve = useRef<((granted: boolean) => void) | null>(null);
+
+  const answerDisclosure = useCallback((granted: boolean) => {
+    setDisclosureVisible(false);
+    disclosureResolve.current?.(granted);
+    disclosureResolve.current = null;
+  }, []);
+
+  /**
+   * Shows the prominent disclosure and resolves with the driver's answer. The
+   * tracker will only reach the OS permission prompt if this returns true —
+   * that ordering is what Google Play requires.
+   */
+  const confirmLocationDisclosure = useCallback(() => {
+    // A second call while one is open would strand the first promise; reuse is
+    // not needed, so refuse rather than leak it.
+    if (disclosureResolve.current) return Promise.resolve(false);
+    return new Promise<boolean>((resolve) => {
+      disclosureResolve.current = resolve;
+      setDisclosureVisible(true);
+    });
+  }, []);
+
+  // Unmounting with a disclosure open (logout, for one) must not leave the
+  // tracker awaiting a promise that can never settle.
+  useEffect(
+    () => () => {
+      disclosureResolve.current?.(false);
+      disclosureResolve.current = null;
+    },
+    [],
+  );
 
   const isLoading = useDashboardStore((s) => s.isLoading);
   const activeTrips = useDashboardStore((s) => s.activeTrips);
@@ -64,10 +108,17 @@ export default function DashboardScreen() {
    * requested here rather than at the first map tap. Refusing does not block
    * the toggle — Maps still routes using its own permission, so the duty
    * change goes through either way.
+   *
+   * Starting and stopping the reporting itself is not done here: the dispatch
+   * layer follows the duty value, which also covers a driver who was already
+   * on duty when the app opened. This handler adds only what needs a screen —
+   * the disclosure in front of the background-location prompt, which is the
+   * one request that is never made without a driver action.
    */
   const handleDutyChange = async (value: boolean) => {
     if (value) await ensureLocationPermission();
     await useDashboardStore.getState().setDuty(value);
+    if (value) await LocationTracker.requestBackground(confirmLocationDisclosure);
   };
 
   // A push while the app is open refreshes the list (replaces
@@ -173,6 +224,12 @@ export default function DashboardScreen() {
       </View>
 
       <Sidebar visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
+
+      <LocationDisclosureDialog
+        visible={disclosureVisible}
+        onAccept={() => answerDisclosure(true)}
+        onDecline={() => answerDisclosure(false)}
+      />
     </View>
   );
 }

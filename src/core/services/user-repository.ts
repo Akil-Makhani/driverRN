@@ -84,14 +84,32 @@ export const UserRepository = {
    * Failure is swallowed: this is best-effort background housekeeping, and the
    * socket still delivers offers while the app is open.
    */
-  async registerFcmToken(): Promise<void> {
+
+  /**
+   * Reports this device's push token and notification channel to the server.
+   *
+   * The server dry-runs the token against FCM and answers `refreshToken` when
+   * it is already dead — which happens when Android's auto-backup restores a
+   * reinstalled app's Firebase identity from the install that was uninstalled.
+   * getToken() keeps handing back that dead token forever, so the only way out
+   * is to delete it and let Firebase issue a new one. Retried once, because a
+   * freshly issued token is valid by definition and a loop here would spin on
+   * every launch.
+   */
+  async registerFcmToken(retryOnDeadToken = true): Promise<void> {
     try {
       const fcmToken = await messaging().getToken();
       if (!fcmToken) return;
-      await ApiService.put(ApiUrls.fcmToken, {
+      const response: any = await ApiService.put(ApiUrls.fcmToken, {
         fcmToken,
         offerChannelId: OFFER_CHANNEL_ID,
       });
+
+      if (retryOnDeadToken && response?.data?.refreshToken) {
+        if (__DEV__) console.log('FCM token was dead; asking Firebase for a new one');
+        await messaging().deleteToken();
+        await UserRepository.registerFcmToken(false);
+      }
     } catch (e) {
       if (__DEV__) console.log('registerFcmToken failed:', e);
     }

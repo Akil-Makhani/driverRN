@@ -115,6 +115,20 @@ export const Strings = {
   selectSize: 'Select size',
   locationPermissionDenied:
     'Location access is needed to route from where you are. Enable it in Settings to use directions.',
+
+  // Background-location prominent disclosure. Required by Google Play policy
+  // before the OS permission prompt: the copy must name the data, say that
+  // collection continues when the app is closed, and give the purpose. Reword
+  // only with that requirement in mind.
+  locationDisclosureTitle: 'BST Driver collects location in the background',
+  locationDisclosureBody:
+    'BST Driver collects your location data while you are on duty or carrying an order, including when the app is closed or not in use, so the office can follow your vehicle along its route and send you nearby orders.',
+  locationDisclosureUsage:
+    'While you carry an order, your live location is shared with that customer so they can see where their delivery is. Your route is also used to confirm trips you have completed and to help the office reach you if a trip needs support.',
+  locationDisclosureControl:
+    'Collection stops when you go off duty with no order in progress. You can turn it off at any time with the duty switch or in your phone settings.',
+  locationDisclosureAccept: 'Allow',
+  locationDisclosureDecline: 'Not now',
   vehicleThere: 'VEHICLE THERE',
   accept: 'Accept',
   decline: 'Decline',
