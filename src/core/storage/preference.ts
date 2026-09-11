@@ -13,6 +13,35 @@ const storage = createMMKV({ id: 'bst-driver-storage' });
 const ACCESS_TOKEN_KEY = 'access_token';
 const REFRESH_TOKEN_KEY = 'refresh_token';
 const PENDING_REGISTRATION_KEY = 'pending_registration_mobile';
+const DEVICE_SECRET_KEY = 'registration_device_secret';
+const DETAILS_PENDING_KEY = 'registration_details_pending';
+
+/** 32 bytes as hex — the length the API requires of a device secret. */
+const SECRET_BYTES = 32;
+
+/**
+ * Best random the runtime offers. Hermes ships no Web Crypto, and pulling in
+ * expo-crypto for one value would mean a native rebuild, so Math.random is the
+ * fallback — weaker, but it only has to be unguessable to someone who already
+ * knows the driver's mobile number and is racing a secret that the server
+ * spends on first use.
+ */
+function randomHex(bytes: number): string {
+  const webCrypto = (globalThis as { crypto?: Crypto }).crypto;
+  if (typeof webCrypto?.getRandomValues === 'function') {
+    const buffer = new Uint8Array(bytes);
+    webCrypto.getRandomValues(buffer);
+    return Array.from(buffer, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  let hex = '';
+  while (hex.length < bytes * 2) {
+    hex += Math.floor(Math.random() * 0x100000000)
+      .toString(16)
+      .padStart(8, '0');
+  }
+  return hex.slice(0, bytes * 2);
+}
 
 export const Preference = {
   raw: storage,
@@ -46,6 +75,53 @@ export const Preference = {
   },
   clearPendingRegistration(): void {
     storage.remove(PENDING_REGISTRATION_KEY);
+  },
+
+  /**
+   * A number whose OTP has been verified but whose details have not been
+   * filled in — the driver skipped that step. Held here rather than inferred
+   * from the server because there may be nothing on the server to infer it
+   * from: a deployment without the two-step registration endpoints files
+   * nothing until the whole form is submitted, and this is what stops the
+   * skipped step from being forgotten the moment the app is closed.
+   *
+   * Cleared when the details are finally submitted, and when the registration
+   * is decided — both of which end the thing it is tracking.
+   */
+  saveDetailsPending(mobile: string): void {
+    storage.set(DETAILS_PENDING_KEY, mobile);
+  },
+  getDetailsPending(): string | undefined {
+    return storage.getString(DETAILS_PENDING_KEY);
+  },
+  clearDetailsPending(): void {
+    storage.remove(DETAILS_PENDING_KEY);
+  },
+
+  /**
+   * The secret this phone sends with a registration and trades back for a
+   * session once the admin approves it — so approval opens the app rather
+   * than sending the driver to type a login OTP for a number they proved at
+   * the start of the very same flow.
+   *
+   * Created on first use and kept until it is spent, because the two halves
+   * are minutes or days apart. Out of clearAuthData for the same reason as
+   * the pending mobile: it exists before there has ever been a token.
+   */
+  getOrCreateDeviceSecret(): string {
+    const existing = storage.getString(DEVICE_SECRET_KEY);
+    if (existing) return existing;
+    const secret = randomHex(SECRET_BYTES);
+    storage.set(DEVICE_SECRET_KEY, secret);
+    return secret;
+  },
+  /** The secret as held, or undefined when this device never registered. */
+  getDeviceSecret(): string | undefined {
+    return storage.getString(DEVICE_SECRET_KEY);
+  },
+  /** Spent: the server accepts each secret once, so a kept copy is dead weight. */
+  clearDeviceSecret(): void {
+    storage.remove(DEVICE_SECRET_KEY);
   },
 
   /** Logout / delete-account. Mirrors clearAuthData(). */

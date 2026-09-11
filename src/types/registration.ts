@@ -50,6 +50,28 @@ export interface RegistrationStatusInfo {
   driverName?: string;
   submittedAt?: string;
   decidedAt?: string;
+  /**
+   * False for a registration that is still only a verified mobile number —
+   * the driver skipped the details step. It is Pending like any other, but
+   * nothing has been sent for review, so the waiting screen asks for the rest
+   * instead of promising a decision. Absent on records that predate the skip
+   * flow, which is why {@link isRegistrationComplete} falls back to reading
+   * the fields themselves rather than trusting this alone.
+   */
+  isComplete?: boolean;
+}
+
+/**
+ * Whether a registration carries enough for an admin to decide on. The server
+ * flag is the authority when it sends one; without it, a record holding both
+ * a vehicle and a licence is one that came through the full form.
+ */
+export function isRegistrationComplete(
+  info: RegistrationStatusInfo | null | undefined,
+): boolean {
+  if (!info) return false;
+  if (typeof info.isComplete === 'boolean') return info.isComplete;
+  return Boolean(info.vehicleNumber && info.driverLicenceNumber);
 }
 
 export function parseVehicleInfo(json: any): VehicleInfo | null {
@@ -103,8 +125,18 @@ export function parseRegistrationStatus(json: any): RegistrationStatusInfo | nul
     driverName: str(d.driverName) || undefined,
     submittedAt: str(d.submittedAt),
     decidedAt: str(d.decidedAt),
+    // Only carried through when the server actually said something: an absent
+    // flag has to stay absent so the field-based fallback can take over.
+    ...(typeof d.isComplete === 'boolean' ? { isComplete: d.isComplete } : {}),
   };
 }
+
+/**
+ * What the details step of a registration sends. Split out from the mobile
+ * number because the two now go up separately: the number is filed the moment
+ * its OTP verifies, and these follow whenever the driver gets round to them.
+ */
+export type RegistrationDetails = Omit<RegistrationForm, 'mobileNo'>;
 
 /** Fields the registration form collects. */
 export interface RegistrationForm {

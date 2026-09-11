@@ -328,12 +328,13 @@ export const NotificationManager = {
  *
  * Separate from register() above because that one is wired up by the
  * dashboard, and a driver waiting on approval never reaches the dashboard —
- * they are sitting on the login or registration screen. The root layout
+ * they are sitting on the waiting screen, or on login. The root layout
  * subscribes to this instead, so the decision lands whatever is on screen.
  *
  * Only the running app is covered here. A decision that arrives while the app
  * is closed needs no listener: the splash screen asks the server for the
- * current status on every launch, which reaches the same answer.
+ * current status on every launch, and the waiting screen asks again each time
+ * the app returns to the front — both reach the same answer.
  */
 export function onRegistrationDecision(
   handler: (status: string, reason?: string) => void,

@@ -16,7 +16,6 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { RegistrationStatusDialog } from '@/components/registration-status-dialog';
 import { Images } from '@/core/constants/assets';
 import { AppColors, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
@@ -36,10 +35,6 @@ export default function LoginScreen() {
   const invalidMobile = useAuthStore((s) => s.invalidMobile);
   const errorMessage = useAuthStore((s) => s.errorMessage);
   const isLoading = useAuthStore((s) => s.isLoading);
-  // Raised either by the splash screen's launch-time check or by a failed
-  // login below; this screen only has to render whatever the store holds.
-  const outcome = useRegistrationStore((s) => s.outcome);
-
   const onSubmit = async () => {
     if (mobile.length !== MOBILE_LENGTH) {
       useAuthStore.getState().setInvalidMobile(true);
@@ -48,14 +43,23 @@ export default function LoginScreen() {
     useAuthStore.getState().setInvalidMobile(false);
     Keyboard.dismiss();
 
-    if (await useAuthStore.getState().sendOTP()) {
+    const next = await useAuthStore.getState().sendOTP();
+
+    // A number still waiting on the admin has no OTP to type; the waiting
+    // screen is the answer, and it is where the decision will reach them.
+    if (next === 'pending') {
+      router.push('/(auth)/pending-approval');
+      return;
+    }
+
+    if (next === 'otp') {
       useAuthStore.getState().resetOtp();
       useAuthStore.getState().startTimer();
       router.push({ pathname: '/(auth)/otp', params: { mobile } });
     }
     // A number with no account does not fail here: sendOTP quietly switches to
-    // the registration OTP and returns true, and the OTP screen then opens the
-    // sign-up form instead of the dashboard. Anything that does fail — a
+    // the registration OTP and answers 'otp', and the OTP screen then opens
+    // the sign-up form instead of the dashboard. Anything that does fail — a
     // blocked account, no network — is already in errorMessage.
   };
 
@@ -149,26 +153,6 @@ export default function LoginScreen() {
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       )}
-
-      <RegistrationStatusDialog
-        outcome={outcome}
-        onDismiss={() => useRegistrationStore.getState().dismissOutcome()}
-        // Already on login — closing the popup is the whole action.
-        onGoToLogin={() => useRegistrationStore.getState().dismissOutcome()}
-        // Both start at the register screen rather than the form: submitting
-        // needs a verification only minutes old, and a driver who reached this
-        // popup from login has not done one. Re-entering the number there is
-        // what sends the OTP; for a rejection, verifying it lands them back on
-        // the form with the rejected details already filled in.
-        onEdit={() => {
-          useRegistrationStore.getState().dismissOutcome();
-          onRegister();
-        }}
-        onRegister={() => {
-          useRegistrationStore.getState().dismissOutcome();
-          onRegister();
-        }}
-      />
     </View>
   );
 }

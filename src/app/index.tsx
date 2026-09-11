@@ -41,21 +41,46 @@ export default function SplashScreen() {
       const ok = await useAuthStore.getState().loadProfile();
       if (!ok) {
         // No session. If a registration submitted from this device is still
-        // waiting on the admin, ask what was decided so login can open with
-        // the answer already in hand. Returns immediately when this device
-        // has never registered, which is the common case.
-        await useRegistrationStore.getState().checkPendingStatus();
-        router.replace('/(auth)/login');
+        // waiting on the admin, that driver belongs back on the waiting screen
+        // rather than at a login they cannot pass; a decision that arrived
+        // while the app was closed comes back from this same check, and login
+        // opens with the popup that announces it. Returns 'none' immediately
+        // when this device has never registered, which is the common case.
+        const pending = await useRegistrationStore.getState().checkPendingStatus();
+
+        // Approved while the app was closed. The same trade the waiting screen
+        // makes on OK works here, so a driver who was approved overnight opens
+        // the app to the dashboard rather than to a login screen — and the
+        // popup announcing it is dropped, because being inside the app says it
+        // better than a message about being let in would.
+        if (pending === 'Approved') {
+          const mobile = useRegistrationStore.getState().pendingMobile ?? '';
+          if (await useAuthStore.getState().claimApprovedSession(mobile)) {
+            useDashboardStore.getState().syncDutyFromSession();
+            const approvedTripId = takePendingTrip();
+            router.replace('/dashboard');
+            if (approvedTripId) router.push(`/trip/${approvedTripId}`);
+            return;
+          }
+        }
+
+        router.replace(
+          pending === 'Pending' ? '/(auth)/pending-approval' : '/(auth)/login',
+        );
         return;
       }
 
       // A valid token is not on its own a right to the dashboard: that is for
       // approved drivers only, and an account added by hand on the fleet
       // Drivers page can hold one without ever having been approved.
-      // ensureApproved ends the session and raises the waiting or rejected
-      // popup when it has to, so login opens with the answer already in hand.
-      if (!(await useAuthStore.getState().ensureApproved())) {
-        router.replace('/(auth)/login');
+      // ensureApproved ends the session when it has to, and says where the
+      // driver belongs instead: the waiting screen while a decision is out,
+      // login otherwise — with the rejected popup it raised already in hand.
+      const gate = await useAuthStore.getState().ensureApproved();
+      if (gate !== 'approved') {
+        router.replace(
+          gate === 'pending' ? '/(auth)/pending-approval' : '/(auth)/login',
+        );
         return;
       }
 

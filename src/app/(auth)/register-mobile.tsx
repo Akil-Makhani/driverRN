@@ -25,13 +25,11 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { RegistrationStatusDialog } from '@/components/registration-status-dialog';
 import { AppColors, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { digitsOnly, groupDigits } from '@/core/utils/number-format';
 import { useAuthStore } from '@/features/auth/auth-store';
-import { useRegistrationStore } from '@/features/auth/registration-store';
 
 const MOBILE_LENGTH = 10;
 
@@ -42,10 +40,6 @@ export default function RegisterMobileScreen() {
   const [mobile, setMobile] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
-
-  // "Already registered, go and log in" lands here rather than on login,
-  // because this is the screen the driver pressed SEND OTP on.
-  const outcome = useRegistrationStore((s) => s.outcome);
 
   const onSendOtp = async () => {
     Keyboard.dismiss();
@@ -118,15 +112,6 @@ export default function RegisterMobileScreen() {
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
       )}
-
-      <RegistrationStatusDialog
-        outcome={outcome}
-        onDismiss={() => useRegistrationStore.getState().dismissOutcome()}
-        onGoToLogin={() => {
-          useRegistrationStore.getState().dismissOutcome();
-          router.replace('/(auth)/login');
-        }}
-      />
     </View>
   );
 }

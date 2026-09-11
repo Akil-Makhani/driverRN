@@ -1,6 +1,8 @@
 /**
- * The one popup the registration flow ends in, in four guises: waiting on the
- * admin, approved, rejected, or "this vehicle/licence is already on file".
+ * The one popup the registration flow ends in, in four guises: approved,
+ * rejected, "this vehicle/licence is already on file", and "this number has
+ * not registered at all". Waiting on the admin is deliberately not among them
+ * — that is a screen, not a popup, because it is where a driver stays.
  *
  * Built as a controlled component like ConfirmDialog rather than an imperative
  * `showDialog()`, so the caller owns both the visibility and what each action
@@ -20,8 +22,6 @@ interface Props {
   onDismiss: () => void;
   /** "Go to login" — offered once there is an account to log into. */
   onGoToLogin?: () => void;
-  /** "Edit details" — only offered after a rejection, to correct and resubmit. */
-  onEdit?: () => void;
   /** "Register now" — only offered when there is no registration to speak of. */
   onRegister?: () => void;
 }
@@ -33,12 +33,6 @@ const LOOK = {
     tint: AppColors.primary,
     wash: Primary.c100,
     title: Strings.registerRequiredTitle,
-  },
-  pending: {
-    icon: 'time-outline',
-    tint: AppColors.primary,
-    wash: Primary.c100,
-    title: Strings.registerWaitingTitle,
   },
   approved: {
     icon: 'checkmark-circle-outline',
@@ -52,7 +46,16 @@ const LOOK = {
     wash: '#FEF3F2',
     title: Strings.registerRejectedTitle,
   },
+  // The form was refused. Red and titled as the error it is — this used to
+  // borrow the approved popup's green tick, which announced a rejected form
+  // as good news.
   exists: {
+    icon: 'alert-circle-outline',
+    tint: AppColors.error500,
+    wash: '#FEF3F2',
+    title: Strings.registerErrorTitle,
+  },
+  hasAccount: {
     icon: 'information-circle-outline',
     tint: AppColors.primary,
     wash: Primary.c100,
@@ -64,7 +67,6 @@ export function RegistrationStatusDialog({
   outcome,
   onDismiss,
   onGoToLogin,
-  onEdit,
   onRegister,
 }: Props) {
   // Rendering nothing when there is no outcome keeps the Modal unmounted
@@ -72,13 +74,22 @@ export function RegistrationStatusDialog({
   if (!outcome) return null;
 
   const look = LOOK[outcome.kind];
-  // Approved is the only outcome with somewhere better to go than "dismiss";
-  // for "already registered" the driver most likely already has an account.
-  const showLogin =
-    (outcome.kind === 'approved' || outcome.kind === 'exists') && onGoToLogin != null;
-  const showEdit = outcome.kind === 'rejected' && onEdit != null;
+  /**
+   * Only the driver who already has an account is sent to log in. Approval
+   * deliberately does not offer it any more: OK now opens the app itself, and
+   * every screen that can raise this popup shows the same single button — a
+   * second one appearing on one screen and not another is what made the
+   * approved popup flicker as the app moved between them.
+   */
+  const showLogin = outcome.kind === 'hasAccount' && onGoToLogin != null;
   // The whole point of the "not registered yet" popup: the way out of it.
   const showRegister = outcome.kind === 'required' && onRegister != null;
+  /** No button above it, so the dismiss button carries the popup on its own. */
+  const soleAction = !showLogin && !showRegister;
+  // A rejection's only button is the way out of it, so it is named after where
+  // it goes rather than left as a bare "OK".
+  const dismissLabel =
+    outcome.kind === 'rejected' ? Strings.registerBackToLoginCta : Strings.registerOk;
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onDismiss}>
@@ -107,27 +118,24 @@ export function RegistrationStatusDialog({
             </Pressable>
           ) : null}
 
-          {showEdit ? (
-            <Pressable style={styles.primaryButton} onPress={onEdit} hitSlop={4}>
-              <Text style={styles.primaryText}>{Strings.registerEditAndResubmit}</Text>
-            </Pressable>
-          ) : null}
-
           {showRegister ? (
             <Pressable style={styles.primaryButton} onPress={onRegister} hitSlop={4}>
               <Text style={styles.primaryText}>{Strings.registerNow}</Text>
             </Pressable>
           ) : null}
 
+          {/* OK is usually the quiet way out, next to a button that does
+              something. When it is the only one, it IS the something — the
+              waiting screen's approved popup opens the app with it — so it
+              takes the solid button rather than reading as dismissible text. */}
           <Pressable
-            style={[
-              styles.ghostButton,
-              !showLogin && !showEdit && !showRegister && styles.ghostOnly,
-            ]}
+            style={soleAction ? styles.primaryButton : styles.ghostButton}
             onPress={onDismiss}
             hitSlop={4}
           >
-            <Text style={styles.ghostText}>{Strings.registerOk}</Text>
+            <Text style={soleAction ? styles.primaryText : styles.ghostText}>
+              {dismissLabel}
+            </Text>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -193,7 +201,5 @@ const styles = StyleSheet.create({
   },
   primaryText: { ...Typography.button2.extraBold, color: AppColors.white },
   ghostButton: { alignSelf: 'stretch', marginTop: 8, padding: 12, alignItems: 'center' },
-  /** Sole action: give it the same breathing room the primary button has. */
-  ghostOnly: { marginTop: 20 },
   ghostText: { ...Typography.button2.extraBold, color: TextShade.c700 },
 });

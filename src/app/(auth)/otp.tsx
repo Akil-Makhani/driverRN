@@ -33,7 +33,13 @@ import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 export default function OtpScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { mobile } = useLocalSearchParams<{ mobile: string }>();
+  // `reverify` marks the round trip a half-filled registration form makes when
+  // its mobile verification lapses: that form is still on the stack below, and
+  // is what verifying returns to.
+  const { mobile, reverify } = useLocalSearchParams<{
+    mobile: string;
+    reverify?: string;
+  }>();
 
   const isLoading = useAuthStore((s) => s.isLoading);
   const isOtpInvalid = useAuthStore((s) => s.isOtpInvalid);
@@ -64,13 +70,33 @@ export default function OtpScreen() {
     }
 
     useAuthStore.getState().stopTimer();
-    // 'form' and 'rejected' both have a form to fill in; 'pending' and
-    // 'approved' have nothing to do but read the popup, which login renders.
-    router.replace(
-      next === 'form' || next === 'rejected'
-        ? '/(auth)/register'
-        : '/(auth)/login',
-    );
+
+    // A first-time registration is filed here, on the number alone, before the
+    // form is ever shown. That is what lets the form be skipped: from this
+    // point the driver is in the queue, and the details are something the
+    // waiting screen can go on asking for. 'rejected' is left out because that
+    // number already has a record, which this would only collide with.
+    if (next === 'form') {
+      await useRegistrationStore.getState().startRegistration(mobile);
+    }
+
+    // 'form' and 'rejected' both have a form to fill in. 'pending' belongs on
+    // the waiting screen, which is where that registration now lives.
+    // 'approved' has nothing to do but read the popup, which login renders.
+    if (next === 'form' || next === 'rejected') {
+      // Re-verifying returns to the form already on the stack, with everything
+      // typed into it intact; `replace` would leave a second copy stacked on
+      // the first. Anything else is arriving at the form for the first time.
+      if (reverify === '1' && router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(auth)/register');
+      }
+    } else if (next === 'pending') {
+      router.replace('/(auth)/pending-approval');
+    } else {
+      router.replace('/(auth)/login');
+    }
   };
 
   const onVerify = async () => {

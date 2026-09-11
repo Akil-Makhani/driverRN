@@ -67,8 +67,13 @@ interface AuthState {
   /** The registration path verifies elsewhere, so it reds the pins itself. */
   setOtpInvalid: (v: boolean) => void;
 
-  /** Resolves true when the OTP was sent and the screen should advance. */
-  sendOTP: () => Promise<boolean>;
+  /**
+   * Where the login screen goes next: 'otp' when a code is on its way,
+   * 'pending' when this number is waiting on the admin and the waiting screen
+   * is the answer, 'stop' when a popup or errorMessage is already explaining
+   * why there is nowhere to go.
+   */
+  sendOTP: () => Promise<'otp' | 'pending' | 'stop'>;
   /**
    * Sends the registration OTP for a number the driver typed on the register
    * screen — deliberately taking it as an argument rather than reading the
@@ -88,15 +93,28 @@ interface AuthState {
   logout: () => Promise<boolean>;
   deleteAccount: () => Promise<boolean>;
 
+  /**
+   * Turns an approval into a session, using the secret this device sent with
+   * the registration — so a driver who is approved while holding the app open
+   * walks into the dashboard instead of being handed a login screen for the
+   * number they proved to register.
+   *
+   * Resolves false whenever that is not on: a device that did not submit this
+   * registration has no secret, a secret is only good once, and the server can
+   * refuse. Every one of those means the ordinary OTP login, which is why the
+   * callers treat false as "go to login" rather than as an error.
+   */
+  claimApprovedSession: (mobile: string) => Promise<boolean>;
+
   /** Splash: resolves true when the stored token still yields a profile. */
   loadProfile: () => Promise<boolean>;
   /**
-   * Splash: resolves true when the driver behind the loaded profile has an
-   * approved registration, and so may reach the dashboard. Anything else ends
-   * the session locally and raises the matching popup, leaving the login screen
-   * to start them on the registration path.
+   * Splash: 'approved' when the driver behind the loaded profile may reach the
+   * dashboard. Anything else ends the session locally — 'pending' belongs on
+   * the waiting screen, and 'other' on login, where the popup this raised
+   * starts them on the registration path.
    */
-  ensureApproved: () => Promise<boolean>;
+  ensureApproved: () => Promise<'approved' | 'pending' | 'other'>;
 
   resetLogin: () => void;
   resetOtp: () => void;
@@ -158,11 +176,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     if (decisionKnown && registration?.status === 'Pending') {
-      // Nothing for them to type. The answer is the waiting popup, which the
-      // login screen renders from the registration store.
-      useRegistrationStore.getState().showPending(mobile);
+      // Nothing for them to type. The answer is the waiting screen, which the
+      // login screen sends them to on this result.
+      useRegistrationStore.getState().showPending(mobile, registration);
       set({ isLoading: false, errorMessage: null });
-      return false;
+      return 'pending';
     }
 
     if (decisionKnown && registration?.status === 'Rejected') {
@@ -171,7 +189,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // rejected so the popup's "Edit details" opens something worth fixing.
       await useRegistrationStore.getState().checkStatusFor(mobile);
       set({ isLoading: false, errorMessage: null });
-      return false;
+      return 'stop';
     }
 
     if (decisionKnown && registration == null) {
@@ -180,13 +198,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // popup's REGISTER NOW is what takes them there.
       useRegistrationStore.getState().showRegistrationRequired();
       set({ isLoading: false, errorMessage: null });
-      return false;
+      return 'stop';
     }
 
     try {
       await UserRepository.sendLoginOTP(mobile);
       set({ isLoading: false, errorMessage: null, otpPurpose: 'login' });
-      return true;
+      return 'otp';
     } catch (e) {
       // 404 means "no account for this number" — the beginning of registration,
       // not a failure. Send the registration OTP instead and carry on to the
@@ -196,7 +214,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try {
           await RegistrationRepository.sendOtp(mobile);
           set({ isLoading: false, errorMessage: null, otpPurpose: 'registration' });
-          return true;
+          return 'otp';
         } catch (registerError) {
           // The account existed after all. The registration endpoint repairs
           // approvals that never got a Driver row behind them, so the login
@@ -209,7 +227,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             try {
               await UserRepository.sendLoginOTP(mobile);
               set({ isLoading: false, errorMessage: null, otpPurpose: 'login' });
-              return true;
+              return 'otp';
             } catch {
               // Fall through to the error below.
             }
@@ -222,7 +240,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 ? registerError.message
                 : 'Something went Wrong',
           });
-          return false;
+          return 'stop';
         }
       }
 
@@ -233,7 +251,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         errorMessage:
           e instanceof UnauthorisedException ? e.message : 'Something went Wrong',
       });
-      return false;
+      return 'stop';
     }
   },
 
@@ -350,6 +368,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  async claimApprovedSession(mobile) {
+    const secret = Preference.getDeviceSecret();
+    // No secret means this phone is not the one that registered — a driver who
+    // applied on another device, or one that has already spent it.
+    if (!mobile || !secret) return false;
+
+    set({ isLoading: true });
+    try {
+      const model = await UserRepository.claimApprovedSession(mobile, secret);
+      set({ isLoading: false });
+      if (model.status !== 'success' || !model.data) return false;
+
+      // Spent on the server the moment it was accepted; keeping our copy would
+      // only leave a dead credential on the phone.
+      Preference.clearDeviceSecret();
+      // The wait is over and its record has been read — nothing here should
+      // greet them again once they are inside the app.
+      useRegistrationStore.getState().clearPending();
+      useRegistrationStore.getState().dismissOutcome();
+      return true;
+    } catch {
+      set({ isLoading: false });
+      return false;
+    }
+  },
+
   async loadProfile() {
     try {
       await UserRepository.profile();
@@ -363,7 +407,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const mobile = useSession.getState().user?.mobileNumber?.trim() ?? '';
     // Nothing to check against. Signing someone out over a profile that came
     // back without a number would be the worse of the two failures.
-    if (!mobile) return true;
+    if (!mobile) return 'approved';
 
     let info: RegistrationStatusInfo | null;
     try {
@@ -371,10 +415,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       // Best effort, for the same reason as in sendOTP: a network blip must
       // not throw a driver out of a session that is otherwise good.
-      return true;
+      return 'approved';
     }
 
-    if (info?.status === 'Approved') return true;
+    if (info?.status === 'Approved') return 'approved';
 
     // Not approved — so not through the front door. Only the local tokens go;
     // the Driver account itself is untouched, and the driver keeps whatever
@@ -383,13 +427,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     useSession.getState().clearSession();
 
     if (info?.status === 'Pending') {
-      useRegistrationStore.getState().showPending(mobile);
-    } else if (info?.status === 'Rejected') {
+      useRegistrationStore.getState().showPending(mobile, info);
+      return 'pending';
+    }
+    if (info?.status === 'Rejected') {
       // Fills in the reason and seeds the form with what was rejected, so the
       // login screen's "Edit details" lands on a form worth correcting.
       await useRegistrationStore.getState().checkStatusFor(mobile);
     }
-    return false;
+    return 'other';
   },
 
   resetLogin: () =>

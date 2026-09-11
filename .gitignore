@@ -21,3 +21,6 @@ credentials/
 *.jks
 *.keystore
 credentials.json
+
+# Local-only copy of a .env value, kept while pointing the app elsewhere.
+.env.local-backup

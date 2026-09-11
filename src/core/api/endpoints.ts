@@ -1,14 +1,18 @@
 /** 1:1 port of lib/services/api_urls.dart. */
 
-// Dev:  https://api.dev.bstm.in/v2
-// UAT:  https://api.uat.bstm.in/v2
-// Prod: https://api.bstm.in/v2
+// Staging: https://staging-api.theallwaysdigital.com/v2
+// Prod:    https://api.bstm.in/v2
+//
+// Staging is the default because it is the only deployment carrying the driver
+// registration endpoints; api.bstm.in still answers 404 for all of them, so a
+// build pointed there cannot register anyone. Move this back to prod once the
+// registration branch is deployed there.
 //
 // Point at a local bst-api by setting EXPO_PUBLIC_API_URL in .env — on the
 // Android emulator use http://10.0.2.2:3000/v2, since localhost there is the
 // emulated device itself, not the host machine.
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? 'https://api.bstm.in/v2';
+  process.env.EXPO_PUBLIC_API_URL ?? 'https://staging-api.theallwaysdigital.com/v2';
 
 /**
  * Socket.IO origin for the live dispatch channel (job offers, race results,
@@ -57,7 +61,7 @@ export const ApiUrls = {
   getProduct: '/driver/trips/products/all',
   logLocation: '/driver/locations',
 
-  // Pre-account registration. These four are the only endpoints that carry no
+  // Pre-account registration. These are the only endpoints that carry no
   // Authorization header — a driver applying for an account has no token yet,
   // which is the whole point of the flow.
   // The OTP pair is separate from sendOTP/verifyOTP above: those refuse a
@@ -65,6 +69,19 @@ export const ApiUrls = {
   registerSendOtp: '/driver/registration/send-otp',
   registerVerifyOtp: '/driver/registration/verify-otp',
   register: '/driver/registration',
+  // Files a registration the moment its OTP verifies, with nothing but the
+  // number — so a driver who has no papers on them is in the queue rather than
+  // stranded on a form they cannot finish. The record is Pending and
+  // incomplete; an admin cannot decide on it until the details arrive.
+  registerStart: '/driver/registration/start',
+  // The details, whenever the driver gets round to them. Same body `register`
+  // takes minus the mobile number, which the record already holds — a PATCH
+  // rather than a second POST because the record it completes already exists.
+  registerDetails: '/driver/registration/details',
+  // Trades an approved registration for a session, using the secret this
+  // device sent when it submitted — so approval opens the app instead of a
+  // login screen. Public like the rest, but the secret is the credential.
+  registerSession: '/driver/registration/session',
   lookupVehicle: '/driver/registration/lookup/vehicle',
   lookupLicence: '/driver/registration/lookup/driver',
 

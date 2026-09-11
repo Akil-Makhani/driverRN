@@ -184,13 +184,32 @@ export const Strings = {
   registerMobile: 'Mobile Number',
   registerMobileVerified: 'Verified with the OTP you just entered.',
   registerVehicleNumber: 'Vehicle Number',
-  registerVehicleHint: 'UP32KH0320',
+  // Masked rather than a specimen number: a real-looking registration in the
+  // box reads as a value already filled in, and a driver who takes it for one
+  // submits somebody else's vehicle.
+  registerVehicleHint: 'XXXXXXXXXX',
   registerLicenceNumber: 'Driver Licence Number',
-  registerLicenceHint: 'GJ18 20220001846',
+  registerLicenceHint: 'XXXX XXXXXXXXXXX',
   registerDob: 'Date of Birth',
   registerDobHint: 'YYYY-MM-DD',
+  // Sits above the form when it opens carrying a rejected registration's
+  // details. Said here rather than in a popup: the reason is worth reading
+  // while the fields it is about are on screen and being corrected.
+  registerRejectedBanner:
+    'Your last registration was not approved. Correct the details below and submit again.',
   registerSubmit: 'SUBMIT FOR APPROVAL',
+  // The way past the form for a driver who does not have their papers to hand.
+  // Their place in the queue is already taken by the OTP step, so this is a
+  // "later", not a "never" — the waiting screen keeps asking for the rest.
+  registerSkip: 'SKIP FOR NOW',
+  registerSkipNote:
+    'No papers on you? Skip this and fill it in later — but an admin can only approve you once these details are in.',
   registerBackToLogin: 'Back to login',
+  // The mobile verification is good for 15 minutes, which a driver waiting on
+  // the two ULIP lookups can outlast. Said as a step, not a failure, because
+  // the app takes them straight back to the OTP with the form still filled in.
+  registerVerifyExpired:
+    'Your mobile verification has expired. We are sending you a new OTP — your details are saved.',
 
   // Inline validation. These catch a typo before the round trip; ULIP
   // remains the authority on whether a number really exists.
@@ -205,7 +224,16 @@ export const Strings = {
   registerVehicleDetails: 'Vehicle Details',
   registerLicenceDetails: 'Licence Details',
   registerVerifying: 'Fetching details...',
-  registerVerifyFailed: 'Could not fetch details. You can still submit.',
+  // Both lookups have to succeed before the form can be sent, so a failure is
+  // a step to repeat rather than something to shrug at and carry on past.
+  registerVerifyFailed: 'Could not fetch details. Check what you entered, or try again.',
+  registerRetryLookup: 'TRY AGAIN',
+  registerConfirmVehicle:
+    'We could not confirm this vehicle number yet. Check it and try again before submitting.',
+  registerConfirmLicence:
+    'We could not confirm this licence number and date of birth yet. Check them and try again before submitting.',
+  registerConfirmBoth:
+    'We could not confirm your vehicle and licence details yet. Check them and try again before submitting.',
   registerOwner: 'Owner',
   registerModel: 'Model',
   registerVehicleClass: 'Class',
@@ -221,18 +249,65 @@ export const Strings = {
   registerRequiredMessage: 'This number has not been registered yet. Please complete your registration first — an admin will review it and approve your account.',
   registerNow: 'REGISTER NOW',
   registerWaitingTitle: 'Waiting for approval',
-  registerPendingMessage: 'Your registration has been sent for approval.',
-  registerWaitingMessage: 'Your registration is still being reviewed by the admin. You will be notified as soon as a decision is made.',
   registerApprovedTitle: 'Registration approved',
   registerApprovedMessage: 'Your registration has been approved. You can now log in with your mobile number.',
   registerRejectedTitle: 'Registration rejected',
   registerRejectedMessage: 'Your registration was not approved by the admin.',
   registerRejectedReasonLabel: 'Reason',
+  // The form was refused because the vehicle or licence is on someone else's
+  // record. Titled as an error, not as an approval — the message under it is
+  // the server's, and says which of the two is already saved.
+  registerErrorTitle: 'Registration error',
   registerExistsTitle: 'Already registered',
   registerExistsMessage: 'This vehicle or licence is already registered with us.',
   registerOk: 'OK',
   registerGoToLogin: 'GO TO LOGIN',
-  registerEditAndResubmit: 'EDIT DETAILS',
+  registerBackToLoginCta: 'BACK TO LOGIN',
+
+  // The waiting screen. Submitting used to end at a popup and a trip back to
+  // login, which left the driver holding nothing — no confirmation they could
+  // return to, and a LOG IN button that would not let them in. This screen is
+  // where a pending driver lives instead, and the decision arrives on it.
+  pendingBody:
+    'We have your details. An admin will review them and approve your account — this usually takes a few hours.',
+  // The big status words, in the circle the dashboard uses for "no trip".
+  pendingCircleWaiting: 'Waiting for\nApproval',
+  // Stands in for the name on the waiting screen's driver card until the form
+  // supplies a real one. The card is the dashboard's own, and an empty line
+  // above the number reads as something failing to load rather than as a
+  // detail not yet given.
+  pendingDriverFallback: 'Driver',
+  pendingSubmittedTitle: 'What you submitted',
+  pendingVehicle: 'Vehicle',
+  pendingLicence: 'Licence',
+  pendingSubmittedAt: 'Submitted',
+  pendingNotifyNote:
+    'You will get a notification as soon as a decision is made. You can close the app — we check again every time you open it.',
+  pendingCheckStatus: 'CHECK STATUS',
+  pendingCheckFailed: 'Could not reach the server. Check your connection and try again.',
+
+  // Shown on the waiting screen to a driver who skipped the details step. An
+  // admin cannot decide on a registration that is only a mobile number, so
+  // this is the one thing on that screen worth doing — said as the next step
+  // it is, and given the primary button, with waiting demoted beneath it.
+  pendingIncompleteTitle: 'Your details are not filled in yet',
+  pendingIncompleteBody:
+    'We only have your mobile number. Add your vehicle and licence details so an admin can review and approve you.',
+  pendingCompleteDetails: 'COMPLETE YOUR DETAILS',
+  pendingCircleIncomplete: 'Details\nPending',
+  // Replaces pendingBody for the same driver: nothing is being reviewed yet,
+  // so promising a decision in a few hours would be a lie.
+  pendingIncompleteWait:
+    'Nothing has been sent for review yet. Once your details are in, an admin will approve your account — usually within a few hours.',
+  // The waiting screen's own title, for a driver who has not sent anything to
+  // wait on. "Waiting for approval" over a registration nobody has been shown
+  // would be the screen telling them a lie about where they stand.
+  registerIncompleteTitle: 'Finish registering',
+  // Replaces the "you will be notified" note while the details are missing:
+  // a decision cannot arrive, so the only thing worth promising is that what
+  // they have done so far is not lost.
+  pendingIncompleteNote:
+    'Your mobile number is verified and saved on this phone. Add the rest whenever you have your papers with you.',
 
   // Broadcast dispatch (new — no Flutter counterpart)
   newOrderTitle: 'NEW ORDER',
