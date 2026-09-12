@@ -1,8 +1,9 @@
 /** Port of lib/screens/trip_detail/view/trip_detail.dart. */
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ActionConfirmDialog } from '@/components/action-confirm-dialog';
 import { AppBar } from '@/components/app-bar';
 import { OverflowMenu } from '@/components/overflow-menu';
 import { AppColors, Primary } from '@/core/constants/colors';
@@ -25,6 +26,7 @@ import { CancelTripDialog } from '@/features/trip/cancel-trip-dialog';
 import { CompanyDetails } from '@/features/trip/company-details';
 import { ConfirmLoadSheet } from '@/features/trip/confirm-load-sheet';
 import { KnowMoreSheet } from '@/features/trip/know-more-sheet';
+import { LrDocument } from '@/features/trip/lr-document';
 import { OrderDetails } from '@/features/trip/order-details';
 import { PickupLoadingDetail } from '@/features/trip/pickup-loading-detail';
 import { ShipmentStatusTracker } from '@/features/trip/shipment-status-tracker';
@@ -71,11 +73,48 @@ export default function TripDetailScreen() {
     if (!result.ok) {
       // Mostly the cancel-after-Vehicle-There refusal, which carries a
       // sentence written for the driver; keep them on the trip either way.
-      Alert.alert(Strings.cancelTripFailed, result.message);
+      Alert.alert(
+        next === TripStatus.rejected ? Strings.cancelTripFailed : Strings.tripActionFailed,
+        result.message,
+      );
       return;
     }
     // The dashboard refetches on focus, so a decline can just pop.
     if (goBack) router.back();
+  };
+
+  /**
+   * The step waiting on "Are you sure?". Vehicle There, In Transit and
+   * Delivered each tell the office and the customer the moment they land, and
+   * none can be undone from the app, so a stray tap on the bottom bar — which a
+   * driver presses from memory, often while moving — must not be enough.
+   */
+  const [pendingStep, setPendingStep] = useState<ForwardStep | null>(null);
+  /**
+   * The step the dialog last showed. Closing clears pendingStep at once, but the
+   * dialog fades out over a few frames; drawing from this keeps its words and
+   * colour in place for that fade instead of flashing to a blank card.
+   */
+  const lastStep = useRef<ForwardStep>('vehicleThere');
+  if (pendingStep) lastStep.current = pendingStep;
+  /**
+   * Set while a confirmed step is on its way. A second tap during the request
+   * used to send the same step twice, and the server refused the repeat
+   * ("Invalid status transition from inTransit to inTransit").
+   */
+  const stepInFlight = useRef(false);
+
+  const runStep = async (step: ForwardStep) => {
+    setPendingStep(null);
+    if (stepInFlight.current) return;
+    stepInFlight.current = true;
+    try {
+      if (step === 'vehicleThere') await changeStatus(TripStatus.pickup);
+      else if (step === 'inTransit') await useTripDetailStore.getState().inTransit(id, TripStatus.inTransit);
+      else await changeStatus(TripStatus.delivered);
+    } finally {
+      stepInFlight.current = false;
+    }
   };
 
   /**
@@ -143,6 +182,13 @@ export default function TripDetailScreen() {
                 screen does not need to duplicate that condition. */}
             <TripLiveMap trip={trip} />
 
+            {/* The LR is what a gate or a checkpoint asks for, so it sits right
+                under the trip's progress (and its map), above the order detail.
+                Renders nothing until an LR has been issued. */}
+            <View style={styles.lrSection}>
+              <LrDocument tripId={id} lrNumber={trip?.lrNumber} />
+            </View>
+
             <View style={styles.divider} />
 
             <View style={styles.section}>
@@ -185,15 +231,23 @@ export default function TripDetailScreen() {
             onDecline={() => void changeStatus(TripStatus.rejected, true)}
             onAccept={() => void changeStatus(TripStatus.accepted)}
             onDirections={openDirections}
-            onVehicleThere={() => void changeStatus(TripStatus.pickup)}
+            onVehicleThere={() => setPendingStep('vehicleThere')}
             onConfirmLoading={() => setSheetOpen(true)}
-            onInTransit={() =>
-              void useTripDetailStore.getState().inTransit(id, TripStatus.inTransit)
-            }
-            onDelivered={() => void changeStatus(TripStatus.delivered)}
+            onInTransit={() => setPendingStep('inTransit')}
+            onDelivered={() => setPendingStep('delivered')}
           />
         </>
       )}
+
+      <ActionConfirmDialog
+        visible={pendingStep != null}
+        {...STEP_CONFIRM[pendingStep ?? lastStep.current]}
+        cancelLabel={Strings.confirmNotYet}
+        onConfirm={() => {
+          if (pendingStep) void runStep(pendingStep);
+        }}
+        onCancel={() => setPendingStep(null)}
+      />
 
       <CancelTripDialog
         visible={cancelOpen}
@@ -220,6 +274,47 @@ export default function TripDetailScreen() {
     </View>
   );
 }
+
+type ForwardStep = 'vehicleThere' | 'inTransit' | 'delivered';
+
+/** What each forward step asks before it goes. */
+const STEP_CONFIRM: Record<
+  ForwardStep,
+  Pick<
+    ComponentProps<typeof ActionConfirmDialog>,
+    'tone' | 'icon' | 'label' | 'title' | 'message' | 'confirmLabel' | 'confirmIcon'
+  >
+> = {
+  vehicleThere: {
+    tone: 'primary',
+    icon: 'map-marker-check',
+    label: Strings.confirmVehicleThereLabel,
+    title: Strings.confirmVehicleThereTitle,
+    message: Strings.confirmVehicleThereBody,
+    confirmLabel: Strings.confirmVehicleThereAction,
+    confirmIcon: 'check',
+  },
+  // One colour for every step, the app's own: the icon and wording tell the
+  // steps apart, and a change of colour read as a change of theme.
+  inTransit: {
+    tone: 'primary',
+    icon: 'truck-fast',
+    label: Strings.confirmInTransitLabel,
+    title: Strings.confirmInTransitTitle,
+    message: Strings.confirmInTransitBody,
+    confirmLabel: Strings.confirmInTransitAction,
+    confirmIcon: 'truck-delivery',
+  },
+  delivered: {
+    tone: 'primary',
+    icon: 'package-variant-closed-check',
+    label: Strings.confirmDeliveredLabel,
+    title: Strings.confirmDeliveredTitle,
+    message: Strings.confirmDeliveredBody,
+    confirmLabel: Strings.confirmDeliveredAction,
+    confirmIcon: 'check-all',
+  },
+};
 
 /**
  * Which actions the bottom bar offers, by trip status. Mirrors
@@ -307,4 +402,7 @@ const styles = StyleSheet.create({
   content: { paddingVertical: 10, paddingBottom: 40 },
   divider: { height: 10, backgroundColor: Primary.c100, marginVertical: 10 },
   section: { marginVertical: 5 },
+  // Horizontal only: when there is no LR the card renders nothing, and this
+  // must not leave a gap behind.
+  lrSection: { paddingHorizontal: 15 },
 });

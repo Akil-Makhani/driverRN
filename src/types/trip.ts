@@ -439,6 +439,26 @@ export const fileAttachmentToJson = (m: FileAttachmentModel) => ({
   ...(m.invoice ? { invoices: m.invoice } : {}),
 });
 
+/**
+ * GET /driver/trips/:tripId/lr. Both URLs are short-lived (about an hour), so
+ * they are fetched at the moment the driver taps, never stored.
+ */
+export interface TripLrLinks {
+  lrNumber?: string;
+  fileName?: string;
+  /** Opens the PDF in the phone's browser / PDF viewer. */
+  viewUrl?: string;
+  /** Same file, sent as a download so the phone saves it. */
+  downloadUrl?: string;
+}
+
+export const parseTripLrLinks = (j: any): TripLrLinks => ({
+  lrNumber: str(j?.data?.lrNumber),
+  fileName: str(j?.data?.fileName),
+  viewUrl: str(j?.data?.viewUrl),
+  downloadUrl: str(j?.data?.downloadUrl),
+});
+
 /** Body for POST /driver/trips/delivered-all. */
 export interface TripIdModel {
   tripIds?: string[];

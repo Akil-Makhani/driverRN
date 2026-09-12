@@ -15,11 +15,13 @@ import {
   type TripDetailsResponse,
   type TripIdModel,
   type TripListResponse,
+  type TripLrLinks,
   fileAttachmentToJson,
   parsePresignedUrlResponse,
   parseProductResponse,
   parseTripDetailsResponse,
   parseTripListResponse,
+  parseTripLrLinks,
   productDifferenceRequestToJson,
 } from '@/types/trip';
 
@@ -42,6 +44,15 @@ export const DashboardRepository = {
     return parseTripDetailsResponse(
       await ApiService.get(ApiUrls.tripDetails(tripId)),
     );
+  },
+
+  /**
+   * Links to the trip's LR PDF. The server makes the PDF on first request when
+   * the LR was issued without one, so this can take a moment the first time.
+   * Throws the server's message (404) when no LR has been issued yet.
+   */
+  async getTripLr(tripId: string): Promise<TripLrLinks> {
+    return parseTripLrLinks(await ApiService.get(ApiUrls.tripLr(tripId)));
   },
 
   async statusChanged(tripId: string, status: string): Promise<TripDetailsResponse> {

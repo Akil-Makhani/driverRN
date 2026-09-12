@@ -13,8 +13,18 @@ export const Strings = {
     'We are sorry to see you go. Are you sure you want to delete your account? This action cannot be undone, and you will lose all your data associated with the account',
   logout: 'Logout',
   deleteAccount: 'Delete Account',
+  // The delete-account popup (new — the Flutter app used a plain dialog).
+  deleteAccountLabel: 'DELETE ACCOUNT',
+  deleteAccountTitle: 'Are you sure?',
+  deleteAccountAction: 'YES, DELETE',
   delete: 'Delete',
   areYouSureLogout: 'Are you sure you want to logout?',
+  // The logout popup (new — the Flutter app used a plain dialog).
+  logoutLabel: 'LOGOUT',
+  logoutTitle: 'Are you sure?',
+  logoutMessage:
+    'You will be logged out of BST Driver and stop receiving new orders. Log in again with your mobile number any time.',
+  logoutAction: 'YES, LOGOUT',
 
   // Wallet Screen
   totalBalance: 'Total Balance',
@@ -137,13 +147,52 @@ export const Strings = {
   // Sentence case: this one is a menu row, not a button.
   cancelTripMenu: 'Cancel this trip',
   moreOptions: 'More options',
-  cancelTripTitle: 'Cancel this trip?',
+  cancelTripLabel: 'CANCEL TRIP',
+  cancelTripTitle: 'Are you sure?',
   cancelTripBody:
     'The order goes back to all on-duty drivers and someone else can take it. '
     + 'You will not be able to cancel once you mark Vehicle There.',
-  cancelTripConfirm: 'Yes, cancel',
-  cancelTripDismiss: 'Keep trip',
+  cancelTripConfirm: 'YES, CANCEL',
+  cancelTripDismiss: 'KEEP TRIP',
   cancelTripFailed: 'Could not cancel this trip',
+  // Double-checks before each step forward. The office and the customer are
+  // told the moment one lands, and none of them can be taken back from here.
+  confirmNotYet: 'NOT YET',
+  confirmVehicleThereLabel: 'VEHICLE THERE',
+  confirmVehicleThereTitle: 'Are you sure?',
+  confirmVehicleThereBody:
+    'Confirm that the vehicle has reached the pickup location. The office and the customer will be told.',
+  confirmVehicleThereAction: 'YES, REACHED',
+  confirmInTransitLabel: 'IN TRANSIT',
+  confirmInTransitTitle: 'Are you sure?',
+  confirmInTransitBody:
+    'Confirm that loading is complete and the vehicle is leaving for delivery. The loaded items cannot be changed after this.',
+  confirmInTransitAction: 'YES, IN TRANSIT',
+  confirmDeliveredLabel: 'DELIVERED',
+  confirmDeliveredTitle: 'Are you sure?',
+  confirmDeliveredBody:
+    'Confirm that the goods have been delivered at the drop location. This completes your trip.',
+  confirmDeliveredAction: 'YES, DELIVERED',
+  tripActionFailed: 'Could not update the trip',
+  // Lorry Receipt card on the trip screen.
+  lrDocumentTitle: 'Lorry Receipt (LR)',
+  lrDocumentHint: 'Show this at the pickup and delivery if asked.',
+  viewLr: 'VIEW LR',
+  downloadLr: 'DOWNLOAD',
+  downloadAgainLr: 'DOWNLOAD AGAIN',
+  lrOpenFailed: 'Could not open the LR',
+  lrDownloadFailed: 'Could not download the LR',
+  lrSavedOnPhone: 'Saved on this phone — opens without internet.',
+  lrDownloadedTitle: 'Downloaded successfully!',
+  lrDownloadedToFolder: 'Saved in Downloads › BST LR on your phone.',
+  lrDownloadedInApp: 'Saved in the app. Open it any time from this trip.',
+  lrOpen: 'OPEN',
+  lrClose: 'CLOSE',
+  lrDownloadedLabel: 'LR DOWNLOADED',
+  lrRetry: 'TRY AGAIN',
+  lrViewingSaved: 'Showing the copy saved on this phone',
+  lrLoading: 'Loading LR…',
+  lrNeedsAppUpdate: 'Install the latest version of the app to view and download the LR here.',
   sideBarCancelledTrips: 'Cancelled Trips',
   cancelledTripsEmpty: 'You have not cancelled any trips.',
   cancelledTripsSubtitle: 'Trips you handed back before Vehicle There',
@@ -327,6 +376,18 @@ export const Strings = {
   offerFare: 'ORDER FARE',
   offerLoad: 'LOAD',
   offerMinimise: 'Dismiss for now',
+  // Double-check on the offer card. The clock keeps running while it is open.
+  confirmAcceptOfferLabel: 'ACCEPT ORDER',
+  confirmAcceptOfferTitle: 'Are you sure?',
+  confirmAcceptOfferBody:
+    'You are taking this order. Head to the pickup once it is confirmed.',
+  confirmAcceptOfferAction: 'YES, ACCEPT',
+  confirmRejectOfferLabel: 'REJECT ORDER',
+  confirmRejectOfferTitle: 'Are you sure?',
+  confirmRejectOfferBody:
+    'This order will go to other drivers and you will not see it again.',
+  confirmRejectOfferAction: 'YES, REJECT',
+  confirmGoBack: 'GO BACK',
   offerPending: 'NEW ORDERS',
   offerTapToOpen: 'Tap to view',
 

@@ -1,0 +1,18 @@
+diff --git a/node_modules/expo-dev-launcher/android/src/debug/java/expo/modules/devlauncher/DevLauncherController.kt b/node_modules/expo-dev-launcher/android/src/debug/java/expo/modules/devlauncher/DevLauncherController.kt
+index c0dc022..f9787cd 100644
+--- a/node_modules/expo-dev-launcher/android/src/debug/java/expo/modules/devlauncher/DevLauncherController.kt
++++ b/node_modules/expo-dev-launcher/android/src/debug/java/expo/modules/devlauncher/DevLauncherController.kt
+@@ -434,8 +434,11 @@ class DevLauncherController private constructor(
+           intent.extras?.let {
+             putExtras(it)
+           }
+-          intent.categories?.let {
+-            categories.addAll(it)
++          // addCategory, not categories.addAll: an Intent built from a class
++          // has no category set yet (getCategories() is null), so addAll threw
++          // a NullPointerException and the app never opened.
++          intent.categories?.forEach { category ->
++            addCategory(category)
+           }
+         } ?: run {
+         // If no pending intent is available, use the extras from the intent that was used to launch the app.

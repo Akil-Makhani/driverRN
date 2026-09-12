@@ -25,7 +25,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ConfirmDialog } from '@/components/confirm-dialog';
+import { ActionConfirmDialog } from '@/components/action-confirm-dialog';
 import { Images } from '@/core/constants/assets';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
@@ -144,20 +144,34 @@ export function Sidebar({ visible, onClose }: Props) {
         </Text>
       </View>
 
-      <ConfirmDialog
+      {/* Both account dialogs use the app's own confirmation popup, like the
+          trip steps, and stay in the primary colour: the icon, label and
+          wording already say what is about to happen, and a red card read as
+          another theme. */}
+      <ActionConfirmDialog
         visible={dialog === 'logout'}
-        title={Strings.logout}
-        message={Strings.areYouSureLogout}
-        confirmLabel={Strings.logout}
-        onConfirm={handleLogout}
+        tone="primary"
+        icon="logout"
+        label={Strings.logoutLabel}
+        title={Strings.logoutTitle}
+        message={Strings.logoutMessage}
+        cancelLabel={Strings.cancel}
+        confirmLabel={Strings.logoutAction}
+        confirmIcon="logout"
+        onConfirm={() => void handleLogout()}
         onCancel={() => setDialog(null)}
       />
-      <ConfirmDialog
+      <ActionConfirmDialog
         visible={dialog === 'delete'}
-        title={Strings.deleteAccount}
+        tone="primary"
+        icon="account-remove-outline"
+        label={Strings.deleteAccountLabel}
+        title={Strings.deleteAccountTitle}
         message={Strings.deleteAccountConfirm}
-        confirmLabel={Strings.delete}
-        onConfirm={handleDelete}
+        cancelLabel={Strings.cancel}
+        confirmLabel={Strings.deleteAccountAction}
+        confirmIcon="trash-can-outline"
+        onConfirm={() => void handleDelete()}
         onCancel={() => setDialog(null)}
       />
     </Modal>

@@ -7,24 +7,27 @@
  * the two trip-level charges.
  */
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useRef } from 'react';
 import {
   Alert,
-  FlatList,
-  KeyboardAvoidingView,
   Keyboard,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import {
+  KeyboardAwareScrollView,
+  type KeyboardAwareScrollViewRef,
+} from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 import type { DispatchedProduct, Product, RequestedProduct } from '@/types/trip';
 import { ProductPicker } from './product-picker';
 import { isAddedItem, useTripDetailStore } from './trip-detail-store';
@@ -42,65 +45,96 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
   const dispatchItems = useTripDetailStore((s) => s.dispatchItems);
   const majuriCharge = useTripDetailStore((s) => s.majuriCharge);
   const kataparchiCharge = useTripDetailStore((s) => s.kataparchiCharge);
+  const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
+  /** Set by Add Item, so the list follows the new row once it has laid out. */
+  const scrollToNewRow = useRef(false);
+
+  // Every picker is disabled while the catalogue is empty, which leaves an
+  // added row with no product to choose — and CONFIRM refuses a row without
+  // one. The list is normally fetched by the dashboard; a trip opened some
+  // other way (a notification, a won offer) can reach here before that.
+  useEffect(() => {
+    if (visible && products.length === 0) {
+      void useDashboardStore.getState().getProducts();
+    }
+  }, [visible, products.length]);
+
+  const addItem = () => {
+    Keyboard.dismiss();
+    scrollToNewRow.current = true;
+    useTripDetailStore.getState().addItem();
+  };
 
   return (
     <Modal
       visible={visible}
       transparent
       animationType="slide"
+      statusBarTranslucent
       onRequestClose={onCancel}
     >
-      <Pressable style={styles.scrim} onPress={Keyboard.dismiss}>
-        {/* Lifts the sheet above the keyboard: the Majuri/Kataparchi inputs sit
-            at its bottom edge and were otherwise covered while being typed. */}
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+      <View style={styles.scrim}>
+        {/* Behind the sheet: a tap on the dimmed area puts the keyboard away. */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={Keyboard.dismiss} />
+
+        {/* Capped at 90% of a full-screen parent, so rows beyond that scroll
+            instead of pushing the sheet off the top of the screen. */}
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 10 }]}>
+          <View style={styles.handle} />
           <Text style={styles.title}>{Strings.confirmLoad}</Text>
 
-          <FlatList
-            // Driven by dispatchItems: it holds a row per customer line *plus*
-            // any the driver added, so it is the longer of the two arrays.
-            data={dispatchItems}
-            keyExtractor={(_, index) => String(index)}
-            keyboardShouldPersistTaps="handled"
-            // Lets the list shrink to its content so the charges and actions
-            // stay visible, and scroll once the sheet hits its max height.
+          {/* Keyboard-aware rather than a plain list: the app draws edge to
+              edge, so Android no longer shrinks the window for the keyboard,
+              and inside a Modal the old KeyboardAvoidingView did nothing — the
+              field being typed in sat behind the keyboard with no way to reach
+              it. This scrolls whichever field has focus to just above the
+              keyboard, and pads the end so every row and both charges can be
+              scrolled up past it. The charges live inside it for that reason. */}
+          <KeyboardAwareScrollView
+            ref={scrollRef}
             style={styles.list}
-            renderItem={({ item, index }) => (
+            contentContainerStyle={styles.listContent}
+            bottomOffset={24}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
+            onContentSizeChange={() => {
+              if (!scrollToNewRow.current) return;
+              scrollToNewRow.current = false;
+              scrollRef.current?.scrollToEnd({ animated: true });
+            }}
+          >
+            {/* Driven by dispatchItems: it holds a row per customer line *plus*
+                any the driver added, so it is the longer of the two arrays. */}
+            {dispatchItems.map((item, index) => (
               <LoadRow
+                key={index}
                 requested={requestedItems[index]}
                 dispatched={item}
                 index={index}
                 requestedCount={requestedItems.length}
                 products={products}
               />
-            )}
-            ListFooterComponent={
-              <Pressable
-                onPress={() => useTripDetailStore.getState().addItem()}
-                style={styles.addButton}
-              >
-                <Ionicons name="add" size={18} color={AppColors.primary} />
-                <Text style={styles.addText}>{Strings.addItem}</Text>
-              </Pressable>
-            }
-          />
+            ))}
 
-          <View style={styles.chargesRow}>
-            <ChargeInput
-              label={Strings.majuriCharge}
-              value={majuriCharge}
-              onChange={(v) => useTripDetailStore.getState().setMajuriCharge(v)}
-            />
-            <View style={styles.chargeGap} />
-            <ChargeInput
-              label={Strings.kataparchiCharge}
-              value={kataparchiCharge}
-              onChange={(v) => useTripDetailStore.getState().setKataparchiCharge(v)}
-            />
-          </View>
+            <Pressable onPress={addItem} style={styles.addButton}>
+              <Ionicons name="add-circle-outline" size={20} color={AppColors.primary} />
+              <Text style={styles.addText}>{Strings.addItem}</Text>
+            </Pressable>
+
+            <View style={styles.chargesRow}>
+              <ChargeInput
+                label={Strings.majuriCharge}
+                value={majuriCharge}
+                onChange={(v) => useTripDetailStore.getState().setMajuriCharge(v)}
+              />
+              <View style={styles.chargeGap} />
+              <ChargeInput
+                label={Strings.kataparchiCharge}
+                value={kataparchiCharge}
+                onChange={(v) => useTripDetailStore.getState().setKataparchiCharge(v)}
+              />
+            </View>
+          </KeyboardAwareScrollView>
 
           <View style={styles.actions}>
             <Pressable onPress={onCancel} style={styles.cancelButton}>
@@ -138,8 +172,7 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
             </Pressable>
           </View>
         </View>
-        </KeyboardAvoidingView>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -321,13 +354,23 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
   },
+  // Shrinks to its content, and scrolls once the sheet reaches its cap.
   list: { flexGrow: 0, flexShrink: 1 },
+  listContent: { paddingBottom: 8 },
+  handle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Primary.c300,
+    marginTop: 10,
+  },
   title: {
     ...Typography.h4.bold,
     color: AppColors.text,
     marginLeft: 17,
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 10,
+    marginBottom: 4,
   },
   row: {
     marginHorizontal: 16,
@@ -356,10 +399,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 44,
-    marginTop: 12,
+    height: 46,
+    marginTop: 4,
+    marginHorizontal: 16,
     borderRadius: 10,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: Primary.c300,
     backgroundColor: Primary.c100,

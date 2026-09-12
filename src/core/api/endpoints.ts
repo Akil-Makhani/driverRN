@@ -1,4 +1,6 @@
 /** 1:1 port of lib/services/api_urls.dart. */
+import Constants from 'expo-constants';
+import { NativeModules } from 'react-native';
 
 // Staging: https://staging-api.theallwaysdigital.com/v2
 // Prod:    https://api.bstm.in/v2
@@ -11,8 +13,29 @@
 // Point at a local bst-api by setting EXPO_PUBLIC_API_URL in .env — on the
 // Android emulator use http://10.0.2.2:3000/v2, since localhost there is the
 // emulated device itself, not the host machine.
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? 'https://staging-api.theallwaysdigital.com/v2';
+//
+// Or write METRO_HOST in place of the address (http://METRO_HOST:3000/v2) and
+// it becomes, at runtime, whichever address this bundle was loaded from. A
+// development Mac's Wi-Fi address changes whenever the router hands out a new
+// lease; with a fixed IP in .env every such change left phones loading the
+// bundle fine but calling an API that was no longer there.
+const METRO_HOST = 'METRO_HOST';
+
+/** The host Metro served this bundle from, e.g. "192.168.1.61". Dev builds only. */
+function metroHost(): string | null {
+  const hostUri = Constants.expoConfig?.hostUri; // "192.168.1.61:8082"
+  if (hostUri) return hostUri.split(':')[0];
+  const scriptURL: string | undefined =
+    NativeModules.SourceCode?.getConstants?.().scriptURL ?? NativeModules.SourceCode?.scriptURL;
+  return scriptURL?.match(/^https?:\/\/([^/:]+)/)?.[1] ?? null;
+}
+
+const withMetroHost = (url: string): string =>
+  url.includes(METRO_HOST) ? url.replace(METRO_HOST, metroHost() ?? 'localhost') : url;
+
+export const API_BASE_URL = withMetroHost(
+  process.env.EXPO_PUBLIC_API_URL ?? 'https://staging-api.theallwaysdigital.com/v2',
+);
 
 /**
  * Socket.IO origin for the live dispatch channel (job offers, race results,
@@ -23,8 +46,9 @@ export const API_BASE_URL =
  * off `API_BASE_URL` keeps a local `.env` override working with one variable —
  * point `EXPO_PUBLIC_API_URL` at your machine and the socket follows.
  */
-export const SOCKET_URL =
-  process.env.EXPO_PUBLIC_SOCKET_URL ?? API_BASE_URL.replace(/\/v2\/?$/, '');
+export const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL
+  ? withMetroHost(process.env.EXPO_PUBLIC_SOCKET_URL)
+  : API_BASE_URL.replace(/\/v2\/?$/, '');
 
 export const DOWNLOAD_IMAGE_BASE_URL = 'https://dcaut6thq5oko.cloudfront.net/';
 
@@ -100,6 +124,8 @@ export const ApiUrls = {
   registrationStatus: (mobileNo: string) =>
     `/driver/registration/status?mobileNo=${encodeURIComponent(mobileNo)}`,
   tripDetails: (tripId: string) => `/driver/trips/${tripId}`,
+  /** The trip's LR as view/download links; see DashboardRepository.getTripLr. */
+  tripLr: (tripId: string) => `/driver/trips/${tripId}/lr`,
   tripStatus: (tripId: string, status: string) =>
     `/driver/trips/${tripId}/${status}`,
   notificationPage: (page: number, perPage: number) =>

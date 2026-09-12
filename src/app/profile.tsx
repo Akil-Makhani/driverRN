@@ -6,8 +6,8 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ActionConfirmDialog } from '@/components/action-confirm-dialog';
 import { AppBar } from '@/components/app-bar';
-import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Sidebar } from '@/components/sidebar';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
@@ -69,12 +69,18 @@ export default function ProfileScreen() {
       </View>
 
       <Sidebar visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <ConfirmDialog
+      {/* The same logout popup as the sidebar's. */}
+      <ActionConfirmDialog
         visible={logoutOpen}
-        title={Strings.logout}
-        message={Strings.areYouSureLogout}
-        confirmLabel={Strings.logout}
-        onConfirm={handleLogout}
+        tone="primary"
+        icon="logout"
+        label={Strings.logoutLabel}
+        title={Strings.logoutTitle}
+        message={Strings.logoutMessage}
+        cancelLabel={Strings.cancel}
+        confirmLabel={Strings.logoutAction}
+        confirmIcon="logout"
+        onConfirm={() => void handleLogout()}
         onCancel={() => setLogoutOpen(false)}
       />
     </View>

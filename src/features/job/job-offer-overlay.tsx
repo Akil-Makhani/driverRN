@@ -14,7 +14,8 @@
  * two targets sit far enough apart that neither is hit by accident, and
  * everything secondary is a chip.
  */
-import { useEffect, useRef, useState } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -30,6 +31,7 @@ import {
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ActionConfirmDialog } from '@/components/action-confirm-dialog';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
@@ -97,6 +99,19 @@ export function JobOfferOverlay() {
   });
   const acceptingId = useJobStore((s) => s.acceptingId);
   const notice = useJobStore((s) => s.notice);
+
+  /**
+   * The answer waiting on "Are you sure?", tied to the offer it was asked about.
+   * Accepting sends the driver across town and rejecting loses the job for
+   * good, so neither goes on a single tap. The countdown and the siren carry on
+   * underneath: the dialog is a second look, not a pause. If this offer is
+   * taken, expires or is replaced while it is open, the id no longer matches
+   * and the question quietly goes away with it.
+   */
+  const [decision, setDecision] = useState<{ kind: OfferDecision; offerId: string } | null>(null);
+  /** Kept through the dialog's fade-out, so its colour does not flip on close. */
+  const lastDecision = useRef<OfferDecision>('accept');
+  if (decision) lastDecision.current = decision.kind;
 
   const [secondsLeft, setSecondsLeft] = useState(0);
   // Driven natively so the bar stays smooth while the accept request and a
@@ -371,31 +386,94 @@ export function JobOfferOverlay() {
 
             <View style={[styles.actions, { paddingBottom: 16 + insets.bottom }]}>
               <Pressable
-                style={[styles.button, styles.rejectButton]}
+                style={({ pressed }) => [styles.button, styles.rejectButton, pressed && styles.busy]}
                 disabled={isAccepting}
-                onPress={() => void useJobStore.getState().reject(offer.id)}
+                onPress={() => setDecision({ kind: 'reject', offerId: offer.id })}
               >
+                <MaterialCommunityIcons name="close-circle-outline" size={20} color={AppColors.primary} />
                 <Text style={styles.rejectText}>{Strings.offerReject}</Text>
               </Pressable>
 
               <Pressable
-                style={[styles.button, styles.acceptButton, isAccepting && styles.busy]}
+                style={({ pressed }) => [
+                  styles.button,
+                  styles.acceptButton,
+                  (isAccepting || pressed) && styles.busy,
+                ]}
                 disabled={isAccepting}
-                onPress={() => void useJobStore.getState().accept(offer.id)}
+                onPress={() => setDecision({ kind: 'accept', offerId: offer.id })}
               >
                 {isAccepting ? (
                   <ActivityIndicator color={AppColors.white} />
                 ) : (
-                  <Text style={styles.acceptText}>{Strings.offerAccept}</Text>
+                  <>
+                    <MaterialCommunityIcons name="check-circle-outline" size={20} color={AppColors.white} />
+                    <Text style={styles.acceptText}>{Strings.offerAccept}</Text>
+                  </>
                 )}
               </Pressable>
             </View>
           </View>
         ) : null}
       </View>
+
+      {offer && (
+        <ActionConfirmDialog
+          visible={decision != null && decision.offerId === offer.id}
+          {...DECISION_CONFIRM[decision?.kind ?? lastDecision.current]}
+          badge={`${secondsLeft}${Strings.offerSeconds}`}
+          details={[
+            headline ? `${headline.label}: ${headline.value}` : '',
+            `${Strings.offerPickup}: ${addressTitle(offer.pickupAddress) || '—'}`,
+            `${Strings.offerDrop}: ${addressTitle(offer.deliveryAddress) || '—'}`,
+          ].filter(Boolean)}
+          cancelLabel={Strings.confirmGoBack}
+          onCancel={() => setDecision(null)}
+          onConfirm={() => {
+            const answer = decision;
+            setDecision(null);
+            if (!answer || answer.offerId !== offer.id) return;
+            if (answer.kind === 'accept') void useJobStore.getState().accept(offer.id);
+            else void useJobStore.getState().reject(offer.id);
+          }}
+        />
+      )}
     </Modal>
   );
 }
+
+type OfferDecision = 'accept' | 'reject';
+
+/**
+ * What each answer asks before it goes. Both in the app's own colour, the same
+ * as the trip steps' confirmations; the icon and wording tell them apart.
+ */
+const DECISION_CONFIRM: Record<
+  OfferDecision,
+  Pick<
+    ComponentProps<typeof ActionConfirmDialog>,
+    'tone' | 'icon' | 'label' | 'title' | 'message' | 'confirmLabel' | 'confirmIcon'
+  >
+> = {
+  accept: {
+    tone: 'primary',
+    icon: 'check-decagram',
+    label: Strings.confirmAcceptOfferLabel,
+    title: Strings.confirmAcceptOfferTitle,
+    message: Strings.confirmAcceptOfferBody,
+    confirmLabel: Strings.confirmAcceptOfferAction,
+    confirmIcon: 'check',
+  },
+  reject: {
+    tone: 'primary',
+    icon: 'close-octagon',
+    label: Strings.confirmRejectOfferLabel,
+    title: Strings.confirmRejectOfferTitle,
+    message: Strings.confirmRejectOfferBody,
+    confirmLabel: Strings.confirmRejectOfferAction,
+    confirmIcon: 'close',
+  },
+};
 
 function Stop({
   kind,
@@ -591,14 +669,18 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
   },
-  rejectButton: { borderWidth: 1.5, borderColor: Primary.c300 },
-  rejectText: { ...Typography.button1.bold, color: TextShade.c700 },
+  // Both in the app's own colour, matching the trip screen's buttons: outlined
+  // REJECT, solid ACCEPT, so the solid one is where the eye lands first.
+  rejectButton: { borderWidth: 1.5, borderColor: AppColors.primary, backgroundColor: Primary.c100 },
+  rejectText: { ...Typography.button1.bold, color: AppColors.primary },
   // Accept is weighted heavier than reject on purpose: it is the action the
   // driver came for, and the one they need to hit without looking.
-  acceptButton: { flex: 1.4, backgroundColor: AppColors.success500 },
+  acceptButton: { flex: 1.4, backgroundColor: AppColors.primary },
   acceptText: { ...Typography.button1.extraBold, color: AppColors.white },
   busy: { opacity: 0.75 },
 

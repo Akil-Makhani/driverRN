@@ -93,6 +93,7 @@ export default function RootLayout() {
             <Stack.Screen name="profile" />
             <Stack.Screen name="notifications" />
             <Stack.Screen name="trip/[id]" />
+            <Stack.Screen name="trip/lr/[id]" />
           </Stack>
 
           {/* Above the Stack, so the registration popup belongs to the app
