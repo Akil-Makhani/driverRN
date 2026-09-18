@@ -23,6 +23,7 @@ import { BottomActionBar } from '@/features/trip/bottom-action-bar';
 import { CompanyDetails } from '@/features/trip/company-details';
 import { ConfirmLoadSheet } from '@/features/trip/confirm-load-sheet';
 import { KnowMoreSheet } from '@/features/trip/know-more-sheet';
+import { LorryReceipt } from '@/features/trip/lorry-receipt';
 import { OrderDetails } from '@/features/trip/order-details';
 import { PickupLoadingDetail } from '@/features/trip/pickup-loading-detail';
 import { ShipmentStatusTracker } from '@/features/trip/shipment-status-tracker';
@@ -95,6 +96,14 @@ export default function TripDetailScreen() {
               onKnowMorePress={() => setKnowMoreOpen(true)}
             />
             <ShipmentStatusTracker status={status} />
+
+            {/* Only once the office has issued an LR number. */}
+            {trip?.lrNumber ? (
+              <View style={styles.section}>
+                <LorryReceipt details={trip} />
+              </View>
+            ) : null}
+
             <View style={styles.divider} />
 
             <View style={styles.section}>

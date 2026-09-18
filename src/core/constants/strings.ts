@@ -138,6 +138,20 @@ export const Strings = {
   weightSlip: 'WEIGHT SLIP',
   invoice: 'INVOICE',
 
+  // Lorry Receipt card
+  lorryReceipt: 'Lorry Receipt (LR)',
+  lorryReceiptHint: 'Show this at the pickup and delivery if asked.',
+  viewLr: 'VIEW LR',
+  downloadLr: 'DOWNLOAD',
+  lrDownloadAgain: 'DOWNLOAD AGAIN',
+  lrDownloadSuccess: 'Download successful',
+  lrDownloadedOkay: 'OKAY',
+  lrSavedToDownloads: 'Saved to Downloads › BST LR',
+  lrSavedOnPhone: 'Saved to your phone',
+  lrDownloaded: 'LR saved',
+  lrDownloadFailed: 'Could not download the LR. Check your connection and try again.',
+  lrOpenFailed: 'Could not open the LR right now. Please try again.',
+
   // Confirm Load Popup
   confirmLoad: 'Confirm Load',
   pickupLoad: 'PICKUP LOAD',
