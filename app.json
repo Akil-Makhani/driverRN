@@ -52,7 +52,10 @@
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION",
-        "android.permission.WAKE_LOCK"
+        "android.permission.WAKE_LOCK",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
       "config": {
         "googleMaps": {
@@ -124,9 +127,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "957ef01b-be1f-4727-898a-6cf994cf630c"
+        "projectId": "4dc032d4-d6c5-46b9-9599-c7a7aa8f94fa"
       }
     },
-    "owner": "jishandiwan"
+    "owner": "webminiindia"
   }
 }
