@@ -33,11 +33,19 @@ export const UserRepository = {
 
     const body: Record<string, unknown> = { mobileNumber: mobile, otp };
     if (fcmToken) body.fcmToken = fcmToken;
-    // Which offer channel this install created. Android pins a channel's sound
-    // at creation, so a new siren means a new channel id — and a push naming a
-    // channel this device never created is dropped silently. Telling the server
-    // what we actually have is what stops that.
-    body.offerChannelId = OFFER_CHANNEL_ID;
+    // The offer channel id deliberately does NOT go here. This endpoint sits
+    // behind a Joi schema that forbids unknown keys, so sending it made every
+    // verification 422 with "offer channel id is not allowed" — a correct OTP
+    // could never log anybody in.
+    //
+    // Nothing is lost by dropping it: no deployed server reads the field. It
+    // is not in the login schema, and the endpoint registerFcmToken reports it
+    // to (PUT /driver/account/fcm-token) is itself 404 on staging — the branch
+    // that added both was never deployed. Which channel a push rings on is
+    // decided by the server's own hardcoded id and the channel this app
+    // creates locally, neither of which involves this request. Put the field
+    // back only once the server both declares it in `driver-otp-verify` and
+    // actually reads it.
 
     const model = parseUserResponse(await ApiService.post(ApiUrls.verifyOTP, body));
     if (model.status === 'success' && model.data) {

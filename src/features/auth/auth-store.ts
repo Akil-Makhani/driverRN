@@ -13,7 +13,7 @@
  */
 import { create } from 'zustand';
 
-import { UnauthorisedException } from '@/core/api/errors';
+import { AppException, UnauthorisedException } from '@/core/api/errors';
 import { Strings } from '@/core/constants/strings';
 import { Dispatch } from '@/core/realtime/dispatch';
 import { LocationTracker } from '@/core/services/location-tracker';
@@ -153,7 +153,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setMobile: (v) => set({ mobile: v }),
   setInvalidMobile: (v) => set({ invalidMobile: v }),
-  setOtp: (v) => set({ otp: v, isOtpInvalid: false }),
+  // Editing the code retracts the last verdict on it — the red pins and the
+  // reason both belong to the code that was typed, not the one being typed.
+  setOtp: (v) => set({ otp: v, isOtpInvalid: false, errorMessage: null }),
   setOtpInvalid: (v) => set({ isOtpInvalid: v }),
 
   async sendOTP() {
@@ -295,23 +297,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return false;
     }
 
-    set({ isLoading: true });
+    set({ isLoading: true, errorMessage: null });
     try {
       await UserRepository.verifyOTP(mobile, otp);
-      set({ isLoading: false, isOtpInvalid: false });
+      set({ isLoading: false, isOtpInvalid: false, errorMessage: null });
       clearTimer();
       return true;
-    } catch {
-      // Dart treated both UnauthorisedException and generic failures the same:
-      // mark the pin field red. The server's text is not surfaced here.
-      set({ isLoading: false, isOtpInvalid: true });
+    } catch (e) {
+      // Dart reddened the pins and dropped the server's text, which made every
+      // distinct failure look identical: an expired code, a blocked account and
+      // a rejected request all read as "wrong OTP" on a code that was right.
+      // Red pins still say "this code did not work"; the message says why, and
+      // is the difference between retyping and resending.
+      set({
+        isLoading: false,
+        isOtpInvalid: true,
+        errorMessage:
+          e instanceof AppException && e.message ? e.message : 'Something went Wrong',
+      });
       return false;
     }
   },
 
   async resendOtp(mobile) {
     if (!get().isResendAvailable) return;
-    set({ isLoading: true });
+    set({ isLoading: true, errorMessage: null, otp: '', isOtpInvalid: false });
     try {
       // Resend the same kind of OTP that was sent the first time, or a
       // registering driver would be handed a login OTP their number cannot
@@ -321,11 +331,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } else {
         await UserRepository.sendLoginOTP(mobile);
       }
+      set({ isLoading: false });
+      // Only a code that was actually sent is worth waiting out. Restarting the
+      // countdown after a failure locked the driver out of the one button that
+      // could have fixed it, for another full minute.
+      get().startTimer();
     } catch (e) {
       if (__DEV__) console.log('resendOtp failed:', e);
+      set({
+        isLoading: false,
+        errorMessage:
+          e instanceof AppException && e.message ? e.message : 'Something went Wrong',
+      });
     }
-    set({ isLoading: false });
-    get().startTimer();
   },
 
   startTimer() {
@@ -446,6 +464,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({
       otp: '',
       isOtpInvalid: false,
+      // Carried over, this would greet the driver with the previous attempt's
+      // failure the moment the OTP screen opened.
+      errorMessage: null,
       secondsRemaining: RESEND_SECONDS,
       isResendAvailable: false,
     });

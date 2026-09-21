@@ -43,6 +43,7 @@ export default function OtpScreen() {
 
   const isLoading = useAuthStore((s) => s.isLoading);
   const isOtpInvalid = useAuthStore((s) => s.isOtpInvalid);
+  const errorMessage = useAuthStore((s) => s.errorMessage);
   const isResendAvailable = useAuthStore((s) => s.isResendAvailable);
   const secondsRemaining = useAuthStore((s) => s.secondsRemaining);
   const otpPurpose = useAuthStore((s) => s.otpPurpose);
@@ -171,6 +172,11 @@ export default function OtpScreen() {
           />
         </View>
 
+        {/* Why the code did not take — expired, blocked, no network. Without
+            it the red pins are the only feedback, and they say the same thing
+            for a mistyped code as for one the server never even looked at. */}
+        {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
+
         <View style={styles.resendRow}>
           <Text style={styles.resendLabel}>{Strings.resendOTPText}</Text>
           <Text style={styles.resendTimer}>{formatTimer(secondsRemaining)}</Text>
@@ -247,6 +253,7 @@ const styles = StyleSheet.create({
   pinBoxFocused: { borderColor: AppColors.primary },
   pinBoxError: { borderColor: AppColors.error500 },
   pinText: { ...Typography.h3.bold, color: AppColors.primary },
+  error: { ...Typography.body2.regular, color: AppColors.error600, marginTop: 10 },
   resendRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
   resendLabel: { ...Typography.body2.regular, color: TextShade.c700 },
   resendTimer: { ...Typography.body2.bold, color: TextShade.c700 },
