@@ -14,6 +14,9 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://staging-api.theallwaysdigital.com/v2"
+      },
       "android": {
         "buildType": "apk"
       },
