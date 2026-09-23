@@ -151,6 +151,7 @@ export const Strings = {
   lrDownloaded: 'LR saved',
   lrDownloadFailed: 'Could not download the LR. Check your connection and try again.',
   lrOpenFailed: 'Could not open the LR right now. Please try again.',
+  lrRenderFailed: 'Could not build the LR. Please try again.',
 
   // Confirm Load Popup
   confirmLoad: 'Confirm Load',

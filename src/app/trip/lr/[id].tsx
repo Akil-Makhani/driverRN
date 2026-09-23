@@ -46,6 +46,8 @@ export default function LrViewerScreen() {
 
   const trip = useTripDetailStore((s) => s.tripDetailData);
   const [html, setHtml] = useState<string | null>(null);
+  /** Set when the receipt could not be built, so the screen says so. */
+  const [loadFailed, setLoadFailed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   // Whether this visit has saved the LR, which the confirmation line reflects.
   // Deliberately not a check for an existing file: opening an LR to read it
@@ -83,10 +85,19 @@ export default function LrViewerScreen() {
 
   useEffect(() => {
     let alive = true;
+    setLoadFailed(false);
     void (async () => {
       if (!trip) return;
-      const assets = await lrAssets();
-      if (alive) setHtml(buildLrHtml(trip, assets));
+      try {
+        const assets = await lrAssets();
+        if (alive) setHtml(buildLrHtml(trip, assets));
+      } catch (e) {
+        // Without this the rejection is swallowed and `html` stays null, which
+        // the render below cannot tell apart from "still building" — the
+        // driver is left watching a spinner that will never finish.
+        if (__DEV__) console.log('LR render failed', e);
+        if (alive) setLoadFailed(true);
+      }
     })();
     return () => {
       alive = false;
@@ -140,7 +151,11 @@ export default function LrViewerScreen() {
         centerTitle
       />
 
-      {html == null ? (
+      {loadFailed ? (
+        <View style={styles.center}>
+          <Text style={styles.failedText}>{Strings.lrRenderFailed}</Text>
+        </View>
+      ) : html == null ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={AppColors.primary} />
         </View>
@@ -199,6 +214,12 @@ export default function LrViewerScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Primary.c100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  failedText: {
+    ...Typography.body2.regular,
+    color: TextShade.c700,
+    textAlign: 'center',
+    paddingHorizontal: 30,
+  },
   web: { flex: 1, backgroundColor: Primary.c100 },
   footer: {
     paddingHorizontal: 15,

@@ -6,7 +6,6 @@
  * it already holds. See lr-template.ts for how faithfully the markup tracks the
  * web original.
  */
-import { Asset } from 'expo-asset';
 import { File, Paths } from 'expo-file-system';
 import * as Print from 'expo-print';
 import { Platform } from 'react-native';
@@ -14,37 +13,24 @@ import ReactNativeBlobUtil from 'react-native-blob-util';
 
 import { Preference } from '@/core/storage/preference';
 import type { TripDetailsData } from '@/types/trip';
+import { LR_LOGO_DATA_URI, LR_SIGNATURE_DATA_URI } from './lr-assets';
 import { buildLrHtml, PAGE_HEIGHT, PAGE_WIDTH } from './lr-template';
 
-const LOGO = require('../../../assets/images/lr-company-logo.png');
-const SIGNATURE = require('../../../assets/images/lr-signature.png');
-
 /**
- * Bundled images as `data:` URIs. The print WebView runs outside the app's
- * asset scope, so a bundle path in an <img src> resolves to nothing — the
- * bytes have to travel inside the HTML.
+ * The LR's two fixed images, already `data:` URIs — the print WebView runs
+ * outside the app's asset scope, so a bundle path in an <img src> resolves to
+ * nothing and the bytes have to travel inside the HTML.
  *
- * Both images are fixed assets, so the encoded strings are cached after the
- * first LR and every later one reuses them.
+ * They are inlined at source rather than read from the bundle at runtime: on
+ * Android in a release build there is no file to read. With no Metro server,
+ * expo-asset keeps `Asset.localUri` as the bare drawable resource name
+ * ("assets_images_lrcompanylogo") and marks the asset downloaded, so
+ * `downloadAsync()` never produces a file; opening that name as a path throws,
+ * and fetching it fails with "no protocol". Both worked in dev only because
+ * Metro was serving the images over http. See scripts/build-lr-assets.mjs.
  */
-let assetCache: { logo: string; signature: string } | null = null;
-
-async function encodeAsset(moduleRef: number): Promise<string> {
-  const [asset] = await Asset.loadAsync(moduleRef);
-  if (!asset.localUri) throw new Error('LR asset has no local URI');
-  const base64 = await new File(asset.localUri).base64();
-  return `data:image/png;base64,${base64}`;
-}
-
-/** Shared with the in-app viewer, which renders the same HTML. */
 export async function lrAssets() {
-  if (assetCache) return assetCache;
-  const [logo, signature] = await Promise.all([
-    encodeAsset(LOGO),
-    encodeAsset(SIGNATURE),
-  ]);
-  assetCache = { logo, signature };
-  return assetCache;
+  return { logo: LR_LOGO_DATA_URI, signature: LR_SIGNATURE_DATA_URI };
 }
 
 /** The filename a driver will see, matching the web app's `<lrNumber>.pdf`. */
