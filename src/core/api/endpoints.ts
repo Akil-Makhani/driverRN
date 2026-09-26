@@ -30,6 +30,7 @@ export const ApiUrls = {
   logout: '/driver/account/logout',
   deleteAccount: '/driver/account/delete-account',
   profile: '/driver/account/profile',
+  language: '/driver/account/language',
   duty: '/driver/duty',
   listTrips: '/driver/trips',
   history: '/driver/trips/history/',

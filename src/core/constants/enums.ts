@@ -17,6 +17,14 @@ export const TripStatus = {
 
 export type TripStatusValue = (typeof TripStatus)[keyof typeof TripStatus];
 
+/** How the load reached the customer — sent as `deliveredVia` on Delivered. */
+export const DeliveredVia = {
+  tajMahal: 'tajMahal',
+  tempo: 'tempo',
+} as const;
+
+export type DeliveredViaValue = (typeof DeliveredVia)[keyof typeof DeliveredVia];
+
 /** DocumentType.displayString — the `documentType` field on upload-url calls. */
 export const DocumentType = {
   weightSlip: 'weight_slip',

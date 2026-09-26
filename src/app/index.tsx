@@ -13,6 +13,7 @@ import { Image, StyleSheet, View } from 'react-native';
 
 import { Images } from '@/core/constants/assets';
 import { AppColors } from '@/core/constants/colors';
+import { resetTo } from '@/core/utils/navigation';
 import {
   NotificationManager,
   takePendingTrip,
@@ -38,7 +39,7 @@ export default function SplashScreen() {
 
       const ok = await useAuthStore.getState().loadProfile();
       if (!ok) {
-        router.replace('/(auth)/login');
+        resetTo(router, '/(auth)/login');
         return;
       }
 
@@ -47,7 +48,7 @@ export default function SplashScreen() {
 
       // A push tapped from a cold start routes straight to that trip.
       const tripId = takePendingTrip();
-      router.replace('/dashboard');
+      resetTo(router, '/dashboard');
       if (tripId) router.push(`/trip/${tripId}`);
     })();
   }, [router]);

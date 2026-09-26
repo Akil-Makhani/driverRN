@@ -54,6 +54,14 @@ export const UserRepository = {
     return model;
   },
 
+  /** Saves the driver's language on the server, where the admin sees it. */
+  async updateLanguage(language: string): Promise<CommonResponse> {
+    const raw: CommonResponse = await ApiService.patch(ApiUrls.language, { language });
+    const { user, updateSession } = useSession.getState();
+    if (raw.status === 'success' && user) updateSession({ ...user, language });
+    return raw;
+  },
+
   async logout(): Promise<CommonResponse> {
     const raw = await ApiService.post(ApiUrls.logout);
     Preference.clearAuthData();

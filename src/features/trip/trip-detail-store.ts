@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { downloadUrl } from '@/core/api/endpoints';
 import { DocumentType, type DocumentTypeValue } from '@/core/constants/enums';
 import { Strings } from '@/core/constants/strings';
+import { en } from '@/core/i18n/en';
 import { DashboardRepository } from '@/core/services/dashboard-repository';
 import { isSuccess } from '@/types/api';
 import type {
@@ -49,6 +50,8 @@ interface TripDetailState {
   isUploading: boolean;
   tripCount: number;
   tripDetailData: TripDetailsData | null;
+  /** Why the last status change failed, for the screen to show the driver. */
+  actionError: string | null;
 
   weightSlip: TripAttachment | null;
   invoice: TripAttachment | null;
@@ -61,9 +64,15 @@ interface TripDetailState {
 
   clearFiles: () => void;
   getTrip: (tripId: string, products: Product[]) => Promise<void>;
-  statusChanged: (tripId: string, status: string) => Promise<void>;
-  updateTrip: (tripId: string) => Promise<void>;
-  inTransit: (tripId: string, status: string) => Promise<void>;
+  // Each resolves true when the server accepted the change, so the screen
+  // only leaves the trip once the new status has actually been saved.
+  statusChanged: (
+    tripId: string,
+    status: string,
+    body?: Record<string, unknown>,
+  ) => Promise<boolean>;
+  updateTrip: (tripId: string) => Promise<boolean>;
+  inTransit: (tripId: string, status: string) => Promise<boolean>;
 
   pickAndUpload: (tripId: string, documentType: DocumentTypeValue) => Promise<void>;
   removeAttachment: (documentType: DocumentTypeValue) => Promise<void>;
@@ -105,6 +114,7 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
   isUploading: false,
   tripCount: 0,
   tripDetailData: null,
+  actionError: null,
   weightSlip: null,
   invoice: null,
   requestedItems: [],
@@ -163,63 +173,80 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
     set({ isLoading: false });
   },
 
-  async statusChanged(tripId, status) {
-    set({ isLoading: true });
+  async statusChanged(tripId, status, body) {
+    set({ isLoading: true, actionError: null });
+    let ok = false;
     try {
-      const response = await DashboardRepository.statusChanged(tripId, status);
-      if (isSuccess(response) && response.data) {
+      const response = await DashboardRepository.statusChanged(tripId, status, body);
+      ok = isSuccess(response);
+      if (ok && response.data) {
         set({ tripDetailData: response.data });
       }
+      if (!ok) set({ actionError: response.message ?? Strings.somethingWentWrong });
     } catch (e) {
       if (__DEV__) console.log('statusChanged failed:', e);
+      set({ actionError: e instanceof Error ? e.message : Strings.somethingWentWrong });
     }
     set({ isLoading: false });
+    return ok;
   },
 
   async updateTrip(tripId) {
-    set({ isLoading: true });
+    set({ isLoading: true, actionError: null });
     const { majuriCharge, kataparchiCharge, requestedItems, dispatchItems } = get();
 
-    // Only send a charge the driver actually typed a number into.
+    // Only send a charge the driver actually typed a number into. Labels are
+    // stored on the trip for the office, so they stay English whatever
+    // language the app is in.
     const charges: Charge[] = [];
     const majuri = Number.parseFloat(majuriCharge);
     const kataparchi = Number.parseFloat(kataparchiCharge);
     if (Number.isFinite(majuri)) {
-      charges.push({ label: Strings.majuriCharge, charge: majuri });
+      charges.push({ label: en.majuriCharge, charge: majuri });
     }
     if (Number.isFinite(kataparchi)) {
-      charges.push({ label: Strings.kataparchiCharge, charge: kataparchi });
+      charges.push({ label: en.kataparchiCharge, charge: kataparchi });
     }
 
+    let ok = false;
     try {
       const response = await DashboardRepository.updateTrip(tripId, {
         productDifferences: { requested: requestedItems, dispatched: dispatchItems },
         charges,
       });
-      if (isSuccess(response) && response.data) {
+      ok = isSuccess(response);
+      if (ok && response.data) {
         set({ tripDetailData: response.data });
       }
+      if (!ok) set({ actionError: response.message ?? Strings.somethingWentWrong });
     } catch (e) {
       if (__DEV__) console.log('updateTrip failed:', e);
+      set({ actionError: e instanceof Error ? e.message : Strings.somethingWentWrong });
     }
     set({ isLoading: false });
+    return ok;
   },
 
   async inTransit(tripId, status) {
     const { weightSlip, invoice } = get();
-    set({ isLoading: true });
+    set({ isLoading: true, actionError: null });
+    let ok = false;
     try {
       const response = await DashboardRepository.inTransit(tripId, status, {
         weightSlips: weightSlip ? [toFileDetail(weightSlip)] : [],
         invoice: invoice ? [toFileDetail(invoice)] : [],
       });
-      if (isSuccess(response) && response.data) {
+      ok = isSuccess(response);
+      if (ok && response.data) {
         set({ tripDetailData: response.data });
       }
+      if (!ok) set({ actionError: response.message ?? Strings.somethingWentWrong });
     } catch (e) {
       if (__DEV__) console.log('inTransit failed:', e);
+      set({ actionError: e instanceof Error ? e.message : Strings.somethingWentWrong });
     }
     set({ isLoading: false });
+    return ok;
   },
 
   async pickAndUpload(tripId, documentType) {

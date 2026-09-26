@@ -2,7 +2,7 @@
   "expo": {
     "name": "BST Driver",
     "slug": "driverRN",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon/app_logo.png",
     "scheme": "bstdriver",
@@ -10,21 +10,24 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.bst.driver",
+      "bundleIdentifier": "com.bst.bstdriver",
       "googleServicesFile": "./firebase/GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera so you can photograph the weight slip and invoice for a trip.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photo library so you can attach the weight slip and invoice for a trip.",
         "NSLocationWhenInUseUsageDescription": "This app uses your location to give you driving directions to the pickup and delivery addresses for a trip.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "This app records your location while you are on duty so the office can see the vehicle's route for a trip.",
-        "UIBackgroundModes": ["location", "fetch"],
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "6"
+      "buildNumber": "7"
     },
     "android": {
       "package": "com.bst.driver",
-      "versionCode": 6,
+      "versionCode": 13,
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./firebase/google-services.json",
       "adaptiveIcon": {
@@ -99,9 +102,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f472f803-7822-4449-86dc-1fa8b7d0d32a"
+        "projectId": "beb26929-e9f8-428c-866b-19d34d9168e7"
       }
     },
-    "owner": "akilm"
+    "owner": "faiz_kureshi"
   }
 }

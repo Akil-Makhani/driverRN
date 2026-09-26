@@ -44,9 +44,13 @@ export const DashboardRepository = {
     );
   },
 
-  async statusChanged(tripId: string, status: string): Promise<TripDetailsResponse> {
+  async statusChanged(
+    tripId: string,
+    status: string,
+    body?: Record<string, unknown>,
+  ): Promise<TripDetailsResponse> {
     return parseTripDetailsResponse(
-      await ApiService.patch(ApiUrls.tripStatus(tripId, status)),
+      await ApiService.patch(ApiUrls.tripStatus(tripId, status), body),
     );
   },
 
@@ -70,7 +74,10 @@ export const DashboardRepository = {
     return parseTripDetailsResponse(
       await ApiService.patch(
         ApiUrls.deliverAll,
-        model.tripIds ? { tripIds: model.tripIds } : {},
+        {
+          ...(model.tripIds ? { tripIds: model.tripIds } : {}),
+          ...(model.deliveredVia ? { deliveredVia: model.deliveredVia } : {}),
+        },
       ),
     );
   },

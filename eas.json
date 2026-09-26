@@ -14,8 +14,12 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://staging-api.theallwaysdigital.com/v2"
+      },
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "credentialsSource": "local"
       },
       "ios": {
         "simulator": true
@@ -23,6 +27,9 @@
     },
     "production": {
       "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.bstm.in/v2"
+      },
       "android": {
         "buildType": "app-bundle",
         "credentialsSource": "local"

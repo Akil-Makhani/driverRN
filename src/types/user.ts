@@ -8,6 +8,8 @@ export interface AppUser {
   adharNumber: string;
   panNumber: string;
   dutyStatus: string;
+  /** 'en' | 'hi' | 'gu' — absent from an API that predates languages. */
+  language?: string;
   status: string;
   createdAt?: string;
   updatedAt?: string;
@@ -25,6 +27,7 @@ export function parseAppUser(json: any): AppUser {
     adharNumber: json?.adharNumber ?? '',
     panNumber: json?.panNumber ?? '',
     dutyStatus: json?.dutyStatus ?? '',
+    language: str(json?.language),
     status: json?.status ?? '',
     // Dart parsed these into DateTime but never formatted them; keeping the
     // raw ISO string avoids a conversion nothing consumes.

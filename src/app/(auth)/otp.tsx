@@ -24,6 +24,7 @@ import { AppColors, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { takePendingTrip } from '@/core/services/notification-manager';
+import { resetTo } from '@/core/utils/navigation';
 import { formatTimer, useAuthStore } from '@/features/auth/auth-store';
 import { LoginTopImages } from '@/features/auth/login-top-images';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
@@ -46,7 +47,7 @@ export default function OtpScreen() {
 
     useDashboardStore.getState().syncDutyFromSession();
     const tripId = takePendingTrip();
-    router.replace('/dashboard');
+    resetTo(router, '/dashboard');
     if (tripId) router.push(`/trip/${tripId}`);
   };
 

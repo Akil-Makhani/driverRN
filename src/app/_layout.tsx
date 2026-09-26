@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { useLanguageStore } from '@/core/i18n/language';
 import { useAppFonts } from '@/core/theme/use-app-fonts';
 
 SplashScreen.preventAutoHideAsync();
@@ -21,6 +22,7 @@ messaging().setBackgroundMessageHandler(async () => {});
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useAppFonts();
+  const language = useLanguageStore((s) => s.language);
 
   // Hide the native splash only after the first frame has laid out; hiding it
   // as soon as fonts resolve leaves a black gap before React paints.
@@ -36,7 +38,12 @@ export default function RootLayout() {
         <SafeAreaProvider>
           {/* Every surface is light, so status-bar glyphs must be dark. */}
           <StatusBar style="dark" />
-          <Stack screenOptions={{ headerShown: false }}>
+          {/*
+            Keyed on the language: switching remounts every screen, so copy
+            read through Strings (and memoised by the React Compiler) is
+            rendered again in the new language.
+          */}
+          <Stack key={language} screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="(auth)/login" />
             <Stack.Screen name="(auth)/otp" />

@@ -9,6 +9,7 @@
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppColors, TextShade } from '@/core/constants/colors';
+import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 
 interface Props {
@@ -44,7 +45,7 @@ export function ConfirmDialog({
           <Text style={styles.message}>{message}</Text>
           <View style={styles.actions}>
             <Pressable onPress={onCancel} style={styles.action} hitSlop={4}>
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={styles.cancelText}>{Strings.dialogCancel}</Text>
             </Pressable>
             <Pressable onPress={onConfirm} style={styles.action} hitSlop={4}>
               <Text style={styles.confirmText}>{confirmLabel}</Text>

@@ -5,31 +5,21 @@
  */
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { LanguageButton } from '@/components/language-button';
 import { Images } from '@/core/constants/assets';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { useSession } from '@/core/session';
-import type { TripItem } from '@/types/trip';
 
-/** The batch "DELIVER ALL" card shown above the list when trips are in transit. */
-export function DeliverAllCell({
-  trips,
-  onPress,
-}: {
-  trips: TripItem[];
-  onPress: () => void;
-}) {
+/**
+ * The batch "DELIVER ALL" button, shown below the in-transit trips. Those
+ * trips render as full cards above it, so it no longer repeats their names.
+ */
+export function DeliverAllCell({ onPress }: { onPress: () => void }) {
   return (
     <View>
-      <View style={styles.spacer} />
-      <View style={styles.divider} />
       <View style={styles.deliverBody}>
-        {trips.map((trip) => (
-          <Text key={trip.id} style={styles.deliverAddress}>
-            {`#${trip.driverTripNumber ?? ''}${trip.pickupAddress ?? ''}`}
-          </Text>
-        ))}
         <Pressable onPress={onPress} style={styles.deliverButton}>
           <Text style={styles.deliverButtonText}>{Strings.deliverAll}</Text>
         </Pressable>
@@ -50,6 +40,7 @@ export function DashboardTopView({ completedTripCount }: { completedTripCount: n
           {`${Strings.tripComplete} : ${completedTripCount}`}
         </Text>
       </View>
+      <LanguageButton />
     </View>
   );
 }
@@ -69,12 +60,7 @@ const styles = StyleSheet.create({
   spacer: { height: 10 },
   divider: { height: 10, backgroundColor: Primary.c100 },
 
-  deliverBody: { paddingHorizontal: 10, paddingVertical: 5, marginTop: 10 },
-  deliverAddress: {
-    ...Typography.subtitle1.extraBold,
-    color: AppColors.text,
-    padding: 5,
-  },
+  deliverBody: { paddingHorizontal: 10, paddingVertical: 5 },
   deliverButton: {
     height: 42,
     marginTop: 10,

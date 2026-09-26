@@ -28,16 +28,21 @@ import {
   DeliverAllCell,
 } from '@/features/dashboard/dashboard-parts';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
+import { DeliveredViaDialog } from '@/features/trip/delivered-via-dialog';
 import { useNotificationStore } from '@/features/notification/notification-store';
 import type { TripItem } from '@/types/trip';
 
-/** The deliver-all card is a synthetic first row, so the list is heterogeneous. */
+/**
+ * Every trip renders as a card; in-transit ones follow the active ones, with a
+ * synthetic DELIVER ALL row after them, so the list is heterogeneous.
+ */
 type Row = { kind: 'deliverAll' } | { kind: 'trip'; trip: TripItem };
 
 export default function DashboardScreen() {
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [disclosureVisible, setDisclosureVisible] = useState(false);
+  const [deliverAllOpen, setDeliverAllOpen] = useState(false);
 
   /**
    * Resolver for the disclosure currently on screen.
@@ -166,8 +171,9 @@ export default function DashboardScreen() {
   );
 
   const rows: Row[] = [
-    ...(inTransitTrips.length > 0 ? [{ kind: 'deliverAll' as const }] : []),
     ...activeTrips.map((trip) => ({ kind: 'trip' as const, trip })),
+    ...inTransitTrips.map((trip) => ({ kind: 'trip' as const, trip })),
+    ...(inTransitTrips.length > 0 ? [{ kind: 'deliverAll' as const }] : []),
   ];
 
   const isEmpty = activeTrips.length === 0 && inTransitTrips.length === 0;
@@ -223,16 +229,7 @@ export default function DashboardScreen() {
             }
             renderItem={({ item }) =>
               item.kind === 'deliverAll' ? (
-                <DeliverAllCell
-                  trips={inTransitTrips}
-                  onPress={() =>
-                    void useDashboardStore.getState().deliverAll({
-                      tripIds: inTransitTrips
-                        .map((t) => t.id)
-                        .filter((id): id is string => id != null),
-                    })
-                  }
-                />
+                <DeliverAllCell onPress={() => setDeliverAllOpen(true)} />
               ) : (
                 <DashboardCell
                   trip={item.trip}
@@ -248,6 +245,20 @@ export default function DashboardScreen() {
       </View>
 
       <Sidebar visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
+
+      <DeliveredViaDialog
+        visible={deliverAllOpen}
+        onCancel={() => setDeliverAllOpen(false)}
+        onSelect={(deliveredVia) => {
+          setDeliverAllOpen(false);
+          void useDashboardStore.getState().deliverAll({
+            tripIds: inTransitTrips
+              .map((t) => t.id)
+              .filter((id): id is string => id != null),
+            deliveredVia,
+          });
+        }}
+      />
 
       <LocationDisclosureDialog
         visible={disclosureVisible}

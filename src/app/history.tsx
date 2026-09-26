@@ -93,6 +93,25 @@ export default function HistoryScreen() {
   );
 }
 
+/**
+ * The trip's stage in the app's language. The server's `state.label` is
+ * English, so it is only the fallback for a stage the app has no copy for.
+ */
+function statusLabel(trip: TripDoc): string {
+  switch (trip.statusNumber) {
+    case TripStatusNumber.accepted:
+      return Strings.statusAccept;
+    case TripStatusNumber.pickup:
+      return Strings.statusPickup;
+    case TripStatusNumber.inTransit:
+      return Strings.statusInTransit;
+    case TripStatusNumber.delivered:
+      return Strings.statusDelivered;
+    default:
+      return trip.state?.label ?? '';
+  }
+}
+
 function HistoryCell({ trip, onPress }: { trip: TripDoc; onPress: () => void }) {
   const isComplete = trip.statusNumber === TripStatusNumber.delivered;
   return (
@@ -100,14 +119,14 @@ function HistoryCell({ trip, onPress }: { trip: TripDoc; onPress: () => void }) 
       <Text style={styles.cellAddress}>{trip.pickupAddress ?? ''}</Text>
       <View style={styles.cellRow}>
         <Text style={styles.cellDate}>{trip.updatedAt ?? ''}</Text>
-        <Text style={styles.cellTrip}>{`Trip: #${trip.driverTripNumber ?? ''}`}</Text>
+        <Text style={styles.cellTrip}>{`${Strings.trip}: #${trip.driverTripNumber ?? ''}`}</Text>
         <Text
           style={[
             styles.cellStatus,
             { color: isComplete ? AppColors.success500 : AppColors.primary },
           ]}
         >
-          {trip.state?.label ?? ''}
+          {statusLabel(trip)}
         </Text>
       </View>
       <View style={styles.divider} />

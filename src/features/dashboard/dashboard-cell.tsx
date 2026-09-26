@@ -16,6 +16,18 @@ interface Props {
   onAcceptPress: () => void;
 }
 
+/** The stage shown on the card's status bar once the trip is accepted. */
+function stageLabel(statusNumber?: number): string {
+  switch (statusNumber) {
+    case TripStatusNumber.pickup:
+      return Strings.vehicleThereStatus;
+    case TripStatusNumber.inTransit:
+      return Strings.inTransitStatus;
+    default:
+      return Strings.accepted;
+  }
+}
+
 export function DashboardCell({ trip, onPress, onAcceptPress }: Props) {
   const isAccepted = trip.statusNumber !== TripStatusNumber.assigned;
 
@@ -61,7 +73,7 @@ export function DashboardCell({ trip, onPress, onAcceptPress }: Props) {
             style={styles.statusBar}
           >
             <Text style={styles.statusLabel}>{Strings.tripInProcess}</Text>
-            <Text style={styles.statusValue}>{Strings.accepted}</Text>
+            <Text style={styles.statusValue}>{stageLabel(trip.statusNumber)}</Text>
           </LinearGradient>
         ) : (
           <Pressable onPress={onAcceptPress} style={styles.acceptButton}>

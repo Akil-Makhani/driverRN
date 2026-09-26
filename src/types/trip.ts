@@ -435,4 +435,6 @@ export const fileAttachmentToJson = (m: FileAttachmentModel) => ({
 /** Body for POST /driver/trips/delivered-all. */
 export interface TripIdModel {
   tripIds?: string[];
+  /** How the batch was delivered — 'tajMahal' | 'tempo'. */
+  deliveredVia?: string;
 }

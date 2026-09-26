@@ -31,6 +31,7 @@ import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { useSession } from '@/core/session';
 import { LocationTracker } from '@/core/services/location-tracker';
+import { resetTo } from '@/core/utils/navigation';
 import { useAuthStore } from '@/features/auth/auth-store';
 
 interface Props {
@@ -52,7 +53,12 @@ export function Sidebar({ visible, onClose }: Props) {
     onClose();
     // Already there: just close, so tapping the current row is a no-op rather
     // than pushing a duplicate screen.
-    if (pathname !== destination) router.replace(destination);
+    if (pathname === destination) return;
+    // The dashboard stays at the bottom of the stack so the phone's back button
+    // from History or Profile returns to it instead of leaving the app.
+    if (destination === '/dashboard') router.dismissTo('/dashboard');
+    else if (pathname === '/dashboard') router.push(destination);
+    else router.replace(destination);
   };
 
   const handleLogout = async () => {
@@ -63,7 +69,7 @@ export function Sidebar({ visible, onClose }: Props) {
     await useAuthStore.getState().logout();
     useAuthStore.getState().resetLogin();
     useAuthStore.getState().resetOtp();
-    router.replace('/(auth)/login');
+    resetTo(router, '/(auth)/login');
   };
 
   const handleDelete = async () => {
@@ -73,7 +79,7 @@ export function Sidebar({ visible, onClose }: Props) {
     await useAuthStore.getState().deleteAccount();
     useAuthStore.getState().resetLogin();
     useAuthStore.getState().resetOtp();
-    router.replace('/(auth)/login');
+    resetTo(router, '/(auth)/login');
   };
 
   return (

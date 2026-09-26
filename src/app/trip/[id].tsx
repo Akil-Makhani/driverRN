@@ -22,6 +22,7 @@ import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 import { BottomActionBar } from '@/features/trip/bottom-action-bar';
 import { CompanyDetails } from '@/features/trip/company-details';
 import { ConfirmLoadSheet } from '@/features/trip/confirm-load-sheet';
+import { DeliveredViaDialog } from '@/features/trip/delivered-via-dialog';
 import { KnowMoreSheet } from '@/features/trip/know-more-sheet';
 import { LorryReceipt } from '@/features/trip/lorry-receipt';
 import { OrderDetails } from '@/features/trip/order-details';
@@ -35,6 +36,7 @@ export default function TripDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [knowMoreOpen, setKnowMoreOpen] = useState(false);
+  const [deliveredViaOpen, setDeliveredViaOpen] = useState(false);
 
   const isLoading = useTripDetailStore((s) => s.isLoading);
   const trip = useTripDetailStore((s) => s.tripDetailData);
@@ -55,10 +57,31 @@ export default function TripDetailScreen() {
 
   const status = trip?.statusNumber ?? TripStatusNumber.assigned;
 
-  const changeStatus = async (next: string, goBack = false) => {
-    await useTripDetailStore.getState().statusChanged(id, next);
+  // After a trip step is saved the driver lands back on the dashboard, which
+  // refetches on focus. dismissTo rather than back() because the trip may have
+  // been opened from a notification, not from the dashboard.
+  // A failure stays on the trip and says why, so the driver can retry.
+  const afterAction = (ok: boolean) => {
+    if (ok) {
+      router.dismissTo('/dashboard');
+    } else {
+      Alert.alert(
+        Strings.statusUpdateFailed,
+        useTripDetailStore.getState().actionError ?? Strings.somethingWentWrong,
+      );
+    }
+  };
+
+  const changeStatus = async (
+    next: string,
+    goBack = false,
+    body?: Record<string, unknown>,
+  ) => {
+    const ok = await useTripDetailStore.getState().statusChanged(id, next, body);
     // The dashboard refetches on focus, so a decline can just pop.
     if (goBack) router.back();
+    // Accept stays on the trip: GET DIRECTION and VEHICLE THERE are next.
+    else if (next !== TripStatus.accepted || !ok) afterAction(ok);
   };
 
   // Routes from the driver's current location to wherever the trip is headed
@@ -76,7 +99,7 @@ export default function TripDetailScreen() {
   return (
     <View style={styles.screen}>
       <AppBar
-        title={`Trip: ${String(tripCount).padStart(2, '0')}`}
+        title={`${Strings.trip}: ${String(tripCount).padStart(2, '0')}`}
         leading="back"
         onLeadingPress={() => router.back()}
         variant="white"
@@ -149,9 +172,15 @@ export default function TripDetailScreen() {
             onVehicleThere={() => void changeStatus(TripStatus.pickup)}
             onConfirmLoading={() => setSheetOpen(true)}
             onInTransit={() =>
-              void useTripDetailStore.getState().inTransit(id, TripStatus.inTransit)
+              void (async () => {
+                afterAction(
+                  await useTripDetailStore
+                    .getState()
+                    .inTransit(id, TripStatus.inTransit),
+                );
+              })()
             }
-            onDelivered={() => void changeStatus(TripStatus.delivered)}
+            onDelivered={() => setDeliveredViaOpen(true)}
           />
         </>
       )}
@@ -169,7 +198,18 @@ export default function TripDetailScreen() {
         onCancel={() => setSheetOpen(false)}
         onConfirm={() => {
           setSheetOpen(false);
-          void useTripDetailStore.getState().updateTrip(id);
+          void (async () => {
+            afterAction(await useTripDetailStore.getState().updateTrip(id));
+          })();
+        }}
+      />
+
+      <DeliveredViaDialog
+        visible={deliveredViaOpen}
+        onCancel={() => setDeliveredViaOpen(false)}
+        onSelect={(deliveredVia) => {
+          setDeliveredViaOpen(false);
+          void changeStatus(TripStatus.delivered, false, { deliveredVia });
         }}
       />
     </View>
