@@ -1,6 +1,7 @@
 /**
  * Asked when the driver taps DELIVERED: which vehicle actually delivered the
- * load. The choice is sent with the status change and stored on the trip.
+ * load. The choice is sent with the status change and stored on the trip;
+ * for Tempo the server records the tempo assigned with the trip.
  * Styled after ConfirmDialog so the two read as one family.
  */
 import { Modal, Pressable, StyleSheet, Text } from 'react-native';
@@ -12,17 +13,31 @@ import { Typography } from '@/core/constants/typography';
 
 interface Props {
   visible: boolean;
+  /** The tempo assigned with the trip, shown on the Tempo option. */
+  tempoNumber?: string;
   onSelect: (via: DeliveredViaValue) => void;
   onCancel: () => void;
 }
 
 // A function, not a constant, so the labels follow a language change.
-const options = (): { value: DeliveredViaValue; label: string }[] => [
+const options = (
+  tempoNumber?: string,
+): { value: DeliveredViaValue; label: string }[] => [
   { value: DeliveredVia.tajMahal, label: Strings.deliveredViaTajMahal },
-  { value: DeliveredVia.tempo, label: Strings.deliveredViaTempo },
+  {
+    value: DeliveredVia.tempo,
+    label: tempoNumber
+      ? `${Strings.deliveredViaTempo} · ${tempoNumber}`
+      : Strings.deliveredViaTempo,
+  },
 ];
 
-export function DeliveredViaDialog({ visible, onSelect, onCancel }: Props) {
+export function DeliveredViaDialog({
+  visible,
+  tempoNumber,
+  onSelect,
+  onCancel,
+}: Props) {
   return (
     <Modal
       visible={visible}
@@ -34,7 +49,7 @@ export function DeliveredViaDialog({ visible, onSelect, onCancel }: Props) {
         <Pressable style={styles.card} onPress={() => {}}>
           <Text style={styles.title}>{Strings.deliveredViaTitle}</Text>
           <Text style={styles.message}>{Strings.deliveredViaMessage}</Text>
-          {options().map((o) => (
+          {options(tempoNumber).map((o) => (
             <Pressable
               key={o.value}
               onPress={() => onSelect(o.value)}

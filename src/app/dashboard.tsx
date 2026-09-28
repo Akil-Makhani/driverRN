@@ -248,6 +248,7 @@ export default function DashboardScreen() {
 
       <DeliveredViaDialog
         visible={deliverAllOpen}
+        tempoNumber={sharedTempoNumber(inTransitTrips)}
         onCancel={() => setDeliverAllOpen(false)}
         onSelect={(deliveredVia) => {
           setDeliverAllOpen(false);
@@ -267,6 +268,15 @@ export default function DashboardScreen() {
       />
     </View>
   );
+}
+
+/**
+ * The tempo number to show on Deliver All's Tempo option — only when every
+ * trip in the batch rode the same tempo; each trip still saves its own.
+ */
+function sharedTempoNumber(trips: TripItem[]): string | undefined {
+  const numbers = new Set(trips.map((t) => t.tempoNumber).filter(Boolean));
+  return numbers.size === 1 ? [...numbers][0] : undefined;
 }
 
 const styles = StyleSheet.create({

@@ -2,7 +2,7 @@
   "expo": {
     "name": "BST Driver",
     "slug": "driverRN",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon/app_logo.png",
     "scheme": "bstdriver",
@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.bst.driver",
-      "versionCode": 13,
+      "versionCode": 14,
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./firebase/google-services.json",
       "adaptiveIcon": {

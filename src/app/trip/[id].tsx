@@ -206,6 +206,7 @@ export default function TripDetailScreen() {
 
       <DeliveredViaDialog
         visible={deliveredViaOpen}
+        tempoNumber={trip?.tempoNumber}
         onCancel={() => setDeliveredViaOpen(false)}
         onSelect={(deliveredVia) => {
           setDeliveredViaOpen(false);
