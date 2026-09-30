@@ -240,7 +240,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             errorMessage:
               registerError instanceof UnauthorisedException
                 ? registerError.message
-                : 'Something went Wrong',
+                : Strings.somethingWentWrong,
           });
           return 'stop';
         }
@@ -251,7 +251,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // An UnauthorisedException carries a server message worth showing
         // (e.g. "Your account is blocked."); anything else is noise to the driver.
         errorMessage:
-          e instanceof UnauthorisedException ? e.message : 'Something went Wrong',
+          e instanceof UnauthorisedException ? e.message : Strings.somethingWentWrong,
       });
       return 'stop';
     }
@@ -284,7 +284,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return {
         ok: false,
         error:
-          e instanceof UnauthorisedException ? e.message : 'Something went Wrong',
+          e instanceof UnauthorisedException ? e.message : Strings.somethingWentWrong,
       };
     }
   },
@@ -313,7 +313,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
         isOtpInvalid: true,
         errorMessage:
-          e instanceof AppException && e.message ? e.message : 'Something went Wrong',
+          e instanceof AppException && e.message ? e.message : Strings.somethingWentWrong,
       });
       return false;
     }
@@ -341,7 +341,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({
         isLoading: false,
         errorMessage:
-          e instanceof AppException && e.message ? e.message : 'Something went Wrong',
+          e instanceof AppException && e.message ? e.message : Strings.somethingWentWrong,
       });
     }
   },

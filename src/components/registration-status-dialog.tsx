@@ -27,7 +27,7 @@ interface Props {
 }
 
 /** Icon, tint and wash for each outcome. Tints come from AppColors as-is. */
-const LOOK = {
+const LOOK = () => ({
   required: {
     icon: 'document-text-outline',
     tint: AppColors.primary,
@@ -61,7 +61,7 @@ const LOOK = {
     wash: Primary.c100,
     title: Strings.registerExistsTitle,
   },
-} as const;
+}) as const;
 
 export function RegistrationStatusDialog({
   outcome,
@@ -73,7 +73,7 @@ export function RegistrationStatusDialog({
   // between showings, so it animates in each time rather than only the first.
   if (!outcome) return null;
 
-  const look = LOOK[outcome.kind];
+  const look = LOOK()[outcome.kind];
   /**
    * Only the driver who already has an account is sent to log in. Approval
    * deliberately does not offer it any more: OK now opens the app itself, and

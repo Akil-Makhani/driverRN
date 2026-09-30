@@ -102,8 +102,8 @@ function CancelledCell({ trip, onPress }: { trip: TripDoc; onPress: () => void }
       <Text style={styles.cellAddress}>{trip.pickupAddress ?? ''}</Text>
       <View style={styles.cellRow}>
         <Text style={styles.cellDate}>{trip.updatedAt ?? ''}</Text>
-        <Text style={styles.cellTrip}>{`Trip: #${trip.driverTripNumber ?? ''}`}</Text>
-        <Text style={styles.cellStatus}>{trip.state?.label ?? ''}</Text>
+        <Text style={styles.cellTrip}>{`${Strings.trip}: #${trip.driverTripNumber ?? ''}`}</Text>
+        <Text style={styles.cellStatus}>{Strings.statusCancelled}</Text>
       </View>
       <View style={styles.divider} />
     </Pressable>

@@ -1,7 +1,7 @@
 import messaging from '@react-native-firebase/messaging';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useCallback, useEffect } from 'react';
+import { Fragment, type ReactNode, useCallback, useEffect } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -13,6 +13,7 @@ import {
   NotificationManager,
   onRegistrationDecision,
 } from '@/core/services/notification-manager';
+import { useLanguageStore } from '@/core/i18n/language';
 import { useAppFonts } from '@/core/theme/use-app-fonts';
 import { RegistrationOutcomeHost } from '@/features/auth/registration-outcome-host';
 import { useRegistrationStore } from '@/features/auth/registration-store';
@@ -50,6 +51,7 @@ if (Platform.OS !== 'web') {
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useAppFonts();
+  const language = useLanguageStore((s) => s.language);
 
   // Hide the native splash only after the first frame has laid out; hiding it
   // as soon as fonts resolve leaves a black gap before React paints.
@@ -82,7 +84,19 @@ export default function RootLayout() {
         <SafeAreaProvider>
           {/* Every surface is light, so status-bar glyphs must be dark. */}
           <StatusBar style="dark" />
-          <Stack screenOptions={{ headerShown: false }}>
+          {/*
+            Every screen's content is keyed on the language (LanguageScope), so
+            switching redraws copy read through Strings — which the React
+            Compiler would otherwise keep memoised. The key must not go on the
+            Stack itself: expo-router refuses a remounted root navigator
+            ("Another navigator is already registered for this container").
+            The two overlays below are keyed for the same reason; their state
+            lives in stores.
+          */}
+          <Stack
+            screenOptions={{ headerShown: false }}
+            screenLayout={({ children }) => <LanguageScope>{children}</LanguageScope>}
+          >
             <Stack.Screen name="index" />
             <Stack.Screen name="(auth)/login" />
             <Stack.Screen name="(auth)/otp" />
@@ -99,15 +113,21 @@ export default function RootLayout() {
           {/* Above the Stack, so the registration popup belongs to the app
               rather than to whichever screen happened to raise it — one copy,
               outliving the navigation between them. */}
-          <RegistrationOutcomeHost />
+          <RegistrationOutcomeHost key={language} />
 
           {/* Rendered as a sibling of the whole stack so it covers every
               screen, including modals, and is not unmounted by navigation. */}
-          <JobOfferOverlay />
+          <JobOfferOverlay key={language} />
         </SafeAreaProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>
   );
+}
+
+/** Remounts a screen's content when the language changes; see RootLayout. */
+function LanguageScope({ children }: { children: ReactNode }) {
+  const language = useLanguageStore((s) => s.language);
+  return <Fragment key={language}>{children}</Fragment>;
 }
 
 const styles = StyleSheet.create({ root: { flex: 1 } });

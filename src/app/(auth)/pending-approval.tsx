@@ -60,11 +60,11 @@ const RECHECK_AFTER_MS = 10_000;
  * glitching. Every decision now leaves for somewhere else, so there is nothing
  * for this to become.
  */
-const LOOK = {
+const LOOK = () => ({
   circle: Strings.pendingCircleWaiting,
   wash: TextShade.c100,
   tint: TextShade.c400,
-} as const;
+}) as const;
 
 /**
  * The exception to the rule above, and the only one: a registration whose
@@ -73,11 +73,11 @@ const LOOK = {
  * is a different state, not a decided one, so it is a variant of the screen
  * rather than a way off it.
  */
-const LOOK_INCOMPLETE = {
+const LOOK_INCOMPLETE = () => ({
   circle: Strings.pendingCircleIncomplete,
   wash: Primary.c300,
   tint: AppColors.primary,
-} as const;
+}) as const;
 
 export default function PendingApprovalScreen() {
   const router = useRouter();
@@ -163,7 +163,7 @@ export default function PendingApprovalScreen() {
     return () => sub.remove();
   }, [goToLogin]);
 
-  const look = isDetailsPending ? LOOK_INCOMPLETE : LOOK;
+  const look = isDetailsPending ? LOOK_INCOMPLETE() : LOOK();
 
   const rows: [string, string | undefined][] = [
     [Strings.pendingVehicle, statusInfo?.vehicleNumber],

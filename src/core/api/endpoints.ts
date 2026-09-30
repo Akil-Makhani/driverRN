@@ -70,6 +70,7 @@ export const ApiUrls = {
   logout: '/driver/account/logout',
   deleteAccount: '/driver/account/delete-account',
   profile: '/driver/account/profile',
+  language: '/driver/account/language',
   /** Re-registers this device's push token; see UserRepository.registerFcmToken. */
   fcmToken: '/driver/account/fcm-token',
   duty: '/driver/duty',

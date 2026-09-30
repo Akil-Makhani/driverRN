@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { downloadUrl } from '@/core/api/endpoints';
 import { AppException } from '@/core/api/errors';
 import { DocumentType, type DocumentTypeValue } from '@/core/constants/enums';
-import { Strings } from '@/core/constants/strings';
+import { en } from '@/core/i18n/en';
 import { DashboardRepository } from '@/core/services/dashboard-repository';
 import { isSuccess } from '@/types/api';
 import type {
@@ -195,15 +195,17 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
     set({ isLoading: true });
     const { majuriCharge, kataparchiCharge, requestedItems, dispatchItems } = get();
 
-    // Only send a charge the driver actually typed a number into.
+    // Only send a charge the driver actually typed a number into. Labels are
+    // saved on the trip for the office, so they stay English whatever the
+    // driver's app language.
     const charges: Charge[] = [];
     const majuri = Number.parseFloat(majuriCharge);
     const kataparchi = Number.parseFloat(kataparchiCharge);
     if (Number.isFinite(majuri)) {
-      charges.push({ label: Strings.majuriCharge, charge: majuri });
+      charges.push({ label: en.majuriCharge, charge: majuri });
     }
     if (Number.isFinite(kataparchi)) {
-      charges.push({ label: Strings.kataparchiCharge, charge: kataparchi });
+      charges.push({ label: en.kataparchiCharge, charge: kataparchi });
     }
 
     try {

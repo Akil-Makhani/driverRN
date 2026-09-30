@@ -142,7 +142,7 @@ export default function TripDetailScreen() {
   return (
     <View style={styles.screen}>
       <AppBar
-        title={`Trip: ${String(tripCount).padStart(2, '0')}`}
+        title={`${Strings.trip}: ${String(tripCount).padStart(2, '0')}`}
         leading="back"
         onLeadingPress={() => router.back()}
         variant="white"
@@ -241,7 +241,7 @@ export default function TripDetailScreen() {
 
       <ActionConfirmDialog
         visible={pendingStep != null}
-        {...STEP_CONFIRM[pendingStep ?? lastStep.current]}
+        {...STEP_CONFIRM()[pendingStep ?? lastStep.current]}
         cancelLabel={Strings.confirmNotYet}
         onConfirm={() => {
           if (pendingStep) void runStep(pendingStep);
@@ -278,13 +278,13 @@ export default function TripDetailScreen() {
 type ForwardStep = 'vehicleThere' | 'inTransit' | 'delivered';
 
 /** What each forward step asks before it goes. */
-const STEP_CONFIRM: Record<
+const STEP_CONFIRM = (): Record<
   ForwardStep,
   Pick<
     ComponentProps<typeof ActionConfirmDialog>,
     'tone' | 'icon' | 'label' | 'title' | 'message' | 'confirmLabel' | 'confirmIcon'
   >
-> = {
+> => ({
   vehicleThere: {
     tone: 'primary',
     icon: 'map-marker-check',
@@ -314,7 +314,7 @@ const STEP_CONFIRM: Record<
     confirmLabel: Strings.confirmDeliveredAction,
     confirmIcon: 'check-all',
   },
-};
+});
 
 /**
  * Which actions the bottom bar offers, by trip status. Mirrors

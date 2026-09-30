@@ -76,14 +76,14 @@ function legLabel(durationMin?: number, distanceKm?: number): string {
 const WARN_AT = 0.5;
 const URGENT_AT = 0.25;
 
-const NOTICE_TEXT: Record<JobOutcome, string> = {
+const NOTICE_TEXT = (): Record<JobOutcome, string> => ({
   taken: Strings.offerTaken,
   expired: Strings.offerExpiredNotice,
   cancelled: Strings.offerCancelledNotice,
   failed: Strings.offerFailedNotice,
   // A decline is the driver's own doing; it needs no explanation back to them.
   declined: '',
-};
+});
 
 export function JobOfferOverlay() {
   // The sheet sits on the bottom edge, which on most phones is where the
@@ -155,7 +155,7 @@ export function JobOfferOverlay() {
     };
   }, [offer, deadline, ttlSeconds, progress]);
 
-  const noticeText = notice ? NOTICE_TEXT[notice.outcome] : '';
+  const noticeText = notice ? NOTICE_TEXT()[notice.outcome] : '';
   // The notice only gets the screen once the offer it describes has gone;
   // a queued offer always outranks a postmortem of the previous one.
   const showNotice = !offer && Boolean(noticeText);
@@ -420,7 +420,7 @@ export function JobOfferOverlay() {
       {offer && (
         <ActionConfirmDialog
           visible={decision != null && decision.offerId === offer.id}
-          {...DECISION_CONFIRM[decision?.kind ?? lastDecision.current]}
+          {...DECISION_CONFIRM()[decision?.kind ?? lastDecision.current]}
           badge={`${secondsLeft}${Strings.offerSeconds}`}
           details={[
             headline ? `${headline.label}: ${headline.value}` : '',
@@ -448,13 +448,13 @@ type OfferDecision = 'accept' | 'reject';
  * What each answer asks before it goes. Both in the app's own colour, the same
  * as the trip steps' confirmations; the icon and wording tell them apart.
  */
-const DECISION_CONFIRM: Record<
+const DECISION_CONFIRM = (): Record<
   OfferDecision,
   Pick<
     ComponentProps<typeof ActionConfirmDialog>,
     'tone' | 'icon' | 'label' | 'title' | 'message' | 'confirmLabel' | 'confirmIcon'
   >
-> = {
+> => ({
   accept: {
     tone: 'primary',
     icon: 'check-decagram',
@@ -473,7 +473,7 @@ const DECISION_CONFIRM: Record<
     confirmLabel: Strings.confirmRejectOfferAction,
     confirmIcon: 'close',
   },
-};
+});
 
 function Stop({
   kind,

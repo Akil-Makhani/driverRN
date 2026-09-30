@@ -201,7 +201,8 @@ function LoadRow({
     products.find((p) => p.id === dispatched?.selectedProduct?.id)?.subItems ?? [];
 
   // Driver-added lines have no customer counterpart, so they show a removal
-  // control and an "extra" label in place of the ordered figures.
+  // control, an "extra" label, and in place of the ordered figures the name of
+  // each field — a bare dash left the driver guessing which box was which.
   const isAdded = isAddedItem(index, requestedCount);
 
   return (
@@ -227,7 +228,7 @@ function LoadRow({
       </View>
 
       <RowLine
-        left={isAdded ? '—' : requested?.product?.name ?? ''}
+        left={isAdded ? Strings.product : requested?.product?.name ?? ''}
         right={
           <ProductPicker
             value={dispatched?.selectedProduct}
@@ -244,7 +245,7 @@ function LoadRow({
           weights were being submitted as 0. */}
       {(subItems.length > 0 || isAdded) && (
         <RowLine
-          left={isAdded ? '—' : requested?.subItem?.name ?? ''}
+          left={isAdded ? Strings.size : requested?.subItem?.name ?? ''}
           right={
             <ProductPicker
               value={dispatched?.selectedSubProduct}
@@ -260,7 +261,7 @@ function LoadRow({
         // BUG PARITY NOTE: Flutter labelled the quantity row "<qty>KG". Kept as
         // the raw quantity here — the unit was simply wrong, and the adjacent
         // weight row already carries KG.
-        left={isAdded ? '—' : `${Math.trunc(requested?.qty ?? 0)}`}
+        left={isAdded ? Strings.quantity : `${Math.trunc(requested?.qty ?? 0)}`}
         right={
           <NumberField
             value={dispatched?.qty}
@@ -269,7 +270,7 @@ function LoadRow({
         }
       />
       <RowLine
-        left={isAdded ? '—' : `${Math.trunc(requested?.weight ?? 0)}KG`}
+        left={isAdded ? `${Strings.weight} (${Strings.kg})` : `${Math.trunc(requested?.weight ?? 0)}KG`}
         right={
           <NumberField
             value={dispatched?.weight}

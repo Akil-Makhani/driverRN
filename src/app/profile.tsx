@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ActionConfirmDialog } from '@/components/action-confirm-dialog';
 import { AppBar } from '@/components/app-bar';
+import { LanguageOptions } from '@/components/language-options';
 import { Sidebar } from '@/components/sidebar';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
@@ -63,6 +64,8 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <LanguagePicker />
+
         <Pressable onPress={() => setLogoutOpen(true)} style={styles.logoutButton}>
           <Text style={styles.logoutText}>{Strings.logout.toUpperCase()}</Text>
         </Pressable>
@@ -83,6 +86,17 @@ export default function ProfileScreen() {
         onConfirm={() => void handleLogout()}
         onCancel={() => setLogoutOpen(false)}
       />
+    </View>
+  );
+}
+
+/** Switches the whole app between English, Hindi and Gujarati. */
+function LanguagePicker() {
+  return (
+    <View style={[styles.card, styles.languageCard]}>
+      <Text style={styles.languageTitle}>{Strings.language}</Text>
+      <Text style={styles.languageHint}>{Strings.languageHint}</Text>
+      <LanguageOptions />
     </View>
   );
 }
@@ -145,6 +159,14 @@ const styles = StyleSheet.create({
     ...Typography.body2.extraBold,
     color: AppColors.text,
     marginTop: 3,
+  },
+  languageCard: { marginTop: 15 },
+  languageTitle: { ...Typography.body1.extraBold, color: AppColors.text },
+  languageHint: {
+    ...Typography.body2.regular,
+    color: TextShade.c700,
+    marginTop: 3,
+    marginBottom: 5,
   },
   logoutButton: {
     marginTop: 15,

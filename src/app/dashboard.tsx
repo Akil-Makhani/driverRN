@@ -137,9 +137,12 @@ export default function DashboardScreen() {
     [router],
   );
 
+  // In-transit trips are full cards too, so the driver can open one and see
+  // or deliver it on its own; DELIVER ALL follows them.
   const rows: Row[] = [
-    ...(inTransitTrips.length > 0 ? [{ kind: 'deliverAll' as const }] : []),
     ...activeTrips.map((trip) => ({ kind: 'trip' as const, trip })),
+    ...inTransitTrips.map((trip) => ({ kind: 'trip' as const, trip })),
+    ...(inTransitTrips.length > 0 ? [{ kind: 'deliverAll' as const }] : []),
   ];
 
   const isEmpty = activeTrips.length === 0 && inTransitTrips.length === 0;
@@ -200,7 +203,6 @@ export default function DashboardScreen() {
             renderItem={({ item }) =>
               item.kind === 'deliverAll' ? (
                 <DeliverAllCell
-                  trips={inTransitTrips}
                   onPress={() =>
                     void useDashboardStore.getState().deliverAll({
                       tripIds: inTransitTrips
