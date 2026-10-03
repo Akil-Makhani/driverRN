@@ -16,12 +16,12 @@ import { useSession } from '@/core/session';
  * The batch "DELIVER ALL" button, shown below the in-transit trips. Those
  * trips render as full cards above it, so it no longer repeats their names.
  */
-export function DeliverAllCell({ onPress }: { onPress: () => void }) {
+export function DeliverAllCell({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <View>
       <View style={styles.deliverBody}>
         <Pressable onPress={onPress} style={styles.deliverButton}>
-          <Text style={styles.deliverButtonText}>{Strings.deliverAll}</Text>
+          <Text style={styles.deliverButtonText}>{label}</Text>
         </Pressable>
       </View>
     </View>

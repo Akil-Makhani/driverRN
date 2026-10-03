@@ -17,11 +17,13 @@ import { AppException, UnauthorisedException } from '@/core/api/errors';
 import { Strings } from '@/core/constants/strings';
 import { Dispatch } from '@/core/realtime/dispatch';
 import { LocationTracker } from '@/core/services/location-tracker';
+import { NotificationManager } from '@/core/services/notification-manager';
 import { RegistrationRepository } from '@/core/services/registration-repository';
 import { UserRepository } from '@/core/services/user-repository';
 import { useSession } from '@/core/session';
 import { Preference } from '@/core/storage/preference';
 import { useRegistrationStore } from '@/features/auth/registration-store';
+import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 import type { RegistrationStatusInfo } from '@/types/registration';
 
 /**
@@ -35,7 +37,20 @@ import type { RegistrationStatusInfo } from '@/types/registration';
  */
 async function endDriverSession(): Promise<void> {
   Dispatch.stop();
-  await LocationTracker.stop();
+  // Duty is never switched off on this path, so the switch would still read
+  // "on". If the next login's profile says "on" too, nothing changes, the duty
+  // subscription never fires, and that session silently gets no offers.
+  useDashboardStore.setState({ selectedDutyValue: false });
+  await Promise.all([
+    LocationTracker.stop(),
+    // An offer already in the tray is still playing its siren.
+    NotificationManager.dismissOfferNotifications(),
+    // The server keeps pushing offers to whatever token it last stored, and
+    // with the app closed the OS rings for them — a logged-out phone went on
+    // sounding the siren. Deleting the token makes those pushes undeliverable
+    // whatever the server still has on file.
+    NotificationManager.forgetDevice(),
+  ]);
 }
 
 interface AuthState {
@@ -85,7 +100,8 @@ interface AuthState {
   startRegistration: (mobile: string) => Promise<{ ok: boolean; error?: string }>;
   /** Resolves true when the OTP verified and the driver is logged in. */
   verifyOTP: (mobile: string) => Promise<boolean>;
-  resendOtp: (mobile: string) => Promise<void>;
+  /** Resolves true when a fresh OTP was actually sent. */
+  resendOtp: (mobile: string) => Promise<boolean>;
 
   startTimer: () => void;
   stopTimer: () => void;
@@ -320,7 +336,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   async resendOtp(mobile) {
-    if (!get().isResendAvailable) return;
+    if (!get().isResendAvailable) return false;
     set({ isLoading: true, errorMessage: null, otp: '', isOtpInvalid: false });
     try {
       // Resend the same kind of OTP that was sent the first time, or a
@@ -336,6 +352,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // countdown after a failure locked the driver out of the one button that
       // could have fixed it, for another full minute.
       get().startTimer();
+      return true;
     } catch (e) {
       if (__DEV__) console.log('resendOtp failed:', e);
       set({
@@ -343,6 +360,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         errorMessage:
           e instanceof AppException && e.message ? e.message : Strings.somethingWentWrong,
       });
+      return false;
     }
   },
 

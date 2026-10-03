@@ -10,13 +10,18 @@ import { Typography } from '@/core/constants/typography';
 /** The green banner explaining what the driver should do next. */
 export function TripStatusTopView({
   status,
+  isReached = false,
   onKnowMorePress,
 }: {
   status: number;
+  /** In Transit with Mark Reached pressed: at the drop. */
+  isReached?: boolean;
   /** Opens the fuller explanation. Flutter drew this as a dead image. */
   onKnowMorePress?: () => void;
 }) {
-  const { title, subtitle } = copyFor(status);
+  const { title, subtitle } = isReached
+    ? { title: Strings.reachedTitle, subtitle: Strings.reachedDesc }
+    : copyFor(status);
 
   return (
     <View style={styles.container}>

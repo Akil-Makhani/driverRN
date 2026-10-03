@@ -146,6 +146,7 @@ export default function DashboardScreen() {
   ];
 
   const isEmpty = activeTrips.length === 0 && inTransitTrips.length === 0;
+  const nextInTransit = inTransitTrips.find((t) => t.id != null);
 
   return (
     <View style={styles.screen}>
@@ -203,13 +204,20 @@ export default function DashboardScreen() {
             renderItem={({ item }) =>
               item.kind === 'deliverAll' ? (
                 <DeliverAllCell
-                  onPress={() =>
-                    void useDashboardStore.getState().deliverAll({
-                      tripIds: inTransitTrips
-                        .map((t) => t.id)
-                        .filter((id): id is string => id != null),
-                    })
+                  // Opens the trip rather than acting from here: Mark Reached and
+                  // Delivered go through the trip screen's Confirm Delivery sheet
+                  // (the qty and weight actually handed over) and "are you sure?".
+                  // Named after that trip's next step. With several trips in
+                  // transit, the first one; once it is done the list refreshes
+                  // and this moves on to the next.
+                  label={
+                    nextInTransit?.reachedAt
+                      ? Strings.statusDelivered.toUpperCase()
+                      : Strings.markReached
                   }
+                  onPress={() => {
+                    if (nextInTransit?.id) router.push(`/trip/${nextInTransit.id}`);
+                  }}
                 />
               ) : (
                 <DashboardCell

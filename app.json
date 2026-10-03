@@ -118,7 +118,8 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
-      "expo-audio"
+      "expo-audio",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -38,7 +38,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Destination = '/dashboard' | '/history' | '/cancelled' | '/profile';
+type Destination = '/dashboard' | '/history' | '/cancelled' | '/profile' | '/test-location';
 
 export function Sidebar({ visible, onClose }: Props) {
   const router = useRouter();
@@ -120,6 +120,16 @@ export function Sidebar({ visible, onClose }: Props) {
             selected={pathname === '/profile'}
             onPress={() => go('/profile')}
           />
+          {/* Debug builds only: lets a tester outside Morbi receive tempo
+              offers as if they were near the pickup. */}
+          {__DEV__ && (
+            <SidebarCell
+              icon="locate"
+              title="Test location"
+              selected={pathname === '/test-location'}
+              onPress={() => go('/test-location')}
+            />
+          )}
           <SidebarCell
             icon="trash"
             title={Strings.sideBarDeleteAccount}

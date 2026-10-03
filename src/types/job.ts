@@ -75,8 +75,19 @@ export interface JobOffer {
   /** One line of "what am I carrying", e.g. "Cement · 40 bags". */
   productSummary?: string;
 
-  /** ISO instant after which the server refuses an accept. */
+  /**
+   * ISO instant after which the server refuses an accept. On a tempo ring
+   * offer it is instead the end of this driver's siren, and `acceptUntil` is
+   * the real deadline.
+   */
   expiresAt?: string;
+  /**
+   * A tempo ring offer stays open while it widens to further rings (5 km, then
+   * 10 km…), so a nearer driver whose siren has stopped can still take it.
+   */
+  acceptUntil?: string;
+  /** The ring, in km from the pickup, this offer reached the driver in. */
+  ringKm?: number;
   /** How long the offer was live for, in seconds, as sent. */
   ttlSeconds?: number;
   createdAt?: string;
@@ -100,6 +111,8 @@ export const parseJobOffer = (j: any): JobOffer => ({
   fareAmount: num(j?.fareAmount),
   productSummary: str(j?.productSummary),
   expiresAt: str(j?.expiresAt),
+  acceptUntil: str(j?.acceptUntil),
+  ringKm: num(j?.ringKm),
   ttlSeconds: num(j?.ttlSeconds),
   createdAt: str(j?.createdAt),
 });
@@ -150,4 +163,24 @@ export function remainingSeconds(offer: JobOffer, now = Date.now()): number {
     }
   }
   return ttl;
+}
+
+/**
+ * The most a ring offer can stay open. The admin sets each ring's time (up to
+ * hours) and there are ten rings, so this is generous: it only guards against
+ * a wildly wrong phone clock.
+ */
+const MAX_ACCEPT_WINDOW_SECONDS = 24 * 60 * 60;
+
+/**
+ * Seconds left to accept. For a ring offer that runs past the siren to
+ * `acceptUntil`; otherwise it is the same as the siren's countdown.
+ */
+export function acceptSeconds(offer: JobOffer, now = Date.now()): number {
+  const siren = remainingSeconds(offer, now);
+  if (!offer.acceptUntil) return siren;
+  const parsed = Date.parse(offer.acceptUntil);
+  if (!Number.isFinite(parsed)) return siren;
+  const left = (parsed - now) / 1000;
+  return left > siren && left <= MAX_ACCEPT_WINDOW_SECONDS ? left : siren;
 }

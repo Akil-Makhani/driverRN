@@ -68,7 +68,11 @@ interface TripDetailState {
 
   clearFiles: () => void;
   getTrip: (tripId: string, products: Product[]) => Promise<void>;
-  statusChanged: (tripId: string, status: string) => Promise<StatusChangeResult>;
+  statusChanged: (
+    tripId: string,
+    status: string,
+    body?: Record<string, unknown>,
+  ) => Promise<StatusChangeResult>;
   updateTrip: (tripId: string) => Promise<void>;
   inTransit: (tripId: string, status: string) => Promise<void>;
 
@@ -170,10 +174,10 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
     set({ isLoading: false });
   },
 
-  async statusChanged(tripId, status) {
+  async statusChanged(tripId, status, body) {
     set({ isLoading: true });
     try {
-      const response = await DashboardRepository.statusChanged(tripId, status);
+      const response = await DashboardRepository.statusChanged(tripId, status, body);
       if (isSuccess(response) && response.data) {
         set({ tripDetailData: response.data });
       }

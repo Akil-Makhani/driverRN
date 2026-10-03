@@ -86,7 +86,11 @@ export const en = {
   inTransitDesc:
     'Please confirm the loaded material and mark it as in transit.',
   inTransitDesc2:
-    'On arrival at the delivery location, update the status to delivered',
+    'On arrival at the delivery location, mark the trip reached',
+  // After Mark Reached: at the drop, the goods still to hand over.
+  reachedTitle: 'Reached delivery location',
+  reachedDesc: 'Hand over the goods, then mark the trip delivered.',
+  markReached: 'MARK REACHED',
   successfullyDelivered: 'Successfully delivered',
   successfullyDeliveredDesc: 'Order has beed successfully delivered.',
   // "Know more" sheet — the fuller explanation behind each status banner.
@@ -182,6 +186,11 @@ export const en = {
   confirmDeliveredBody:
     'Confirm that the goods have been delivered at the drop location. This completes your trip.',
   confirmDeliveredAction: 'YES, DELIVERED',
+  confirmReachedLabel: 'REACHED',
+  confirmReachedTitle: 'Are you sure?',
+  confirmReachedBody:
+    'Confirm that the vehicle has reached the delivery location. The office and the customer will be told.',
+  confirmReachedAction: 'YES, REACHED',
   tripActionFailed: 'Could not update the trip',
   // Lorry Receipt card on the trip screen.
   lrDocumentTitle: 'Lorry Receipt (LR)',
@@ -191,6 +200,8 @@ export const en = {
   downloadAgainLr: 'DOWNLOAD AGAIN',
   lrOpenFailed: 'Could not open the LR',
   lrDownloadFailed: 'Could not download the LR',
+  shareLr: 'SHARE',
+  lrShareFailed: 'Could not share the LR',
   lrSavedOnPhone: 'Saved on this phone — opens without internet.',
   lrDownloadedTitle: 'Downloaded successfully!',
   lrDownloadedToFolder: 'Saved in Downloads › BST LR on your phone.',
@@ -215,6 +226,12 @@ export const en = {
   confirmLoad: 'Confirm Load',
   pickupLoad: 'PICKUP LOAD',
   customerLoad: 'Customer Load',
+
+  // Confirm Delivery Popup (tempo): product and size are locked, qty and
+  // weight are what was actually handed over.
+  confirmDelivery: 'Confirm Delivery',
+  loadedLoad: 'LOADED',
+  deliveredLoad: 'DELIVERED',
   tiles: 'Tiles',
   majuriCharge: 'Majuri Charge',
   kataparchiCharge: 'Kataparchi Charge',

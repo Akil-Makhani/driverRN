@@ -38,25 +38,59 @@ export interface Address {
   longitude?: string;
 }
 
-export const parseAddress = (j: any): Address => ({
-  contactName: str(j?.contactName),
-  contactNumber: str(j?.contactNumber),
-  companyName: str(j?.companyName),
-  addressId: str(j?.addressId),
-  pincode: str(j?.pincode),
-  city: str(j?.city),
-  locality: str(j?.locality),
-  buildingName: str(j?.buildingName),
-  landmark: str(j?.landmark),
-  type: str(j?.type),
-  id: str(j?._id),
-  latitude: str(j?.latitude),
-  // BUG PARITY NOTE: Dart read `json['latitude']` for longitude too, so the
-  // "Get Direction" button was fed a duplicated coordinate. Reading the real
-  // field here — the button only gates on both being present, and a wrong
-  // longitude would send the driver to the wrong place.
-  longitude: str(j?.longitude),
-});
+/**
+ * BST's Morbi godown — where every tempo "godown" order is delivered — as the
+ * office gives it out. Mirrors GODOWN_DELIVERY_ADDRESS in bst-api
+ * (tempoGodownAddress.constants.ts).
+ */
+const GODOWN_ADDRESS = {
+  companyName: 'ALWAYS ROADWAYS PVT LTD',
+  buildingName: '8-A NATIONAL HIGHWAY',
+  locality: 'BANDHUNAGAR',
+  city: 'MORBI',
+  pincode: '364242',
+};
+
+/**
+ * Orders booked before the API changed its godown address still carry the old
+ * copy, "Tazmahal, PWPJ+4M4, opp. INDIAN OIL PETROL PUMP". It is the same
+ * godown, so it is shown under the name the driver now knows it by. Only the
+ * text changes; the coordinates (the warehouse gate) are kept.
+ */
+function isLegacyGodown(j: any): boolean {
+  return (
+    String(j?.companyName ?? '').trim().toLowerCase() === 'tazmahal' &&
+    String(j?.buildingName ?? '').toUpperCase().includes('PWPJ+4M4')
+  );
+}
+
+export const parseAddress = (raw: any): Address => {
+  const j = isLegacyGodown(raw) ? { ...raw, ...GODOWN_ADDRESS, landmark: undefined } : raw;
+  return {
+    contactName: str(j?.contactName),
+    contactNumber: str(j?.contactNumber),
+    companyName: str(j?.companyName),
+    addressId: str(j?.addressId),
+    pincode: str(j?.pincode),
+    city: str(j?.city),
+    locality: str(j?.locality),
+    buildingName: str(j?.buildingName),
+    landmark: str(j?.landmark),
+    type: str(j?.type),
+    id: str(j?._id),
+    // A pickup carries `latitude`/`longitude` but a delivery carries `lat`/`lng`
+    // (the tempo godown address among them). Reading only the first pair left
+    // every delivery without a coordinate, so Get Direction fell back to the
+    // address text — "Tazmahal, PWPJ+4M4…", which Maps cannot find — and opened
+    // on a blank world map instead of a route.
+    latitude: str(j?.latitude ?? j?.lat),
+    // BUG PARITY NOTE: Dart read `json['latitude']` for longitude too, so the
+    // "Get Direction" button was fed a duplicated coordinate. Reading the real
+    // field here — the button only gates on both being present, and a wrong
+    // longitude would send the driver to the wrong place.
+    longitude: str(j?.longitude ?? j?.lng),
+  };
+};
 
 // ── Products ─────────────────────────────────────────────────
 
@@ -108,6 +142,8 @@ export interface TripItem {
   tempoNumber?: string;
   truckNumber?: string;
   lrNumber?: string;
+  /** Set once Mark Reached is pressed; the trip stays In Transit. */
+  reachedAt?: string;
 }
 
 export const parseTripItem = (j: any): TripItem => ({
@@ -124,6 +160,7 @@ export const parseTripItem = (j: any): TripItem => ({
   tempoNumber: str(j?.tempoNumber),
   truckNumber: str(j?.truckNumber),
   lrNumber: str(j?.lrNumber),
+  reachedAt: str(j?.reachedAt),
 });
 
 export interface TripListData {
@@ -358,6 +395,11 @@ export interface TripDetailsData {
   totalWeight?: number;
   tempoNumber?: string;
   isOrderLoaded?: boolean;
+  /**
+   * When the driver pressed Mark Reached. The trip stays In Transit
+   * (statusNumber 4); this is what swaps that button for Delivered.
+   */
+  reachedAt?: string;
   weightSlips: Attachment[];
   invoices: Attachment[];
 }
@@ -391,6 +433,7 @@ export const parseTripDetailsResponse = (j: any): TripDetailsResponse => ({
         totalWeight: num(j.data.totalWeight),
         tempoNumber: str(j.data.tempoNumber),
         isOrderLoaded: j.data.isOrderLoaded === true,
+        reachedAt: str(j.data.reachedAt),
         weightSlips: list(j.data.weightSlips, parseAttachment),
         invoices: list(j.data.invoices, parseAttachment),
       }

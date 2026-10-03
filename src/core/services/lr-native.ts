@@ -11,7 +11,21 @@
  * So they are required lazily, and only when this is true. The two ship
  * together, so the downloader's module answers for both.
  */
+import { requireOptionalNativeModule } from 'expo-modules-core';
 import { TurboModuleRegistry } from 'react-native';
+
+/**
+ * Sharing the PDF to WhatsApp, mail and the like (expo-sharing) came in a later
+ * build than the viewer, so an APK with the viewer may still lack it. The SHARE
+ * button is shown only when this is true.
+ */
+export const lrShareAvailable: boolean = (() => {
+  try {
+    return requireOptionalNativeModule('ExpoSharing') != null;
+  } catch {
+    return false;
+  }
+})();
 
 export const lrNativeAvailable: boolean = (() => {
   try {

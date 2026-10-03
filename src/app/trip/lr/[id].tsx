@@ -26,7 +26,7 @@ import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { DashboardRepository } from '@/core/services/dashboard-repository';
 import { type LrDownloadResult, LrFileStore } from '@/core/services/lr-file-store';
-import { lrNativeAvailable } from '@/core/services/lr-native';
+import { lrNativeAvailable, lrShareAvailable } from '@/core/services/lr-native';
 import { LrDownloadedDialog } from '@/features/trip/lr-downloaded-dialog';
 import { lrErrorMessage, useLrDocument } from '@/features/trip/use-lr-document';
 
@@ -108,6 +108,26 @@ function LrViewer({ Pdf }: { Pdf: typeof PdfType }) {
     }
   };
 
+  /**
+   * Hands the PDF itself (not a link, which expires) to whatever app the driver
+   * picks: WhatsApp, Gmail, Drive, Bluetooth. Shares the copy on screen, so it
+   * works for an LR that was only viewed, never downloaded.
+   */
+  const onShare = async () => {
+    if (!sourceUri) return;
+    try {
+      const Sharing: typeof import('expo-sharing') = require('expo-sharing');
+      await Sharing.shareAsync(sourceUri, {
+        mimeType: 'application/pdf',
+        UTI: 'com.adobe.pdf',
+        dialogTitle: lrNumber ?? Strings.lrDocumentTitle,
+      });
+    } catch (e) {
+      if (__DEV__) console.log('LR share failed:', e);
+      Alert.alert(Strings.lrShareFailed, Strings.somethingWentWrong);
+    }
+  };
+
   const retry = () => {
     setError(null);
     setIsLoaded(false);
@@ -164,26 +184,46 @@ function LrViewer({ Pdf }: { Pdf: typeof PdfType }) {
             <Text style={styles.savedText}>{Strings.lrViewingSaved}</Text>
           </View>
         )}
-        <Pressable
-          onPress={() => void onDownload()}
-          disabled={isDownloading}
-          style={({ pressed }) => [
-            styles.button,
-            styles.buttonFilled,
-            (pressed || isDownloading) && styles.buttonDimmed,
-          ]}
-        >
-          {isDownloading ? (
-            <ActivityIndicator size="small" color={AppColors.white} />
-          ) : (
-            <>
-              <Ionicons name="download-outline" size={18} color={AppColors.white} />
-              <Text style={[styles.buttonText, { color: AppColors.white }]}>
-                {downloadedPath ? Strings.downloadAgainLr : Strings.downloadLr}
+        <View style={styles.buttonRow}>
+          {lrShareAvailable && (
+            <Pressable
+              onPress={() => void onShare()}
+              disabled={!isLoaded || error != null}
+              style={({ pressed }) => [
+                styles.button,
+                styles.buttonOutline,
+                styles.buttonGrow,
+                (pressed || !isLoaded || error != null) && styles.buttonDimmed,
+              ]}
+            >
+              <Ionicons name="share-social-outline" size={18} color={AppColors.primary} />
+              <Text style={[styles.buttonText, { color: AppColors.primary }]}>
+                {Strings.shareLr}
               </Text>
-            </>
+            </Pressable>
           )}
-        </Pressable>
+          <Pressable
+            onPress={() => void onDownload()}
+            disabled={isDownloading}
+            style={({ pressed }) => [
+              styles.button,
+              styles.buttonFilled,
+              styles.buttonGrow,
+              (pressed || isDownloading) && styles.buttonDimmed,
+            ]}
+          >
+            {isDownloading ? (
+              <ActivityIndicator size="small" color={AppColors.white} />
+            ) : (
+              <>
+                <Ionicons name="download-outline" size={18} color={AppColors.white} />
+                <Text style={[styles.buttonText, { color: AppColors.white }]}>
+                  {downloadedPath ? Strings.downloadAgainLr : Strings.downloadLr}
+                </Text>
+              </>
+            )}
+          </Pressable>
+        </View>
       </View>
 
       {/* No OPEN here: the LR is already on screen. */}
@@ -240,5 +280,7 @@ const styles = StyleSheet.create({
   },
   buttonFilled: { backgroundColor: AppColors.primary, alignSelf: 'stretch' },
   buttonDimmed: { opacity: 0.6 },
+  buttonRow: { flexDirection: 'row', gap: 10 },
+  buttonGrow: { flex: 1 },
   buttonText: { ...Typography.button2.extraBold },
 });

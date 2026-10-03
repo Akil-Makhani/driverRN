@@ -17,12 +17,12 @@ interface Props {
 }
 
 /** The stage shown on the card's status bar once the trip is accepted. */
-function stageLabel(statusNumber?: number): string {
-  switch (statusNumber) {
+function stageLabel(trip: TripItem): string {
+  switch (trip.statusNumber) {
     case TripStatusNumber.pickup:
       return Strings.vehicleThereStatus;
     case TripStatusNumber.inTransit:
-      return Strings.inTransitStatus;
+      return trip.reachedAt ? Strings.confirmReachedLabel : Strings.inTransitStatus;
     default:
       return Strings.accepted;
   }
@@ -73,7 +73,7 @@ export function DashboardCell({ trip, onPress, onAcceptPress }: Props) {
             style={styles.statusBar}
           >
             <Text style={styles.statusLabel}>{Strings.tripInProcess}</Text>
-            <Text style={styles.statusValue}>{stageLabel(trip.statusNumber)}</Text>
+            <Text style={styles.statusValue}>{stageLabel(trip)}</Text>
           </LinearGradient>
         ) : (
           <Pressable onPress={onAcceptPress} style={styles.acceptButton}>

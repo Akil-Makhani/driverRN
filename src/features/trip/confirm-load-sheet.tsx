@@ -43,8 +43,11 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
   const insets = useSafeAreaInsets();
   const requestedItems = useTripDetailStore((s) => s.requestedItems);
   const dispatchItems = useTripDetailStore((s) => s.dispatchItems);
-  const majuriCharge = useTripDetailStore((s) => s.majuriCharge);
-  const kataparchiCharge = useTripDetailStore((s) => s.kataparchiCharge);
+  // Majuri / Kataparchi charges are hidden from the driver for now (see the
+  // commented-out chargesRow below). Left blank in the store, they are simply
+  // not sent with the load.
+  // const majuriCharge = useTripDetailStore((s) => s.majuriCharge);
+  // const kataparchiCharge = useTripDetailStore((s) => s.kataparchiCharge);
   const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
   /** Set by Add Item, so the list follows the new row once it has laid out. */
   const scrollToNewRow = useRef(false);
@@ -121,6 +124,8 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
               <Text style={styles.addText}>{Strings.addItem}</Text>
             </Pressable>
 
+            {/* Hidden from the driver for now — uncomment, along with the two
+                selectors at the top, to bring the charges back.
             <View style={styles.chargesRow}>
               <ChargeInput
                 label={Strings.majuriCharge}
@@ -134,6 +139,7 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
                 onChange={(v) => useTripDetailStore.getState().setKataparchiCharge(v)}
               />
             </View>
+            */}
           </KeyboardAwareScrollView>
 
           <View style={styles.actions}>
@@ -282,7 +288,7 @@ function LoadRow({
   );
 }
 
-function RowLine({ left, right }: { left: string; right: React.ReactNode }) {
+export function RowLine({ left, right }: { left: string; right: React.ReactNode }) {
   return (
     <View style={styles.line}>
       <View style={styles.lineLeft}>
@@ -293,7 +299,7 @@ function RowLine({ left, right }: { left: string; right: React.ReactNode }) {
   );
 }
 
-function NumberField({
+export function NumberField({
   value,
   onChange,
 }: {
@@ -344,7 +350,8 @@ function ChargeInput({
   );
 }
 
-const styles = StyleSheet.create({
+/** Shared with ConfirmDeliverySheet, which draws the same rows. */
+export const loadSheetStyles = StyleSheet.create({
   scrim: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
   sheet: {
     // Flutter pinned this at heightFactor 0.70. Now that rows can be added,
@@ -466,3 +473,5 @@ const styles = StyleSheet.create({
   },
   confirmText: { ...Typography.button2.extraBold, color: AppColors.white },
 });
+
+const styles = loadSheetStyles;

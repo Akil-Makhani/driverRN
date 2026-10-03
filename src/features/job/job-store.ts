@@ -26,6 +26,7 @@ import { Siren } from '@/core/services/siren';
 import { DispatchSocket, SocketEvent } from '@/core/realtime/socket';
 import { isSuccess } from '@/types/api';
 import {
+  acceptSeconds,
   type JobOffer,
   type JobOutcome,
   parseJobOffer,
@@ -146,14 +147,28 @@ export const useJobStore = create<JobState>((set, get) => {
       // Rule 1. Also covers the resync re-delivering what we already hold.
       if (offers.some((o) => o.id === offer.id)) return;
 
+      const siren = remainingSeconds(offer);
+      const open = acceptSeconds(offer);
       set({
         offers: [...offers, offer],
         deadlines: {
           ...deadlines,
-          [offer.id]: Date.now() + remainingSeconds(offer) * 1000,
+          [offer.id]: Date.now() + open * 1000,
         },
       });
       syncSiren();
+
+      // A ring offer outlives its siren: the order is now ringing further out,
+      // but this driver can still take it. Once their siren time is up the card
+      // steps aside to the pending strip, silent, until the offer closes.
+      if (open > siren) {
+        setTimeout(() => {
+          const { offers: now, acceptingId } = get();
+          if (now.some((o) => o.id === offer.id) && acceptingId !== offer.id) {
+            get().minimise(offer.id);
+          }
+        }, siren * 1000);
+      }
     },
 
     refreshSiren: syncSiren,

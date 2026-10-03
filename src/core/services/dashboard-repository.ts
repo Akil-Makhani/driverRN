@@ -55,9 +55,14 @@ export const DashboardRepository = {
     return parseTripLrLinks(await ApiService.get(ApiUrls.tripLr(tripId)));
   },
 
-  async statusChanged(tripId: string, status: string): Promise<TripDetailsResponse> {
+  /** `body` carries a step's own data, e.g. Delivered's `{ delivered: [...] }`. */
+  async statusChanged(
+    tripId: string,
+    status: string,
+    body?: Record<string, unknown>,
+  ): Promise<TripDetailsResponse> {
     return parseTripDetailsResponse(
-      await ApiService.patch(ApiUrls.tripStatus(tripId, status)),
+      await ApiService.patch(ApiUrls.tripStatus(tripId, status), body),
     );
   },
 

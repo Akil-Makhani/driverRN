@@ -63,6 +63,8 @@ const KEY_MODE = 'tracking.mode';
 const KEY_LAST_FIX = 'tracking.lastFix';
 const KEY_BUFFER = 'tracking.buffer';
 const KEY_LAST_DUTY_FIX = 'tracking.lastDutyFix';
+/** Debug builds only: a fixed position reported in place of the GPS. */
+const KEY_TEST_LOCATION = 'tracking.testLocation';
 const KEY_LAST_LOG_AT = 'tracking.lastLogAt';
 /** Same key 1.1.x queued under, so pings it left unsent still go out. */
 const KEY_LOG_QUEUE = 'pending_locations';
@@ -123,6 +125,27 @@ const readJson = <T,>(key: string, fallback: T): T => {
 
 const writeJson = (key: string, value: unknown): void =>
   Preference.raw.set(key, JSON.stringify(value));
+
+export interface TestLocation {
+  latitude: number;
+  longitude: number;
+  label: string;
+}
+
+/**
+ * Debug builds only: the GPS fix with the test position swapped in, so a
+ * tester outside Morbi can stand a driver N km from a Morbi pickup. Release
+ * builds never read the setting, whatever is stored.
+ */
+const withTestLocation = (location: Location.LocationObject): Location.LocationObject => {
+  if (!__DEV__) return location;
+  const test = readJson<TestLocation | null>(KEY_TEST_LOCATION, null);
+  if (!test) return location;
+  return {
+    ...location,
+    coords: { ...location.coords, latitude: test.latitude, longitude: test.longitude, accuracy: 5 },
+  };
+};
 
 const currentMode = (): Mode => {
   if (Preference.raw.getString(KEY_TRIP)) return 'trip';
@@ -308,7 +331,8 @@ async function logPosition(
 }
 
 /** One fix, whichever path it arrived by, routed to everything that wants it. */
-async function handleFix(location: Location.LocationObject): Promise<void> {
+async function handleFix(raw: Location.LocationObject): Promise<void> {
+  const location = withTestLocation(raw);
   if (Preference.raw.getString(KEY_TRIP)) await reportTripFix(location);
   else await reportDutyFix(location);
   await logPosition(location, 'interval');
@@ -606,6 +630,43 @@ export const LocationTracker = {
     }
   },
 
+  /** Debug builds only: the position standing in for the GPS, or null. */
+  getTestLocation(): TestLocation | null {
+    return __DEV__ ? readJson<TestLocation | null>(KEY_TEST_LOCATION, null) : null;
+  },
+
+  /**
+   * Debug builds only: stands the driver at `test` (null goes back to the GPS)
+   * and reports it at once, rather than waiting up to two minutes for the next
+   * duty ping, so the very next order is offered from there.
+   */
+  async setTestLocation(test: TestLocation | null): Promise<void> {
+    if (!__DEV__) return;
+    if (test) writeJson(KEY_TEST_LOCATION, test);
+    else Preference.raw.remove(KEY_TEST_LOCATION);
+    // Lets the duty send gate through straight away.
+    Preference.raw.remove(KEY_LAST_DUTY_FIX);
+    try {
+      const fix: Location.LocationObject = test
+        ? {
+            coords: {
+              latitude: test.latitude,
+              longitude: test.longitude,
+              accuracy: 5,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              speed: null,
+            },
+            timestamp: Date.now(),
+          }
+        : await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      await handleFix(fix);
+    } catch (e) {
+      if (__DEV__) console.log('test location report failed:', e);
+    }
+  },
+
   /** Takes a route-log fix immediately, outside the interval. */
   async captureOnce(source: LocationPing['source'] = 'manual'): Promise<void> {
     try {
@@ -613,7 +674,7 @@ export const LocationTracker = {
       const position = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      await logPosition(position, source, true);
+      await logPosition(withTestLocation(position), source, true);
     } catch (e) {
       if (__DEV__) console.log('location capture failed:', e);
     }

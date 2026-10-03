@@ -21,6 +21,7 @@ import {
   OFFER_CHANNEL_ID,
   RETIRED_CHANNEL_IDS,
 } from '@/core/constants/notification-channels';
+import { Preference } from '../storage/preference';
 import { UserRepository } from './user-repository';
 
 /** Matches the AndroidManifest channel the Flutter app declared. */
@@ -167,6 +168,8 @@ export const NotificationManager = {
     const data = (message.data ?? {}) as Record<string, any>;
     if (data.type !== PushType.jobOffer) return;
     if (message.notification) return;
+    // A push that was in flight at logout: nobody here can take the offer.
+    if (!Preference.getAccessToken()) return;
 
     // The channel is normally created at first launch, but a push can arrive
     // in a process that has never run the app's startup path. Creating it is
@@ -211,6 +214,18 @@ export const NotificationManager = {
       );
     } catch (e) {
       if (__DEV__) console.log('dismissOfferNotifications failed:', e);
+    }
+  },
+
+  /**
+   * Retires this install's push token, on logout and delete-account. Firebase
+   * hands out a fresh one at the next getToken(), which login sends up.
+   */
+  async forgetDevice(): Promise<void> {
+    try {
+      await messaging().deleteToken();
+    } catch (e) {
+      if (__DEV__) console.log('forgetDevice failed:', e);
     }
   },
 

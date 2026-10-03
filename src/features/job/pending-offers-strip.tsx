@@ -80,9 +80,10 @@ export function PendingOffersStrip() {
                 </View>
                 <View style={styles.fare}>
                   <Image source={Images.truck} style={styles.truckIcon} />
-                  {offer.fareAmount != null && (
+                  {/* What the driver earns when the server sent it, as on the card. */}
+                  {(offer.payout ?? offer.fareAmount) != null && (
                     <Text style={styles.fareText}>
-                      {`${Strings.rupeesSign}${formatRupees(offer.fareAmount)}`}
+                      {`${Strings.rupeesSign}${formatRupees((offer.payout ?? offer.fareAmount)!)}`}
                     </Text>
                   )}
                 </View>

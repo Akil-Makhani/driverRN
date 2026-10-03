@@ -12,6 +12,8 @@ export const TripStatus = {
   accepted: 'accepted',
   pickup: 'pickedUp',
   inTransit: 'inTransit',
+  /** Not a statusNumber: the trip stays In Transit and gains `reachedAt`. */
+  reached: 'reached',
   delivered: 'delivered',
 } as const;
 

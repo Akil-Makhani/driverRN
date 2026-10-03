@@ -149,6 +149,9 @@ export const UserRepository = {
    * every launch.
    */
   async registerFcmToken(retryOnDeadToken = true): Promise<void> {
+    // Logged out: there is no driver to attach a token to, and asking Firebase
+    // for one would only undo the deleteToken() logout just did.
+    if (!Preference.getAccessToken()) return;
     try {
       const fcmToken = await messaging().getToken();
       if (!fcmToken) return;

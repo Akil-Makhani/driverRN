@@ -24,6 +24,10 @@ import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 import { BottomActionBar } from '@/features/trip/bottom-action-bar';
 import { CancelTripDialog } from '@/features/trip/cancel-trip-dialog';
 import { CompanyDetails } from '@/features/trip/company-details';
+import {
+  ConfirmDeliverySheet,
+  type DeliveredLine,
+} from '@/features/trip/confirm-delivery-sheet';
 import { ConfirmLoadSheet } from '@/features/trip/confirm-load-sheet';
 import { KnowMoreSheet } from '@/features/trip/know-more-sheet';
 import { LrDocument } from '@/features/trip/lr-document';
@@ -40,6 +44,9 @@ export default function TripDetailScreen() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [knowMoreOpen, setKnowMoreOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [deliverOpen, setDeliverOpen] = useState(false);
+  /** What the Confirm Delivery sheet handed over, sent with Delivered. */
+  const deliveredLines = useRef<DeliveredLine[] | undefined>(undefined);
 
   const isLoading = useTripDetailStore((s) => s.isLoading);
   const trip = useTripDetailStore((s) => s.tripDetailData);
@@ -59,6 +66,8 @@ export default function TripDetailScreen() {
   }, [id]);
 
   const status = trip?.statusNumber ?? TripStatusNumber.assigned;
+  /** At the drop: In Transit, with Mark Reached already pressed. */
+  const isReached = status === TripStatusNumber.inTransit && Boolean(trip?.reachedAt);
 
   /**
    * Handing an accepted trip back is offered on tempo trips only, and only
@@ -68,8 +77,20 @@ export default function TripDetailScreen() {
   const canCancel =
     trip?.orderKind === 'tempo' && status === TripStatusNumber.accepted;
 
-  const changeStatus = async (next: string, goBack = false) => {
-    const result = await useTripDetailStore.getState().statusChanged(id, next);
+  /**
+   * The load confirmed at pickup, which a tempo driver adjusts at Delivered.
+   * Truck deliveries are recorded by the office, so they keep the plain
+   * confirm dialog.
+   */
+  const loadedLines =
+    trip?.orderKind === 'tempo' ? (trip.productDifferences?.dispatched ?? []) : [];
+
+  const changeStatus = async (
+    next: string,
+    goBack = false,
+    body?: Record<string, unknown>,
+  ) => {
+    const result = await useTripDetailStore.getState().statusChanged(id, next, body);
     if (!result.ok) {
       // Mostly the cancel-after-Vehicle-There refusal, which carries a
       // sentence written for the driver; keep them on the trip either way.
@@ -110,8 +131,18 @@ export default function TripDetailScreen() {
     stepInFlight.current = true;
     try {
       if (step === 'vehicleThere') await changeStatus(TripStatus.pickup);
-      else if (step === 'inTransit') await useTripDetailStore.getState().inTransit(id, TripStatus.inTransit);
-      else await changeStatus(TripStatus.delivered);
+      else if (step === 'inTransit') {
+        await useTripDetailStore.getState().inTransit(id, TripStatus.inTransit);
+        // Loaded and leaving: the next thing the driver needs is the way to
+        // the drop, so hand them straight to it rather than make them find the
+        // button. Only once the server has the trip In Transit.
+        const after = useTripDetailStore.getState().tripDetailData;
+        if ((after?.statusNumber ?? 0) >= TripStatusNumber.inTransit) openDirections(after);
+      } else if (step === 'reached') await changeStatus(TripStatus.reached);
+      else {
+        const delivered = deliveredLines.current;
+        await changeStatus(TripStatus.delivered, false, delivered ? { delivered } : undefined);
+      }
     } finally {
       stepInFlight.current = false;
     }
@@ -128,14 +159,17 @@ export default function TripDetailScreen() {
   };
 
   // Routes from the driver's current location to wherever the trip is headed
-  // next. The API sends address components rather than coordinates, so the
-  // link is built from text and geocoded by Maps.
+  // next — the pickup until the load is In Transit, the drop after. The API
+  // sends address components rather than coordinates, so the link is built
+  // from text and geocoded by Maps.
   // Permission is normally granted at the On Duty toggle; asking again here
   // covers a refusal or revocation. Routing proceeds regardless.
-  const openDirections = () => {
+  // `target` is for a caller that has just changed the trip and cannot wait
+  // for this render's `trip` to catch up.
+  const openDirections = (target: typeof trip = trip) => {
     void (async () => {
       await ensureLocationPermission();
-      await openRoute(activeDestination(trip));
+      await openRoute(activeDestination(target));
     })();
   };
 
@@ -174,6 +208,7 @@ export default function TripDetailScreen() {
             <View style={styles.divider} />
             <TripStatusTopView
               status={status}
+              isReached={isReached}
               onKnowMorePress={() => setKnowMoreOpen(true)}
             />
             <ShipmentStatusTracker status={status} />
@@ -228,13 +263,21 @@ export default function TripDetailScreen() {
             status={status}
             canRoute={canShowRoute(activeDestination(trip))}
             isOrderLoaded={trip?.isOrderLoaded ?? false}
+            isReached={isReached}
             onDecline={() => void changeStatus(TripStatus.rejected, true)}
             onAccept={() => void changeStatus(TripStatus.accepted)}
-            onDirections={openDirections}
+            onDirections={() => openDirections()}
             onVehicleThere={() => setPendingStep('vehicleThere')}
             onConfirmLoading={() => setSheetOpen(true)}
             onInTransit={() => setPendingStep('inTransit')}
-            onDelivered={() => setPendingStep('delivered')}
+            onReached={() => setPendingStep('reached')}
+            onDelivered={() => {
+              // A tempo driver first says what was actually handed over; the
+              // sheet's CONFIRM then asks the usual "are you sure?".
+              deliveredLines.current = undefined;
+              if (loadedLines.length > 0) setDeliverOpen(true);
+              else setPendingStep('delivered');
+            }}
           />
         </>
       )}
@@ -262,6 +305,17 @@ export default function TripDetailScreen() {
         onClose={() => setKnowMoreOpen(false)}
       />
 
+      <ConfirmDeliverySheet
+        visible={deliverOpen}
+        loaded={loadedLines}
+        onCancel={() => setDeliverOpen(false)}
+        onConfirm={(lines) => {
+          setDeliverOpen(false);
+          deliveredLines.current = lines;
+          setPendingStep('delivered');
+        }}
+      />
+
       <ConfirmLoadSheet
         visible={sheetOpen}
         products={products}
@@ -275,7 +329,7 @@ export default function TripDetailScreen() {
   );
 }
 
-type ForwardStep = 'vehicleThere' | 'inTransit' | 'delivered';
+type ForwardStep = 'vehicleThere' | 'inTransit' | 'reached' | 'delivered';
 
 /** What each forward step asks before it goes. */
 const STEP_CONFIRM = (): Record<
@@ -305,6 +359,15 @@ const STEP_CONFIRM = (): Record<
     confirmLabel: Strings.confirmInTransitAction,
     confirmIcon: 'truck-delivery',
   },
+  reached: {
+    tone: 'primary',
+    icon: 'map-marker-radius',
+    label: Strings.confirmReachedLabel,
+    title: Strings.confirmReachedTitle,
+    message: Strings.confirmReachedBody,
+    confirmLabel: Strings.confirmReachedAction,
+    confirmIcon: 'check',
+  },
   delivered: {
     tone: 'primary',
     icon: 'package-variant-closed-check',
@@ -324,25 +387,33 @@ function ActionBar({
   status,
   canRoute,
   isOrderLoaded,
+  isReached,
   onDecline,
   onAccept,
   onDirections,
   onVehicleThere,
   onConfirmLoading,
   onInTransit,
+  onReached,
   onDelivered,
 }: {
   status: number;
   canRoute: boolean;
   isOrderLoaded: boolean;
+  isReached: boolean;
   onDecline: () => void;
   onAccept: () => void;
   onDirections: () => void;
   onVehicleThere: () => void;
   onConfirmLoading: () => void;
   onInTransit: () => void;
+  onReached: () => void;
   onDelivered: () => void;
 }) {
+  // Directions are offered whenever the destination resolves to an address:
+  // the pickup while accepted, the drop once In Transit (activeDestination).
+  const directions = canRoute ? { title: Strings.getDirection, onPress: onDirections } : undefined;
+
   switch (status) {
     case TripStatusNumber.assigned:
       return (
@@ -358,11 +429,7 @@ function ActionBar({
       // components/overflow-menu.tsx for why it is not a button in this row.
       return (
         <BottomActionBar
-          secondary={
-            canRoute
-              ? { title: Strings.getDirection, onPress: onDirections }
-              : undefined
-          }
+          secondary={directions}
           primary={{ title: Strings.vehicleThere, onPress: onVehicleThere }}
         />
       );
@@ -381,12 +448,16 @@ function ActionBar({
       );
 
     case TripStatusNumber.inTransit:
+      // On the way: Mark Reached at the drop, then Delivered once the goods
+      // are handed over — the same two steps the office takes on its side.
       return (
         <BottomActionBar
-          primary={{
-            title: Strings.statusDelivered.toUpperCase(),
-            onPress: onDelivered,
-          }}
+          secondary={directions}
+          primary={
+            isReached
+              ? { title: Strings.statusDelivered.toUpperCase(), onPress: onDelivered }
+              : { title: Strings.markReached, onPress: onReached }
+          }
         />
       );
 

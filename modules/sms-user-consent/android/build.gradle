@@ -1,0 +1,21 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.smsuserconsent'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.smsuserconsent"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  // SMS User Consent API: Play Services shows a one-tap "allow this app to
+  // read this message?" sheet — no READ_SMS permission, no app hash in the SMS.
+  implementation 'com.google.android.gms:play-services-auth-api-phone:18.2.0'
+}

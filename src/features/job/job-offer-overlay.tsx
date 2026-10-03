@@ -181,6 +181,20 @@ export function JobOfferOverlay() {
           : null;
   // The route to draw. Falls back to a straight line between the pins when the
   // server could not route it, which is better than an empty map.
+  /**
+   * What the truck carries, in one highlighted box beside the money: the
+   * weight decides whether the truck can take it at all, and the product and
+   * quantity say how it loads. They used to be split — the weight small and
+   * grey up here, the product in a chip at the bottom — and a driver had to
+   * piece the two together. The weight is left out when it is already the
+   * headline.
+   */
+  const loadWeight =
+    offer?.totalWeight != null && headline?.label !== Strings.offerLoad
+      ? `${Math.trunc(offer.totalWeight)} ${Strings.kg}`
+      : '';
+  const loadProduct = offer?.productSummary ?? '';
+  const hasLoad = Boolean(loadWeight || loadProduct);
   const routePoints = offer?.routePolyline ? decodePolyline(offer.routePolyline) : [];
   const pickupPoint = coordinateOf(offer?.pickupAddress);
   const dropPoint = coordinateOf(offer?.deliveryAddress);
@@ -342,18 +356,31 @@ export function JobOfferOverlay() {
                 what it is. Take-home pay when the server knows it, otherwise
                 the order's fare, otherwise the load — a blank hero reads as a
                 broken card and an unlabelled "₹1,136" reads as wages. */}
-            {headline && (
+            {(headline || hasLoad) && (
               <View style={styles.payoutRow}>
-                <View style={styles.headlineBlock}>
-                  <Text style={styles.payout}>{headline.value}</Text>
-                  {Boolean(headline.label) && (
-                    <Text style={styles.headlineLabel}>{headline.label}</Text>
-                  )}
-                </View>
-                {offer.totalWeight != null && (
-                  <Text style={styles.distance}>
-                    {`${Math.trunc(offer.totalWeight)} ${Strings.kg}`}
-                  </Text>
+                {headline && (
+                  <View style={styles.headlineBlock}>
+                    <Text style={styles.payout}>{headline.value}</Text>
+                    {Boolean(headline.label) && (
+                      <Text style={styles.headlineLabel}>{headline.label}</Text>
+                    )}
+                  </View>
+                )}
+                {hasLoad && (
+                  <View style={styles.loadBox}>
+                    <View style={styles.loadLabelRow}>
+                      <MaterialCommunityIcons name="weight" size={14} color={LOAD_ACCENT} />
+                      <Text style={styles.loadLabel}>{Strings.offerLoad}</Text>
+                    </View>
+                    {Boolean(loadWeight) && (
+                      <Text style={styles.loadWeight}>{loadWeight}</Text>
+                    )}
+                    {Boolean(loadProduct) && (
+                      <Text style={styles.loadProduct} numberOfLines={2}>
+                        {loadProduct}
+                      </Text>
+                    )}
+                  </View>
                 )}
               </View>
             )}
@@ -375,12 +402,6 @@ export function JobOfferOverlay() {
                 subtitle={addressSubtitle(offer.deliveryAddress)}
               />
             </View>
-
-            {Boolean(offer.productSummary) && (
-              <View style={styles.chipRow}>
-                <Chip text={offer.productSummary!} />
-              </View>
-            )}
 
             </ScrollView>
 
@@ -514,13 +535,8 @@ function Stop({
   );
 }
 
-const Chip = ({ text }: { text: string }) => (
-  <View style={styles.chip}>
-    <Text style={styles.chipText} numberOfLines={1}>
-      {text}
-    </Text>
-  </View>
-);
+/** Label and icon on the load box: the app colour, a step back from the weight. */
+const LOAD_ACCENT = Primary.c700;
 
 const styles = StyleSheet.create({
   scrim: {
@@ -616,7 +632,28 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   payout: { ...Typography.h2.extraBold, color: AppColors.text },
-  distance: { ...Typography.body2.semiBold, color: TextShade.c600, marginTop: 8 },
+
+  // Beside the money, never squeezing it: the fare keeps its width and the box
+  // takes what is left, wrapping a long product name onto a second line.
+  // No fill: the text itself carries the app colour (the same as ACCEPT),
+  // large enough to stand out on the white card without a box around it.
+  loadBox: {
+    flexShrink: 1,
+    maxWidth: '58%',
+    marginLeft: 12,
+    alignItems: 'flex-end',
+  },
+  loadLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  loadLabel: { ...Typography.overline2.bold, color: LOAD_ACCENT },
+  // Already Manrope's heaviest weight (800), so it is made to stand out by
+  // size: the weight as large as the fare beside it, the product one step down.
+  loadWeight: { ...Typography.h2.extraBold, color: AppColors.primary, marginTop: 2 },
+  loadProduct: {
+    ...Typography.h4.extraBold,
+    color: AppColors.primary,
+    textAlign: 'right',
+    marginTop: 2,
+  },
 
   timeline: { paddingHorizontal: 16, paddingTop: 14 },
   stopRow: { flexDirection: 'row' },
@@ -639,21 +676,6 @@ const styles = StyleSheet.create({
   stopLead: { ...Typography.body2.extraBold, color: AppColors.primary },
   stopTitle: { ...Typography.body1.bold, color: AppColors.text, marginTop: 2 },
   stopSubtitle: { ...Typography.body2.regular, color: TextShade.c600, marginTop: 1 },
-
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: AppColors.secondary100,
-  },
-  chipText: { ...Typography.caption.semiBold, color: AppColors.primary },
 
   actions: {
     flexDirection: 'row',

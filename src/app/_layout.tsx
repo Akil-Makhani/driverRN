@@ -113,11 +113,11 @@ export default function RootLayout() {
           {/* Above the Stack, so the registration popup belongs to the app
               rather than to whichever screen happened to raise it — one copy,
               outliving the navigation between them. */}
-          <RegistrationOutcomeHost key={language} />
+          <RegistrationOutcomeHost key={`registration-${language}`} />
 
           {/* Rendered as a sibling of the whole stack so it covers every
               screen, including modals, and is not unmounted by navigation. */}
-          <JobOfferOverlay key={language} />
+          <JobOfferOverlay key={`job-offer-${language}`} />
         </SafeAreaProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>

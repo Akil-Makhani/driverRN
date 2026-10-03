@@ -7,7 +7,7 @@
  */
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -16,7 +16,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { OtpInput } from 'react-native-otp-entry';
+import { OtpInput, type OtpInputRef } from 'react-native-otp-entry';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -29,6 +29,7 @@ import { formatTimer, useAuthStore } from '@/features/auth/auth-store';
 import { LoginTopImages } from '@/features/auth/login-top-images';
 import { useRegistrationStore } from '@/features/auth/registration-store';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
+import { useSmsUserConsent } from '../../../modules/sms-user-consent';
 
 export default function OtpScreen() {
   const router = useRouter();
@@ -49,8 +50,17 @@ export default function OtpScreen() {
   const otpPurpose = useAuthStore((s) => s.otpPurpose);
   const isVerifyingRegistration = useRegistrationStore((s) => s.isCheckingStatus);
 
+  const otpRef = useRef<OtpInputRef>(null);
+  const verifying = useRef(false);
+  const [resendCount, setResendCount] = useState(0);
+
   // Stop the countdown if the driver backs out before verifying.
   useEffect(() => () => useAuthStore.getState().stopTimer(), []);
+
+  // Android: when the OTP SMS lands, a one-tap "Allow" sheet appears; on Allow
+  // the code is typed into the boxes, which fires onFilled -> onVerify. Login
+  // and registration both come through here, so both get it.
+  useSmsUserConsent(4, (code) => otpRef.current?.setValue(code), resendCount);
 
   /**
    * A number with no account took the registration OTP instead, so verifying
@@ -100,18 +110,33 @@ export default function OtpScreen() {
     }
   };
 
+  // An autofilled code fires onFilled, and a driver may still tap Verify while
+  // that request is out; one verify at a time.
   const onVerify = async () => {
-    if (otpPurpose === 'registration') {
-      await onVerifyRegistration();
-      return;
+    if (verifying.current) return;
+    verifying.current = true;
+    try {
+      if (otpPurpose === 'registration') {
+        await onVerifyRegistration();
+        return;
+      }
+
+      if (!(await useAuthStore.getState().verifyOTP(mobile))) return;
+
+      useDashboardStore.getState().syncDutyFromSession();
+      const tripId = takePendingTrip();
+      router.replace('/dashboard');
+      if (tripId) router.push(`/trip/${tripId}`);
+    } finally {
+      verifying.current = false;
     }
+  };
 
-    if (!(await useAuthStore.getState().verifyOTP(mobile))) return;
-
-    useDashboardStore.getState().syncDutyFromSession();
-    const tripId = takePendingTrip();
-    router.replace('/dashboard');
-    if (tripId) router.push(`/trip/${tripId}`);
+  // The listener is spent after one SMS, so a code that was really resent
+  // re-arms it. The store already drops the typed code; clear the boxes too.
+  const onResend = async () => {
+    otpRef.current?.clear();
+    if (await useAuthStore.getState().resendOtp(mobile)) setResendCount((n) => n + 1);
   };
 
   return (
@@ -154,6 +179,7 @@ export default function OtpScreen() {
 
         <View style={styles.otpWrap}>
           <OtpInput
+            ref={otpRef}
             numberOfDigits={4}
             focusColor={AppColors.primary}
             autoFocus
@@ -181,7 +207,7 @@ export default function OtpScreen() {
           <Text style={styles.resendLabel}>{Strings.resendOTPText}</Text>
           <Text style={styles.resendTimer}>{formatTimer(secondsRemaining)}</Text>
           <Pressable
-            onPress={() => useAuthStore.getState().resendOtp(mobile)}
+            onPress={onResend}
             disabled={!isResendAvailable}
             style={styles.resendButton}
             hitSlop={6}
