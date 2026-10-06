@@ -28,8 +28,6 @@ import { LocationTracker, type TestLocation } from '@/core/services/location-tra
 const MORBI = { latitude: 22.8173, longitude: 70.8378 };
 const KM_PER_DEGREE_LAT = 111.32;
 
-const PRESET_KM = [0, 3, 8, 13, 22, 45, 70];
-
 type Point = { latitude: number; longitude: number };
 
 /** "22.8653, 70.9333" -> a point, or null while it is not one yet. */
@@ -51,6 +49,8 @@ export default function TestLocationScreen() {
   const [current, setCurrent] = useState(() => LocationTracker.getTestLocation());
   /** The order's pickup, typed in so the distances count from it. */
   const [pickupText, setPickupText] = useState('');
+  /** How far from `from` to stand, typed in km (0 = right at it). */
+  const [kmText, setKmText] = useState('');
   const [busy, setBusy] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -78,6 +78,8 @@ export default function TestLocationScreen() {
   const pickup = parsePoint(pickupText);
   const from = pickup ?? MORBI;
   const fromLabel = pickup ? 'pickup' : 'Morbi centre';
+  const km = kmText.trim() === '' ? NaN : Number(kmText.trim());
+  const kmValid = Number.isFinite(km) && km >= 0 && km <= 500;
 
   return (
     <View style={styles.screen}>
@@ -85,9 +87,8 @@ export default function TestLocationScreen() {
       <AppBar title="Test location" leading="menu" onLeadingPress={() => setDrawerOpen(true)} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.note}>
-          Debug build only. Tap a distance - it is set at once, no other button needed. The app
-          then reports that position instead of the GPS, so a new tempo order is offered to you as
-          if you stood there.
+          Debug build only. Type a distance in km and tap Set. The app then reports that position
+          instead of the GPS, so a new tempo order is offered to you as if you stood there.
         </Text>
         <Text style={styles.note}>
           The distance counts from Morbi centre. For an exact distance from the order&apos;s
@@ -110,23 +111,28 @@ export default function TestLocationScreen() {
           {current ? `Now: ${current.label}` : 'Now: real GPS'}
         </Text>
 
-        {PRESET_KM.map((km) => {
-          const preset = presetFor(km, from, fromLabel);
-          const selected =
-            current?.latitude === preset.latitude && current?.longitude === preset.longitude;
-          return (
-            <Pressable
-              key={km}
-              disabled={busy}
-              onPress={() => void apply(preset)}
-              style={[styles.option, selected && styles.optionSelected]}
-            >
-              <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
-                {preset.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        <View style={styles.kmRow}>
+          <TextInput
+            style={[styles.input, styles.kmInput]}
+            value={kmText}
+            onChangeText={setKmText}
+            placeholder="Distance in km, e.g. 17"
+            placeholderTextColor={TextShade.c500}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+            onSubmitEditing={() => kmValid && void apply(presetFor(km, from, fromLabel))}
+          />
+          <Pressable
+            disabled={busy || !kmValid}
+            onPress={() => void apply(presetFor(km, from, fromLabel))}
+            style={[styles.setButton, (busy || !kmValid) && styles.setButtonDisabled]}
+          >
+            <Text style={styles.optionTextSelected}>Set</Text>
+          </Pressable>
+        </View>
+        {kmText.length > 0 && !kmValid && (
+          <Text style={styles.warning}>Enter a number of km, e.g. 17 or 4.5</Text>
+        )}
 
         <Pressable disabled={busy} onPress={() => void apply(null)} style={styles.option}>
           <Text style={styles.optionText}>Use real GPS</Text>
@@ -150,9 +156,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Primary.c300,
   },
-  optionSelected: { backgroundColor: AppColors.primary, borderColor: AppColors.primary },
+  kmRow: { flexDirection: 'row', gap: 10 },
+  kmInput: { flex: 1 },
+  setButton: {
+    height: 46,
+    paddingHorizontal: 22,
+    borderRadius: 6,
+    justifyContent: 'center',
+    backgroundColor: AppColors.primary,
+  },
+  setButtonDisabled: { opacity: 0.4 },
   optionText: { ...Typography.body1.semiBold, color: AppColors.text },
-  optionTextSelected: { color: AppColors.white },
+  optionTextSelected: { ...Typography.body1.semiBold, color: AppColors.white },
   warning: { ...Typography.body2.semiBold, color: AppColors.error500 },
   input: {
     height: 46,
