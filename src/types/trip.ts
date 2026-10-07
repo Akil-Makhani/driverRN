@@ -38,34 +38,7 @@ export interface Address {
   longitude?: string;
 }
 
-/**
- * BST's Morbi godown — where every tempo "godown" order is delivered — as the
- * office gives it out. Mirrors GODOWN_DELIVERY_ADDRESS in bst-api
- * (tempoGodownAddress.constants.ts).
- */
-const GODOWN_ADDRESS = {
-  companyName: 'ALWAYS ROADWAYS PVT LTD',
-  buildingName: '8-A NATIONAL HIGHWAY',
-  locality: 'BANDHUNAGAR',
-  city: 'MORBI',
-  pincode: '364242',
-};
-
-/**
- * Orders booked before the API changed its godown address still carry the old
- * copy, "Tazmahal, PWPJ+4M4, opp. INDIAN OIL PETROL PUMP". It is the same
- * godown, so it is shown under the name the driver now knows it by. Only the
- * text changes; the coordinates (the warehouse gate) are kept.
- */
-function isLegacyGodown(j: any): boolean {
-  return (
-    String(j?.companyName ?? '').trim().toLowerCase() === 'tazmahal' &&
-    String(j?.buildingName ?? '').toUpperCase().includes('PWPJ+4M4')
-  );
-}
-
-export const parseAddress = (raw: any): Address => {
-  const j = isLegacyGodown(raw) ? { ...raw, ...GODOWN_ADDRESS, landmark: undefined } : raw;
+export const parseAddress = (j: any): Address => {
   return {
     contactName: str(j?.contactName),
     contactNumber: str(j?.contactNumber),

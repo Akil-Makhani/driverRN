@@ -64,6 +64,14 @@ const OFFER_SOUND = 'new_order_siren.wav';
  */
 const OFFER_TITLE = 'New order available';
 
+/**
+ * Every title an offer notification can carry. The server writes the offer push
+ * in the driver's chosen language (bst-api utils/driverPushText.ts OFFER_TITLE),
+ * so all three must be recognised here or a Hindi or Gujarati driver's tray
+ * notification would keep ringing under the in-app siren. Keep in step.
+ */
+const OFFER_TITLES = new Set<string>([OFFER_TITLE, 'नया ऑर्डर उपलब्ध है', 'નવો ઓર્ડર ઉપલબ્ધ છે']);
+
 
 /** `data.type` on a push, telling the app what the payload is. */
 export const PushType = {
@@ -78,6 +86,9 @@ const DISPATCH_TYPES = new Set<string>([
   PushType.jobTaken,
   PushType.jobCancelled,
 ]);
+
+/** Dispatch pushes that arrive while the app is backgrounded; see register(). */
+let backgroundDispatch: ((type: string, data: Record<string, any>) => void) | null = null;
 
 /** A tapped push waiting for the router to be ready. Consume with `takePendingTrip`. */
 let pendingTripId: string | null = null;
@@ -166,6 +177,19 @@ export const NotificationManager = {
     message: FirebaseMessagingTypes.RemoteMessage,
   ): Promise<void> {
     const data = (message.data ?? {}) as Record<string, any>;
+    // Another driver took the order, or it was withdrawn. The offer
+    // notification is still in the tray playing its ~29s siren, and nothing
+    // else in a backgrounded app will stop it — so this is what silences the
+    // phones that lost the race.
+    if (data.type === PushType.jobTaken || data.type === PushType.jobCancelled) {
+      await NotificationManager.dismissOfferNotifications();
+      // A backgrounded app that is still alive (the duty location service
+      // keeps it so) gets this here rather than in onMessage, and its job store
+      // still holds the offer — opening the app showed the card and rang again
+      // for an order that was gone. In a headless start nothing is registered.
+      backgroundDispatch?.(data.type, data);
+      return;
+    }
     if (data.type !== PushType.jobOffer) return;
     if (message.notification) return;
     // A push that was in flight at logout: nobody here can take the offer.
@@ -207,7 +231,7 @@ export const NotificationManager = {
       const presented = await Notifications.getPresentedNotificationsAsync();
       const offers = presented.filter(
         ({ request: { content } }) =>
-          content.data?.type === PushType.jobOffer || content.title === OFFER_TITLE,
+          content.data?.type === PushType.jobOffer || OFFER_TITLES.has(content.title ?? ''),
       );
       await Promise.all(
         offers.map((n) => Notifications.dismissNotificationAsync(n.request.identifier)),
@@ -285,6 +309,11 @@ export const NotificationManager = {
     onOpen?: (tripId: string | null) => void;
     onDispatch?: (type: string, data: Record<string, any>) => void;
   }): () => void {
+    // FCM hands a backgrounded-but-alive app's pushes to the background
+    // handler, not onMessage; route its dispatch outcomes here too.
+    const onDispatch = opts.onDispatch;
+    if (onDispatch) backgroundDispatch = onDispatch;
+
     const unsubscribeMessage = messaging().onMessage(async (message) => {
       if (__DEV__) console.log('FCM foreground:', message.notification?.title);
 
@@ -331,6 +360,7 @@ export const NotificationManager = {
     });
 
     return () => {
+      if (onDispatch && backgroundDispatch === onDispatch) backgroundDispatch = null;
       unsubscribeMessage();
       unsubscribeOpened();
       unsubscribeRefresh();

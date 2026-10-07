@@ -30,6 +30,7 @@ import { Images } from '@/core/constants/assets';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { TEST_LOCATION_ENABLED } from '@/core/services/location-tracker';
 import { useSession } from '@/core/session';
 import { useAuthStore } from '@/features/auth/auth-store';
 
@@ -38,7 +39,13 @@ interface Props {
   onClose: () => void;
 }
 
-type Destination = '/dashboard' | '/history' | '/cancelled' | '/profile' | '/test-location';
+type Destination =
+  | '/dashboard'
+  | '/history'
+  | '/cancelled'
+  | '/wallet'
+  | '/profile'
+  | '/test-location';
 
 export function Sidebar({ visible, onClose }: Props) {
   const router = useRouter();
@@ -115,14 +122,20 @@ export function Sidebar({ visible, onClose }: Props) {
             onPress={() => go('/cancelled')}
           />
           <SidebarCell
+            icon="wallet"
+            title={Strings.sideBarWallet}
+            selected={pathname === '/wallet'}
+            onPress={() => go('/wallet')}
+          />
+          <SidebarCell
             icon="person"
             title={Strings.sideBarProfile}
             selected={pathname === '/profile'}
             onPress={() => go('/profile')}
           />
-          {/* Debug builds only: lets a tester outside Morbi receive tempo
-              offers as if they were near the pickup. */}
-          {__DEV__ && (
+          {/* Debug and preview builds only: lets a tester outside Morbi
+              receive tempo offers as if they were near the pickup. */}
+          {TEST_LOCATION_ENABLED && (
             <SidebarCell
               icon="locate"
               title="Test location"

@@ -85,6 +85,8 @@ export const ApiUrls = {
   deleteDocument: '/driver/documents?fileKey=',
   getProduct: '/driver/trips/products/all',
   logLocation: '/driver/locations',
+  /** Earnings per delivered tempo trip and the office's payments (sidebar > Wallet). */
+  wallet: '/driver/wallet',
 
   // Pre-account registration. These are the only endpoints that carry no
   // Authorization header — a driver applying for an account has no token yet,

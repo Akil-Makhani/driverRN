@@ -133,12 +133,19 @@ export interface TestLocation {
 }
 
 /**
- * Debug builds only: the GPS fix with the test position swapped in, so a
- * tester outside Morbi can stand a driver N km from a Morbi pickup. Release
+ * Whether the Test location screen and its stand-in position exist in this
+ * build: debug builds, plus the preview (testers') build, which sets
+ * EXPO_PUBLIC_TEST_LOCATION in eas.json. Production builds never have it.
+ */
+export const TEST_LOCATION_ENABLED = __DEV__ || process.env.EXPO_PUBLIC_TEST_LOCATION === 'true';
+
+/**
+ * Test builds only: the GPS fix with the test position swapped in, so a
+ * tester outside Morbi can stand a driver N km from a Morbi pickup. Production
  * builds never read the setting, whatever is stored.
  */
 const withTestLocation = (location: Location.LocationObject): Location.LocationObject => {
-  if (!__DEV__) return location;
+  if (!TEST_LOCATION_ENABLED) return location;
   const test = readJson<TestLocation | null>(KEY_TEST_LOCATION, null);
   if (!test) return location;
   return {
@@ -630,18 +637,18 @@ export const LocationTracker = {
     }
   },
 
-  /** Debug builds only: the position standing in for the GPS, or null. */
+  /** Test builds only: the position standing in for the GPS, or null. */
   getTestLocation(): TestLocation | null {
-    return __DEV__ ? readJson<TestLocation | null>(KEY_TEST_LOCATION, null) : null;
+    return TEST_LOCATION_ENABLED ? readJson<TestLocation | null>(KEY_TEST_LOCATION, null) : null;
   },
 
   /**
-   * Debug builds only: stands the driver at `test` (null goes back to the GPS)
+   * Test builds only: stands the driver at `test` (null goes back to the GPS)
    * and reports it at once, rather than waiting up to two minutes for the next
    * duty ping, so the very next order is offered from there.
    */
   async setTestLocation(test: TestLocation | null): Promise<void> {
-    if (!__DEV__) return;
+    if (!TEST_LOCATION_ENABLED) return;
     if (test) writeJson(KEY_TEST_LOCATION, test);
     else Preference.raw.remove(KEY_TEST_LOCATION);
     // Lets the duty send gate through straight away.

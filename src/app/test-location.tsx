@@ -1,10 +1,10 @@
 /**
- * Debug builds only: stand this driver at a chosen distance from Morbi.
+ * Debug and preview builds only: stand this driver at a chosen distance from Morbi.
  *
  * Tempo orders are offered in rings around the pickup - drivers within 5 km
  * first, then 10 km, and so on - and pickups are in Morbi. A tester anywhere
  * else would never be in any ring, so this reports a fixed position in place
- * of the GPS (LocationTracker.setTestLocation). Release builds have no way in.
+ * of the GPS (LocationTracker.setTestLocation). Production builds have no way in.
  */
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -22,7 +22,11 @@ import { AppBar } from '@/components/app-bar';
 import { Sidebar } from '@/components/sidebar';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Typography } from '@/core/constants/typography';
-import { LocationTracker, type TestLocation } from '@/core/services/location-tracker';
+import {
+  LocationTracker,
+  TEST_LOCATION_ENABLED,
+  type TestLocation,
+} from '@/core/services/location-tracker';
 
 /** Where the distances count from when no pickup is given: Morbi town centre. */
 const MORBI = { latitude: 22.8173, longitude: 70.8378 };
@@ -66,7 +70,7 @@ export default function TestLocationScreen() {
     }, [router]),
   );
 
-  if (!__DEV__) return null;
+  if (!TEST_LOCATION_ENABLED) return null;
 
   const apply = async (test: TestLocation | null) => {
     setBusy(true);
@@ -87,7 +91,7 @@ export default function TestLocationScreen() {
       <AppBar title="Test location" leading="menu" onLeadingPress={() => setDrawerOpen(true)} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.note}>
-          Debug build only. Type a distance in km and tap Set. The app then reports that position
+          Test builds only. Type a distance in km and tap Set. The app then reports that position
           instead of the GPS, so a new tempo order is offered to you as if you stood there.
         </Text>
         <Text style={styles.note}>

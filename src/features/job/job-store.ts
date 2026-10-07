@@ -237,6 +237,14 @@ export const useJobStore = create<JobState>((set, get) => {
       // lost. Let the HTTP response speak for that offer.
       if (get().acceptingId === jobId) return;
 
+      // The tray notification rings on its own, and the app can be alive
+      // behind a locked screen (the duty location service keeps the socket
+      // up) without holding this offer in the store — so silence it before
+      // the early return below. FCM-posted offers carry no job id the app can
+      // read, so this clears every offer notification; a second order
+      // overlapping this one is rare and still shows on the dashboard.
+      void NotificationManager.dismissOfferNotifications();
+
       const offer = get().offers.find((o) => o.id === jobId);
       if (!offer) return;
 
@@ -259,8 +267,25 @@ export const useJobStore = create<JobState>((set, get) => {
 
     async syncOpenJobs() {
       try {
+        // Only offers already held when the request went out can be judged
+        // stale by its answer; one that arrives meanwhile is newer than it.
+        const heldBefore = get().offers.map((o) => o.id);
         const response = await JobRepository.getOpenJobs();
         if (!isSuccess(response)) return;
+
+        // The server lists only offers still open to this driver. Anything we
+        // hold that it left out was taken, cancelled or expired while the
+        // socket was down or the app asleep — the news never reached us, so
+        // the card would sit on the dashboard (and ring on open) for an order
+        // nobody can take any more.
+        const open = new Set((response.data ?? []).map((o) => o.id));
+        const stale = heldBefore.filter((id) => !open.has(id) && id !== get().acceptingId);
+        if (stale.length) {
+          stale.forEach(drop);
+          void NotificationManager.dismissOfferNotifications();
+          syncSiren();
+        }
+
         // Fed through `receive` one by one so de-duplication, deadlines and the
         // siren all behave exactly as they do for a live offer.
         response.data?.forEach((offer) => get().receive(offer));

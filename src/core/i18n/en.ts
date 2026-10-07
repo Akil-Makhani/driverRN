@@ -433,6 +433,20 @@ export const en = {
   // Language picker (profile and dashboard)
   language: 'Language',
   languageHint: 'The app will show in the language you choose.',
+  // Wallet (sidebar)
+  sideBarWallet: 'Wallet',
+  walletBalance: 'Balance due',
+  walletEarned: 'Total earned',
+  walletPaid: 'Paid to you',
+  walletTrips: 'Delivered trips',
+  walletTabTrips: 'Trips',
+  walletTabPayments: 'Payments',
+  walletNoTrips: 'Your delivered tempo trips and what each one earned will show here.',
+  walletNoPayments: 'No payments yet. Money the office pays you will show here.',
+  walletModeCash: 'Cash',
+  walletModeUpi: 'Online (UPI)',
+  walletLoadFailed: 'Could not load your wallet. Check your internet and try again.',
+  walletRetry: 'Try again',
 };
 
 export type StringKey = keyof typeof en;

@@ -13,6 +13,25 @@ import { Linking } from 'react-native';
 
 import type { Address } from '@/types/trip';
 
+/**
+ * BST's Morbi godown, where every tempo "godown" order is delivered, as Google
+ * Maps lists it. Neither name the office uses finds it: "ALWAYS ROADWAYS PVT
+ * LTD, 8-A National Highway" does not geocode, older orders still say
+ * "Tazmahal, PWPJ+4M4", and the stored gate coordinates resolve to the
+ * neighbouring "Shree Gopal Metals". Only the map link changes; the address the
+ * app shows stays exactly as the office entered it.
+ */
+const GODOWN_MAPS = {
+  query: 'Allways Roadways, Lalpar, Morbi, Gujarat 363642',
+  placeId: 'ChIJz-TZn0WRWTkRGlEmPhNR18U',
+};
+
+function isGodown(address?: Address | null): boolean {
+  const company = address?.companyName?.trim().toUpperCase() ?? '';
+  if (company.startsWith('ALWAYS ROADWAYS') || company.startsWith('ALLWAYS ROADWAYS')) return true;
+  return company === 'TAZMAHAL' && Boolean(address?.buildingName?.toUpperCase().includes('PWPJ+4M4'));
+}
+
 /** True when the address carries usable coordinates. */
 function hasCoordinates(address?: Address | null): boolean {
   return Boolean(address?.latitude && address?.longitude);
@@ -24,6 +43,7 @@ function hasCoordinates(address?: Address | null): boolean {
  */
 export function addressQuery(address?: Address | null): string {
   if (!address) return '';
+  if (isGodown(address)) return GODOWN_MAPS.query;
   if (hasCoordinates(address)) return `${address.latitude},${address.longitude}`;
 
   // Ordered narrow → broad so Maps disambiguates correctly; blanks dropped.
@@ -92,8 +112,10 @@ export async function openRoute(
     // which is not what a truck driver needs.
     dir_action: 'navigate',
   });
+  if (isGodown(destination)) params.set('destination_place_id', GODOWN_MAPS.placeId);
   const from = addressQuery(origin);
   if (from) params.set('origin', from);
+  if (isGodown(origin)) params.set('origin_place_id', GODOWN_MAPS.placeId);
 
   await Linking.openURL(`https://www.google.com/maps/dir/?${params.toString()}`);
 }
@@ -119,6 +141,7 @@ export async function openLocation(address?: Address | null): Promise<void> {
   const query = addressQuery(address);
   if (!query) return;
   const params = new URLSearchParams({ api: '1', query });
+  if (isGodown(address)) params.set('query_place_id', GODOWN_MAPS.placeId);
   await Linking.openURL(`https://www.google.com/maps/search/?${params.toString()}`);
 }
 
