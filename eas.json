@@ -28,6 +28,9 @@
     },
     "production": {
       "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.bstm.in/v2"
+      },
       "android": {
         "buildType": "app-bundle",
         "credentialsSource": "local"

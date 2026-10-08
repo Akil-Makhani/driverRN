@@ -14,6 +14,7 @@ export const en = {
   sideBarTripHistory: 'Trip History',
   sideBarProfile: 'Profile',
   sideBarDeleteAccount: 'Delete Account',
+  sideBarPrivacyPolicy: 'Privacy Policy',
   deleteAccountConfirm:
     'We are sorry to see you go. Are you sure you want to delete your account? This action cannot be undone, and you will lose all your data associated with the account',
   logout: 'Logout',
@@ -28,7 +29,7 @@ export const en = {
   logoutLabel: 'LOGOUT',
   logoutTitle: 'Are you sure?',
   logoutMessage:
-    'You will be logged out of BST Driver and stop receiving new orders. Log in again with your mobile number any time.',
+    'You will be logged out of Tiles Drop Saathi and stop receiving new orders. Log in again with your mobile number any time.',
   logoutAction: 'YES, LOGOUT',
 
   // Wallet Screen
@@ -54,7 +55,7 @@ export const en = {
   noTripAssigned: 'No Trip\nAssigned',
 
   // Login Screen
-  loginWelcomeMessage: 'Welcome to BST',
+  loginWelcomeMessage: 'Welcome to Tiles Drop',
   loginEnterMobile: 'Enter your mobile number to\ncontinue driver app.',
   mobileValidation: 'Please enter your 10 digit mobile number',
   login: 'LOG IN',
@@ -143,9 +144,9 @@ export const en = {
   // before the OS permission prompt: the copy must name the data, say that
   // collection continues when the app is closed, and give the purpose. Reword
   // only with that requirement in mind.
-  locationDisclosureTitle: 'BST Driver collects location in the background',
+  locationDisclosureTitle: 'Tiles Drop Saathi collects location in the background',
   locationDisclosureBody:
-    'BST Driver collects your location data while you are on duty or carrying an order, including when the app is closed or not in use, so the office can follow your vehicle along its route and send you nearby orders.',
+    'Tiles Drop Saathi collects your location data while you are on duty or carrying an order, including when the app is closed or not in use, so the office can follow your vehicle along its route and send you nearby orders.',
   locationDisclosureUsage:
     'While you carry an order, your live location is shared with that customer so they can see where their delivery is. Your route is also used to confirm trips you have completed and to help the office reach you if a trip needs support.',
   locationDisclosureControl:
@@ -204,7 +205,7 @@ export const en = {
   lrShareFailed: 'Could not share the LR',
   lrSavedOnPhone: 'Saved on this phone — opens without internet.',
   lrDownloadedTitle: 'Downloaded successfully!',
-  lrDownloadedToFolder: 'Saved in Downloads › BST LR on your phone.',
+  lrDownloadedToFolder: 'Saved in Downloads › Tiles Drop LR on your phone.',
   lrDownloadedInApp: 'Saved in the app. Open it any time from this trip.',
   lrOpen: 'OPEN',
   lrClose: 'CLOSE',

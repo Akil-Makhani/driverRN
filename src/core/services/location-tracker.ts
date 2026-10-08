@@ -398,7 +398,7 @@ const TASK_OPTIONS: Record<'trip' | 'duty', Location.LocationTaskOptions> = {
     distanceInterval: 50,
     pausesUpdatesAutomatically: false,
     foregroundService: {
-      notificationTitle: 'BST Driver',
+      notificationTitle: 'Tiles Drop Saathi',
       notificationBody: 'Logging your location while you are on duty',
       notificationColor: '#004B64',
     },

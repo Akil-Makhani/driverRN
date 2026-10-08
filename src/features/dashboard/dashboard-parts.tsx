@@ -35,8 +35,10 @@ export function DashboardTopView({ completedTripCount }: { completedTripCount: n
     <View style={styles.topView}>
       <Image source={Images.avatar} style={styles.topAvatar} />
       <View style={styles.topText}>
-        <Text style={styles.topName}>{user?.name ?? ''}</Text>
-        <Text style={styles.topCount}>
+        <Text style={styles.topName} numberOfLines={1}>
+          {user?.name ?? ''}
+        </Text>
+        <Text style={styles.topCount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
           {`${Strings.tripComplete} : ${completedTripCount}`}
         </Text>
       </View>
@@ -72,7 +74,9 @@ const styles = StyleSheet.create({
   deliverButtonText: { ...Typography.button2.extraBold, color: AppColors.primary },
 
   topView: {
-    height: 92,
+    // Grows rather than clips: a long name, Gujarati script or a large system
+    // font size all made the fixed 92 spill on small phones.
+    minHeight: 92,
     padding: 10,
     borderRadius: 10,
     borderWidth: 1,

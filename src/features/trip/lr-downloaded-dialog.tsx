@@ -12,7 +12,7 @@ import { Strings } from '@/core/constants/strings';
 interface Props {
   visible: boolean;
   lrNumber?: string;
-  /** Whether the copy also went into Downloads › BST LR, which decides the message. */
+  /** Whether the copy also went into Downloads › Tiles Drop LR, which decides the message. */
   savedToDownloads: boolean;
   onClose: () => void;
   /** Omitted where the LR is already on screen (the viewer itself). */

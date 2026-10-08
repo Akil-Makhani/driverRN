@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "BST Driver",
+    "name": "Tiles Drop Saathi",
     "slug": "driverRN",
-    "version": "1.0.7",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon/app_logo.png",
-    "scheme": "bstdriver",
+    "scheme": "tilesdropsaathi",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
@@ -32,13 +32,13 @@
     },
     "android": {
       "allowBackup": false,
-      "package": "com.bst.driver",
-      "versionCode": 8,
+      "package": "com.tilesdrop.partner",
+      "versionCode": 1,
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./firebase/google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#004B64",
-        "foregroundImage": "./assets/images/icon/app_logo.png"
+        "backgroundColor": "#004A63",
+        "foregroundImage": "./assets/images/icon/adaptive_foreground.png"
       },
       "permissions": [
         "android.permission.INTERNET",

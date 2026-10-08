@@ -4,7 +4,7 @@
  * A download does two things. It keeps a copy in the app's own documents
  * folder, which is what the in-app viewer opens — so an LR the driver saved
  * still shows at a gate with no signal. And on Android it copies that file into
- * the shared Downloads collection (Downloads/BST LR), where the driver can find
+ * the shared Downloads collection (Downloads/Tiles Drop LR), where the driver can find
  * it outside the app and forward it; Android 10+ allows that without any
  * storage permission.
  *
@@ -24,7 +24,7 @@ const blobUtil = (): typeof ReactNativeBlobUtilType => {
 
 const lrDir = (): string => `${blobUtil().fs.dirs.DocumentDir}/lr`;
 /** The folder the driver sees under Downloads. */
-export const LR_DOWNLOADS_FOLDER = 'BST LR';
+export const LR_DOWNLOADS_FOLDER = 'Tiles Drop LR';
 
 const fileNameFor = (lrNumber: string): string =>
   `${lrNumber.replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;

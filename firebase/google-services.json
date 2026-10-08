@@ -92,6 +92,30 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:85017163255:android:ff3479e355854c0c236af2",
+        "android_client_info": {
+          "package_name": "com.tilesdrop.partner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJXxOMua2lfeQYcC-7D3OhRU36P-6XOLY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

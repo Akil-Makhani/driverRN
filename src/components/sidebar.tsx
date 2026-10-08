@@ -16,6 +16,7 @@ import { usePathname, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Image,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -33,6 +34,8 @@ import { Typography } from '@/core/constants/typography';
 import { TEST_LOCATION_ENABLED } from '@/core/services/location-tracker';
 import { useSession } from '@/core/session';
 import { useAuthStore } from '@/features/auth/auth-store';
+
+const PRIVACY_POLICY_URL = 'https://www.tilesdrop.com/saathi-privacy.php';
 
 interface Props {
   visible: boolean;
@@ -102,7 +105,10 @@ export function Sidebar({ visible, onClose }: Props) {
 
         <View style={styles.divider} />
 
-        <ScrollView style={styles.menu} contentContainerStyle={styles.menuContent}>
+        <ScrollView
+          style={styles.menu}
+          contentContainerStyle={[styles.menuContent, { paddingBottom: insets.bottom + 20 }]}
+        >
           <SidebarCell
             icon="home"
             title={Strings.sideBarHome}
@@ -143,28 +149,39 @@ export function Sidebar({ visible, onClose }: Props) {
               onPress={() => go('/test-location')}
             />
           )}
+          {/* Play requires the privacy policy to be reachable from inside the
+              app, not only from the store listing. */}
+          <SidebarCell
+            icon="shield-checkmark"
+            title={Strings.sideBarPrivacyPolicy}
+            selected={false}
+            onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+          />
           <SidebarCell
             icon="trash"
             title={Strings.sideBarDeleteAccount}
             selected={false}
             onPress={() => setDialog('delete')}
           />
+          <View style={styles.logoutGap} />
+
+          {/* Inside the scroll, not pinned under it: on a small phone a pinned
+              button ate the bottom of the list and hid Delete Account. */}
+          <Pressable
+            onPress={() => setDialog('logout')}
+            style={styles.logoutButton}
+          >
+            <Ionicons name="log-out-outline" size={20} color={AppColors.primary} />
+            <Text style={styles.logoutText}>{Strings.logout}</Text>
+          </Pressable>
+
+          {/* Which build this phone is actually running. Two drivers reporting
+              different behaviour is nearly always two different builds, and
+              without this there is no way to tell them apart from the outside. */}
+          <Text style={styles.version}>
+            {`v${Application.nativeApplicationVersion ?? ''} (${Application.nativeBuildVersion ?? ''})`}
+          </Text>
         </ScrollView>
-
-        <Pressable
-          onPress={() => setDialog('logout')}
-          style={styles.logoutButton}
-        >
-          <Ionicons name="log-out-outline" size={20} color={AppColors.primary} />
-          <Text style={styles.logoutText}>{Strings.logout}</Text>
-        </Pressable>
-
-        {/* Which build this phone is actually running. Two drivers reporting
-            different behaviour is nearly always two different builds, and
-            without this there is no way to tell them apart from the outside. */}
-        <Text style={[styles.version, { marginBottom: insets.bottom + 20 }]}>
-          {`v${Application.nativeApplicationVersion ?? ''} (${Application.nativeBuildVersion ?? ''})`}
-        </Text>
       </View>
 
       {/* Both account dialogs use the app's own confirmation popup, like the
@@ -244,7 +261,8 @@ const styles = StyleSheet.create({
   mobile: { ...Typography.subtitle1.regular, color: TextShade.c700, marginTop: 5 },
   divider: { height: 1, backgroundColor: Primary.c300, marginTop: 20 },
   menu: { flex: 1, marginTop: 10 },
-  menuContent: { paddingBottom: 10 },
+  menuContent: { flexGrow: 1 },
+  logoutGap: { height: 16 },
   cell: {
     height: 56,
     flexDirection: 'row',
@@ -257,6 +275,9 @@ const styles = StyleSheet.create({
   cellText: { ...Typography.button2.extraBold, marginLeft: 10 },
   logoutButton: {
     height: 50,
+    // Sits at the foot of a tall screen, and simply follows the list (with a
+    // gap) once the list is long enough to scroll.
+    marginTop: 'auto',
     marginHorizontal: 20,
     paddingHorizontal: 10,
     flexDirection: 'row',
