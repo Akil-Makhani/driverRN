@@ -13,12 +13,7 @@
           "package_name": "com.bst.driver"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
           "current_key": "AIzaSyBJXxOMua2lfeQYcC-7D3OhRU36P-6XOLY"
@@ -26,12 +21,7 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     },
@@ -42,12 +32,7 @@
           "package_name": "com.example.bstdriver"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
           "current_key": "AIzaSyBJXxOMua2lfeQYcC-7D3OhRU36P-6XOLY"
@@ -55,47 +40,13 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:85017163255:android:f0423da1beb360ed236af2",
-        "android_client_info": {
-          "package_name": "com.twocoders.bst"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBJXxOMua2lfeQYcC-7D3OhRU36P-6XOLY"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:85017163255:android:ff3479e355854c0c236af2",
+        "mobilesdk_app_id": "1:85017163255:android:7c9d4dabf3f34cbf236af2",
         "android_client_info": {
           "package_name": "com.tilesdrop.partner"
         }
@@ -108,12 +59,26 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "85017163255-u6vk37jpacdhboig5q7g9fl4l7512jo8.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:85017163255:android:f0423da1beb360ed236af2",
+        "android_client_info": {
+          "package_name": "com.twocoders.bst"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJXxOMua2lfeQYcC-7D3OhRU36P-6XOLY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
         }
       }
     }

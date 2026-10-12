@@ -10,8 +10,8 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.bst.driver",
-      "googleServicesFile": "./firebase/GoogleService-Info.plist",
+      "bundleIdentifier": "com.tilesdrop.partner",
+      "googleServicesFile": "./firebase/tiles-drop-saathi/GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera so you can photograph the weight slip and invoice for a trip.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photo library so you can attach the weight slip and invoice for a trip.",
@@ -20,15 +20,14 @@
         "NSLocationAlwaysUsageDescription": "This app records your location while you are on duty or carrying an order, so the office can follow the vehicle along its route and the customer can see where their delivery is.",
         "UIBackgroundModes": [
           "location",
-          "fetch",
           "remote-notification"
         ],
         "ITSAppUsesNonExemptEncryption": false
       },
-      "config": {
-        "googleMapsApiKey": "REPLACE_WITH_IOS_GOOGLE_MAPS_API_KEY"
-      },
-      "buildNumber": "6"
+      "buildNumber": "1",
+      "entitlements": {
+        "com.apple.developer.usernotifications.time-sensitive": true
+      }
     },
     "android": {
       "allowBackup": false,
@@ -126,7 +125,14 @@
           "recordAudioAndroid": false
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "react-native-maps",
+        {
+          "iosGoogleMapsApiKey": "AIzaSyAKbeS-bW3BowQFfkAlFrwctWJKfWM_nFk",
+          "androidGoogleMapsApiKey": "AIzaSyDd-uLjhH10MWUtiamnqCedkIUhNe9_93k"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
