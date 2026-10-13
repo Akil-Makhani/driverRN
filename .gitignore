@@ -4,8 +4,12 @@ dist/
 web-build/
 *.log
 .DS_Store
-android/
-ios/
+/android
+/ios
+# Gradle output of local Expo modules (/android above only matches the root
+# folder, so modules/<name>/android is tracked — only its build output is not)
+modules/*/android/build/
+modules/*/android/.cxx/
 # firebase/ holds google-services.json + GoogleService-Info.plist, required to
 # build. They contain no secrets (the API keys are client identifiers), so they
 # are committed — matching how the Flutter project shipped them.
