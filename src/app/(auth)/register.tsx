@@ -13,15 +13,16 @@
  * The two detail panels are the point of the ULIP lookups: rather than making
  * the driver trust that they typed their vehicle and licence numbers
  * correctly, the form shows back whose vehicle and whose licence it matched
- * before they submit. Both have to match: submitting runs whichever lookup has
- * not succeeded and refuses until both have, so a number ULIP cannot find is
- * corrected here, by the driver holding the papers, rather than reaching an
- * admin who has nothing to check it against. A failed panel therefore offers
- * TRY AGAIN — it is a step to repeat, not a notice to read past.
+ * before they submit. They are a help, not a gate: ULIP is often unreachable,
+ * so the four document photos below (licence and RC book, front and back) are
+ * what is compulsory, and with all four uploaded the form submits whether or
+ * not the panels found anything. A failed panel still offers TRY AGAIN.
  */
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
+  Alert,
+  Image,
   Keyboard,
   Pressable,
   StyleSheet,
@@ -40,13 +41,35 @@ import { groupDigits } from '@/core/utils/number-format';
 import { useAuthStore } from '@/features/auth/auth-store';
 import {
   type FieldKey,
+  type PhotoSlot,
   formatDobInput,
   formatLicenceInput,
   formatVehicleInput,
   useRegistrationStore,
 } from '@/features/auth/registration-store';
+import type { RegistrationDocumentKey } from '@/types/registration';
 
 const MOBILE_LENGTH = 10;
+
+/** Read at render time, never at module load — see core/constants/strings. */
+const photoLabels = (): [RegistrationDocumentKey, string][] => [
+  ['dlFront', Strings.registerPhotoDlFront],
+  ['dlBack', Strings.registerPhotoDlBack],
+  ['rcFront', Strings.registerPhotoRcFront],
+  ['rcBack', Strings.registerPhotoRcBack],
+];
+
+/** Camera or gallery — a driver at a truck stand usually has the papers in hand. */
+function choosePhotoSource(key: RegistrationDocumentKey) {
+  Keyboard.dismiss();
+  const pick = (source: 'camera' | 'library') =>
+    void useRegistrationStore.getState().pickPhoto(key, source);
+  Alert.alert(Strings.registerPhotoSourceTitle, undefined, [
+    { text: Strings.registerPhotoCamera, onPress: () => pick('camera') },
+    { text: Strings.registerPhotoGallery, onPress: () => pick('library') },
+    { text: Strings.registerPhotoCancel, style: 'cancel' },
+  ]);
+}
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -60,6 +83,11 @@ export default function RegisterScreen() {
   const vehicleLookup = useRegistrationStore((s) => s.vehicleLookup);
   const licenceInfo = useRegistrationStore((s) => s.licenceInfo);
   const licenceLookup = useRegistrationStore((s) => s.licenceLookup);
+  const photos = useRegistrationStore((s) => s.photos);
+  const photoError = useRegistrationStore((s) => s.photoError);
+  // The four photos are compulsory, so the submit stays disabled until every
+  // one of them has actually reached S3 — picked is not enough.
+  const allPhotosUploaded = Object.values(photos).every((p) => p.status === 'done');
   // Set when this form was opened carrying a rejected registration's details.
   const statusInfo = useRegistrationStore((s) => s.statusInfo);
   // True once the OTP step has filed a registration this form is completing —
@@ -248,12 +276,41 @@ export default function RegisterScreen() {
             onRetry={() => void useRegistrationStore.getState().lookupLicence()}
           />
 
+          <View style={styles.field}>
+            <Text style={styles.label}>{`${Strings.registerPhotosTitle} *`}</Text>
+            <Text style={styles.photosNote}>{Strings.registerPhotosNote}</Text>
+            <View style={styles.photoGrid}>
+              {photoLabels().map(([key, label]) => (
+                <PhotoTile
+                  key={key}
+                  label={label}
+                  slot={photos[key]}
+                  onPress={() => {
+                    // A failed upload retries in place; anything else picks
+                    // (or re-picks) the photo.
+                    if (photos[key].status === 'failed') {
+                      void useRegistrationStore.getState().uploadPhoto(key);
+                    } else if (photos[key].status !== 'uploading') {
+                      choosePhotoSource(key);
+                    }
+                  }}
+                  onChange={() => choosePhotoSource(key)}
+                />
+              ))}
+            </View>
+            {photoError ? (
+              <Text style={styles.error}>{photoError}</Text>
+            ) : !allPhotosUploaded ? (
+              <Text style={styles.photosHint}>{Strings.registerPhotosRequired}</Text>
+            ) : null}
+          </View>
+
           {submitError ? <Text style={styles.submitError}>{submitError}</Text> : null}
 
           <Pressable
             onPress={onSubmit}
-            disabled={isSubmitting}
-            style={styles.button}
+            disabled={isSubmitting || !allPhotosUploaded}
+            style={[styles.button, !allPhotosUploaded ? styles.buttonDisabled : null]}
           >
             <Text style={styles.buttonText}>{Strings.registerSubmit}</Text>
           </Pressable>
@@ -358,6 +415,68 @@ function Field({
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {!error && note ? <Text style={styles.note}>{note}</Text> : null}
+    </View>
+  );
+}
+
+interface PhotoTileProps {
+  label: string;
+  slot: PhotoSlot;
+  onPress: () => void;
+  /** Re-pick a photo that is already there (uploaded or failed). */
+  onChange: () => void;
+}
+
+function PhotoTile({ label, slot, onPress, onChange }: PhotoTileProps) {
+  const failed = slot.status === 'failed';
+  return (
+    <View style={styles.photoTile}>
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.photoBox,
+          slot.status === 'done' ? styles.photoBoxDone : null,
+          failed ? styles.photoBoxFailed : null,
+        ]}
+      >
+        {slot.uri ? (
+          <Image source={{ uri: slot.uri }} style={styles.photoImage} resizeMode="cover" />
+        ) : (
+          <View style={styles.photoEmpty}>
+            <Ionicons name="camera-outline" size={26} color={Primary.c900} />
+            <Text style={styles.photoEmptyText}>{Strings.registerPhotoAdd}</Text>
+          </View>
+        )}
+
+        {slot.status === 'uploading' ? (
+          <View style={styles.photoOverlay}>
+            <ActivityIndicator size="small" color={AppColors.white} />
+            <Text style={styles.photoOverlayText}>{Strings.registerPhotoUploading}</Text>
+          </View>
+        ) : null}
+        {failed ? (
+          <View style={[styles.photoOverlay, styles.photoOverlayFailed]}>
+            <Ionicons name="refresh" size={20} color={AppColors.white} />
+            <Text style={styles.photoOverlayText}>{Strings.registerPhotoRetry}</Text>
+          </View>
+        ) : null}
+        {slot.status === 'done' ? (
+          <View style={styles.photoTick}>
+            <Ionicons name="checkmark-circle" size={22} color={AppColors.success500} />
+          </View>
+        ) : null}
+      </Pressable>
+
+      <View style={styles.photoFoot}>
+        <Text style={styles.photoLabel} numberOfLines={1}>
+          {label}
+        </Text>
+        {slot.uri && slot.status !== 'uploading' ? (
+          <Pressable onPress={onChange} hitSlop={8}>
+            <Text style={styles.photoChange}>{Strings.registerPhotoChange}</Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -480,10 +599,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginLeft: 8,
   },
-  /** A failure blocks the submit, so it is coloured like the blocker it is. */
+  /** Not an error any more — the photos carry the submit — so muted, not red. */
   panelFailed: {
     ...Typography.body2.regular,
-    color: AppColors.error600,
+    color: TextShade.c700,
     marginTop: 8,
   },
   panelRetry: { alignSelf: 'flex-start', marginTop: 8, paddingVertical: 4 },
@@ -501,7 +620,53 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
   },
+  buttonDisabled: { opacity: 0.45 },
   buttonText: { ...Typography.button2.extraBold, color: AppColors.white },
+
+  photosNote: { ...Typography.caption.regular, color: TextShade.c700, marginBottom: 10 },
+  photosHint: { ...Typography.caption.regular, color: TextShade.c700 },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  photoTile: { width: '48%', marginBottom: 12 },
+  photoBox: {
+    height: 110,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: Primary.c300,
+    backgroundColor: AppColors.secondary100,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoBoxDone: { borderStyle: 'solid', borderColor: AppColors.success500 },
+  photoBoxFailed: { borderStyle: 'solid', borderColor: AppColors.error500 },
+  photoImage: { width: '100%', height: '100%' },
+  photoEmpty: { alignItems: 'center' },
+  photoEmptyText: { ...Typography.caption.extraBold, color: Primary.c900, marginTop: 4 },
+  photoOverlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  photoOverlayFailed: { backgroundColor: 'rgba(180,35,24,0.7)' },
+  photoOverlayText: {
+    ...Typography.caption.extraBold,
+    color: AppColors.white,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  photoTick: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: AppColors.white,
+    borderRadius: 11,
+  },
+  photoFoot: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+  photoLabel: { ...Typography.caption.regular, color: AppColors.text, flex: 1 },
+  photoChange: { ...Typography.caption.extraBold, color: AppColors.primary },
   backLink: { marginTop: 12, alignItems: 'center', paddingVertical: 8 },
   backLinkText: { ...Typography.button2.extraBold, color: Primary.c900 },
 

@@ -3,6 +3,7 @@
  * sub_view/login_mobileno_view.dart.
  */
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -23,7 +24,12 @@ import { Typography } from '@/core/constants/typography';
 import { digitsOnly, groupDigits } from '@/core/utils/number-format';
 import { useAuthStore } from '@/features/auth/auth-store';
 import { LoginTopImages } from '@/features/auth/login-top-images';
-import { useRegistrationStore } from '@/features/auth/registration-store';
+import {
+  InlineMobileSuggestions,
+  KeyboardMobileSuggestions,
+  SUGGESTION_STRIP_HEIGHT,
+  useMobileSuggestions,
+} from '@/features/auth/mobile-suggestions';
 
 const MOBILE_LENGTH = 10;
 
@@ -35,6 +41,15 @@ export default function LoginScreen() {
   const invalidMobile = useAuthStore((s) => s.invalidMobile);
   const errorMessage = useAuthStore((s) => s.errorMessage);
   const isLoading = useAuthStore((s) => s.isLoading);
+
+  const [focused, setFocused] = useState(false);
+  const { suggestions, showOnKeyboard, showInline } = useMobileSuggestions(mobile, focused);
+  const pickSuggestion = (n: string) => {
+    useAuthStore.getState().setMobile(n);
+    useAuthStore.getState().setInvalidMobile(false);
+    Keyboard.dismiss();
+  };
+
   const onSubmit = async () => {
     if (mobile.length !== MOBILE_LENGTH) {
       useAuthStore.getState().setInvalidMobile(true);
@@ -83,7 +98,7 @@ export default function LoginScreen() {
           keyboard, matching TruckRN's AuthScaffold. */}
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scroll}
-        bottomOffset={20}
+        bottomOffset={showOnKeyboard ? SUGGESTION_STRIP_HEIGHT + 20 : 20}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -116,8 +131,16 @@ export default function LoginScreen() {
             placeholder="12345 67890"
             placeholderTextColor={TextShade.c700}
             maxLength={11} // 10 digits + the group separator
+            autoComplete="tel"
+            textContentType="telephoneNumber"
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
           />
         </View>
+
+        {showInline ? (
+          <InlineMobileSuggestions numbers={suggestions} onPick={pickSuggestion} />
+        ) : null}
 
         {showError ? (
           <Text style={styles.error}>
@@ -147,6 +170,10 @@ export default function LoginScreen() {
         </Pressable>
         </View>
       </KeyboardAwareScrollView>
+
+      {showOnKeyboard ? (
+        <KeyboardMobileSuggestions numbers={suggestions} onPick={pickSuggestion} />
+      ) : null}
 
       {isLoading && (
         <View style={styles.loadingOverlay} pointerEvents="auto">

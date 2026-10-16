@@ -25,6 +25,7 @@ import { AppColors, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { takePendingTrip } from '@/core/services/notification-manager';
+import { LoginHistory } from '@/core/storage/login-history';
 import { formatTimer, useAuthStore } from '@/features/auth/auth-store';
 import { LoginTopImages } from '@/features/auth/login-top-images';
 import { useRegistrationStore } from '@/features/auth/registration-store';
@@ -79,6 +80,8 @@ export default function OtpScreen() {
       useAuthStore.getState().setOtpInvalid(true);
       return;
     }
+    // Proved theirs — offer it on the number fields from now on.
+    LoginHistory.remember(mobile);
 
     useAuthStore.getState().stopTimer();
 
@@ -122,6 +125,7 @@ export default function OtpScreen() {
       }
 
       if (!(await useAuthStore.getState().verifyOTP(mobile))) return;
+      LoginHistory.remember(mobile);
 
       useDashboardStore.getState().syncDutyFromSession();
       const tripId = takePendingTrip();

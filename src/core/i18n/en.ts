@@ -300,16 +300,27 @@ export const en = {
   registerVehicleDetails: 'Vehicle Details',
   registerLicenceDetails: 'Licence Details',
   registerVerifying: 'Fetching details...',
-  // Both lookups have to succeed before the form can be sent, so a failure is
-  // a step to repeat rather than something to shrug at and carry on past.
-  registerVerifyFailed: 'Could not fetch details. Check what you entered, or try again.',
+  // A failed lookup no longer blocks the submit — the four document photos
+  // stand in for it — so this reassures rather than stops the driver.
+  registerVerifyFailed: 'Could not fetch details right now. You can still submit — the 4 photos below are enough.',
   registerRetryLookup: 'TRY AGAIN',
-  registerConfirmVehicle:
-    'We could not confirm this vehicle number yet. Check it and try again before submitting.',
-  registerConfirmLicence:
-    'We could not confirm this licence number and date of birth yet. Check them and try again before submitting.',
-  registerConfirmBoth:
-    'We could not confirm your vehicle and licence details yet. Check them and try again before submitting.',
+  registerPhotosTitle: 'Document Photos',
+  registerPhotosNote: 'All 4 photos are required. Make sure the text is clear and readable.',
+  registerPhotoDlFront: 'Licence — Front',
+  registerPhotoDlBack: 'Licence — Back',
+  registerPhotoRcFront: 'RC Book — Front',
+  registerPhotoRcBack: 'RC Book — Back',
+  registerPhotoAdd: 'Add photo',
+  registerPhotoUploading: 'Uploading...',
+  registerPhotoRetry: 'Upload failed — tap to retry',
+  registerPhotoChange: 'Change',
+  registerPhotoSourceTitle: 'Add photo',
+  registerPhotoCamera: 'Take photo',
+  registerPhotoGallery: 'Choose from gallery',
+  registerPhotoCancel: 'Cancel',
+  registerPhotosRequired: 'Please add all 4 photos: licence front & back and RC book front & back.',
+  registerPhotoPermission: 'Allow camera / photo access in Settings to add your documents.',
+  registerPhotoUploadFailed: 'A photo could not be uploaded. Check your internet and try again.',
   registerOwner: 'Owner',
   registerModel: 'Model',
   registerVehicleClass: 'Class',

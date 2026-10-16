@@ -138,6 +138,15 @@ export function parseRegistrationStatus(json: any): RegistrationStatusInfo | nul
  */
 export type RegistrationDetails = Omit<RegistrationForm, 'mobileNo'>;
 
+/**
+ * The four document photos a registration must carry. The names match the
+ * `documents` object on the backend's appdriver record.
+ */
+export const REGISTRATION_DOCUMENT_KEYS = ['dlFront', 'dlBack', 'rcFront', 'rcBack'] as const;
+export type RegistrationDocumentKey = (typeof REGISTRATION_DOCUMENT_KEYS)[number];
+/** S3 keys of the uploaded photos, as the server hands them back. */
+export type RegistrationDocuments = Partial<Record<RegistrationDocumentKey, string>>;
+
 /** Fields the registration form collects. */
 export interface RegistrationForm {
   driverName: string;
@@ -146,6 +155,8 @@ export interface RegistrationForm {
   driverLicenceNumber: string;
   /** Always 'YYYY-MM-DD' — the format ULIP's sarthi-driver requires. */
   dob: string;
+  /** All four are required; filled in by the store as each upload lands. */
+  documents: RegistrationDocuments;
 }
 
 export type RegistrationStatusResponse = Envelope<RegistrationStatusInfo>;

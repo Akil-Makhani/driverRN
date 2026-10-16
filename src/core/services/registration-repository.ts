@@ -15,6 +15,7 @@ import type { CommonResponse } from '@/types/api';
 import {
   type DriverLicenceInfo,
   type RegistrationDetails,
+  type RegistrationDocumentKey,
   type RegistrationForm,
   type RegistrationStatusInfo,
   type VehicleInfo,
@@ -49,13 +50,14 @@ async function deviceBody(): Promise<Record<string, unknown>> {
   };
 }
 
-/** The five form fields, normalised the way the server expects them. */
+/** The form fields, normalised the way the server expects them. */
 function detailsBody(details: RegistrationDetails): Record<string, unknown> {
   return {
     driverName: details.driverName.trim(),
     vehicleNumber: details.vehicleNumber.trim().toUpperCase(),
     driverLicenceNumber: details.driverLicenceNumber.trim(),
     dob: details.dob.trim(),
+    documents: details.documents,
   };
 }
 
@@ -155,6 +157,37 @@ export const RegistrationRepository = {
       vehicleNumber: vehicleNumber.trim().toUpperCase(),
     });
     return parseVehicleInfo(raw?.data);
+  },
+
+  /**
+   * Uploads one document photo and resolves its S3 key. Two steps: the API
+   * signs a PUT for this number's folder (401 if the OTP verification has
+   * lapsed — the caller sends them back through it), then the bytes go
+   * straight to S3, as a Blob for the same reason the trip uploads use one.
+   */
+  async uploadDocument(
+    mobileNo: string,
+    documentType: RegistrationDocumentKey,
+    uri: string,
+    contentType: string,
+  ): Promise<string> {
+    const raw = await ApiService.post(ApiUrls.registerDocumentUploadUrl, {
+      mobileNo: mobileNo.trim(),
+      documentType,
+      contentType,
+    });
+    const uploadUrl: string | undefined = raw?.data?.uploadUrl;
+    const fileKey: string | undefined = raw?.data?.fileKey;
+    if (!uploadUrl || !fileKey) throw new Error('No upload URL returned');
+
+    const blob = await (await fetch(uri)).blob();
+    const s3 = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: blob,
+    });
+    if (!s3.ok) throw new Error(`Upload failed: ${s3.status}`);
+    return fileKey;
   },
 
   async lookupLicence(

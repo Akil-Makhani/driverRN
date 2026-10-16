@@ -12,6 +12,7 @@
  * register screen after a submit, the login and waiting screens after a status
  * check, and the root layout after a decision push.
  */
+import * as ImagePicker from 'expo-image-picker';
 import { create } from 'zustand';
 
 import { UnauthorisedException } from '@/core/api/errors';
@@ -19,16 +20,39 @@ import { RegistrationRepository } from '@/core/services/registration-repository'
 import { Preference } from '@/core/storage/preference';
 import { Strings } from '@/core/constants/strings';
 import { isSuccess } from '@/types/api';
-import { isRegistrationComplete } from '@/types/registration';
+import { REGISTRATION_DOCUMENT_KEYS, isRegistrationComplete } from '@/types/registration';
 import type {
   DriverLicenceInfo,
+  RegistrationDocumentKey,
   RegistrationForm,
   RegistrationStatus,
   RegistrationStatusInfo,
   VehicleInfo,
 } from '@/types/registration';
 
-export type FieldKey = keyof RegistrationForm;
+/** The typed fields — everything on the form except the photo keys. */
+export type FieldKey = Exclude<keyof RegistrationForm, 'documents'>;
+
+/**
+ * One of the four document photos. `uri` is the local picture shown in the
+ * slot; the S3 key it uploads to lives on `form.documents`, which is what
+ * submit sends. Kept apart because a photo can be on screen and not yet
+ * uploaded — picked offline, or refused by a lapsed OTP verification.
+ */
+export interface PhotoSlot {
+  uri?: string;
+  mimeType?: string;
+  status: 'idle' | 'uploading' | 'done' | 'failed';
+}
+
+export type PhotoSource = 'camera' | 'library';
+
+const EMPTY_PHOTOS = (): Record<RegistrationDocumentKey, PhotoSlot> => ({
+  dlFront: { status: 'idle' },
+  dlBack: { status: 'idle' },
+  rcFront: { status: 'idle' },
+  rcBack: { status: 'idle' },
+});
 
 /**
  * Which popup to show, and the words to put in it. There is deliberately no
@@ -65,6 +89,10 @@ interface RegistrationState {
   vehicleLookup: LookupState;
   licenceInfo: DriverLicenceInfo | null;
   licenceLookup: LookupState;
+
+  photos: Record<RegistrationDocumentKey, PhotoSlot>;
+  /** Shown under the photo grid — a missing photo or a failed upload. */
+  photoError: string | null;
 
   outcome: RegistrationOutcome | null;
   isCheckingStatus: boolean;
@@ -144,12 +172,14 @@ interface RegistrationState {
 
   lookupVehicle: () => Promise<void>;
   lookupLicence: () => Promise<void>;
+
+  /** Takes or chooses a photo for one slot and starts uploading it. */
+  pickPhoto: (key: RegistrationDocumentKey, source: PhotoSource) => Promise<void>;
   /**
-   * Runs whichever of the two lookups has not succeeded yet and reports
-   * whether both now have. Resolves false with the reason in submitError,
-   * which is where the form shows it.
+   * Uploads one picked photo. 'needs-otp' is the server refusing because the
+   * mobile verification has lapsed — the same ending submit has.
    */
-  confirmDetails: () => Promise<boolean>;
+  uploadPhoto: (key: RegistrationDocumentKey) => Promise<'done' | 'needs-otp' | 'failed'>;
 
   /**
    * Verifies the registration OTP and reports where the driver goes next:
@@ -207,6 +237,7 @@ const EMPTY_FORM: RegistrationForm = {
   vehicleNumber: '',
   driverLicenceNumber: '',
   dob: '',
+  documents: {},
 };
 
 // ── Field rules ──────────────────────────────────────────────
@@ -287,7 +318,7 @@ function validateForm(
 const isFormStarted = (f: RegistrationForm): boolean =>
   [f.driverName, f.vehicleNumber, f.driverLicenceNumber, f.dob].some(
     (v) => v.trim() !== '',
-  );
+  ) || Object.keys(f.documents).length > 0;
 
 /** Whether a field is complete enough to be worth a ULIP round trip. */
 const vehicleReady = (f: RegistrationForm) => VEHICLE_RE.test(compact(f.vehicleNumber));
@@ -313,6 +344,9 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
   vehicleLookup: 'idle',
   licenceInfo: null,
   licenceLookup: 'idle',
+
+  photos: EMPTY_PHOTOS(),
+  photoError: null,
 
   outcome: null,
   isCheckingStatus: false,
@@ -347,8 +381,81 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
 
   validate() {
     const errors = validateForm(get().form);
-    set({ errors });
-    return Object.keys(errors).length === 0;
+    // All four photos are compulsory. Picked is enough here — submit uploads
+    // whichever have not gone up yet.
+    const photos = get().photos;
+    const photosMissing = REGISTRATION_DOCUMENT_KEYS.some((k) => !photos[k].uri);
+    set({ errors, photoError: photosMissing ? Strings.registerPhotosRequired : null });
+    return Object.keys(errors).length === 0 && !photosMissing;
+  },
+
+  async pickPhoto(key, source) {
+    const permission =
+      source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      set({ photoError: Strings.registerPhotoPermission });
+      return;
+    }
+
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      // A document photo only has to be legible; 0.6 keeps a 12MP shot to a
+      // few hundred KB, which matters on a weak connection at a truck stand.
+      quality: 0.6,
+    };
+    const result =
+      source === 'camera'
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+    if (result.canceled || result.assets.length === 0) return;
+
+    const asset = result.assets[0];
+    // A new photo replaces the old one, including its uploaded key: the key
+    // would otherwise go on describing a picture that is no longer on screen.
+    const documents = { ...get().form.documents };
+    delete documents[key];
+    set({
+      form: { ...get().form, documents },
+      photos: {
+        ...get().photos,
+        [key]: { uri: asset.uri, mimeType: asset.mimeType ?? 'image/jpeg', status: 'idle' },
+      },
+      photoError: null,
+      submitError: null,
+    });
+    await get().uploadPhoto(key);
+  },
+
+  async uploadPhoto(key) {
+    const slot = get().photos[key];
+    if (!slot.uri) return 'failed';
+    if (slot.status === 'done' && get().form.documents[key]) return 'done';
+
+    const setSlot = (status: PhotoSlot['status']) =>
+      set({ photos: { ...get().photos, [key]: { ...get().photos[key], status } } });
+
+    setSlot('uploading');
+    try {
+      const fileKey = await RegistrationRepository.uploadDocument(
+        get().form.mobileNo,
+        key,
+        slot.uri,
+        slot.mimeType ?? 'image/jpeg',
+      );
+      // Re-picked while this was in flight: the newer photo's own upload owns
+      // the slot now, and this key belongs to a picture nobody can see.
+      if (get().photos[key].uri !== slot.uri) return 'failed';
+      set({ form: { ...get().form, documents: { ...get().form.documents, [key]: fileKey } } });
+      setSlot('done');
+      return 'done';
+    } catch (e) {
+      if (get().photos[key].uri !== slot.uri) return 'failed';
+      setSlot('failed');
+      if (e instanceof UnauthorisedException && e.statusCode === 401) return 'needs-otp';
+      return 'failed';
+    }
   },
 
   async startRegistration(mobileNo) {
@@ -494,47 +601,31 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
     return licenceInFlight;
   },
 
-  async confirmDetails() {
-    set({ submitError: null });
-
-    // Twice at most. A second round is only ever needed for the one race this
-    // has: an edit landing while a lookup was in flight leaves that lookup
-    // discarding its own result, and the state back at idle rather than at an
-    // answer. A genuine 'failed' breaks out immediately.
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const pending: Promise<void>[] = [];
-      if (get().vehicleLookup !== 'done') pending.push(get().lookupVehicle());
-      if (get().licenceLookup !== 'done') pending.push(get().lookupLicence());
-      if (pending.length > 0) await Promise.all(pending);
-
-      const { vehicleLookup, licenceLookup } = get();
-      if (vehicleLookup === 'done' && licenceLookup === 'done') return true;
-      if (vehicleLookup === 'failed' || licenceLookup === 'failed') break;
-    }
-
-    const { vehicleLookup, licenceLookup } = get();
-    set({
-      submitError:
-        vehicleLookup !== 'done' && licenceLookup !== 'done'
-          ? Strings.registerConfirmBoth
-          : vehicleLookup !== 'done'
-            ? Strings.registerConfirmVehicle
-            : Strings.registerConfirmLicence,
-    });
-    return false;
-  },
-
   async submit() {
     if (!get().validate()) return 'failed';
 
-    // Both numbers have to be confirmed by ULIP before this reaches the admin.
-    // The form's own rules only prove the shape of what was typed; whether a
-    // vehicle and a licence actually exist is what these two answer, and a
-    // request the admin cannot check is worth less than one the driver was
-    // asked to correct while they still had the form in front of them.
-    if (!(await get().confirmDetails())) return 'failed';
-
     set({ isSubmitting: true, submitError: null });
+
+    // The ULIP lookups no longer gate this. The gateway is down more often
+    // than not, and the four photos are what the admin checks the numbers
+    // against when it is — so with all four in, the registration goes through
+    // whether or not the panels above managed to fetch anything. The server
+    // makes its own best-effort ULIP call when it files the record.
+    //
+    // What does gate it is every photo being uploaded: any that failed or
+    // never started (picked offline) get one more go here.
+    for (const key of REGISTRATION_DOCUMENT_KEYS) {
+      const uploaded = await get().uploadPhoto(key);
+      if (uploaded === 'needs-otp') {
+        set({ isSubmitting: false, submitError: Strings.registerVerifyExpired });
+        return 'needs-otp';
+      }
+      if (uploaded === 'failed') {
+        set({ isSubmitting: false, photoError: Strings.registerPhotoUploadFailed });
+        return 'failed';
+      }
+    }
+
     const { form } = get();
     try {
       // Two ways in, settled by whether the server holds a record to complete.
@@ -711,6 +802,8 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
               vehicleLookup: 'idle' as LookupState,
               licenceInfo: null,
               licenceLookup: 'idle' as LookupState,
+              photos: EMPTY_PHOTOS(),
+              photoError: null,
             }),
       });
 
@@ -963,6 +1056,8 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
       vehicleLookup: 'idle',
       licenceInfo: null,
       licenceLookup: 'idle',
+      photos: EMPTY_PHOTOS(),
+      photoError: null,
     }),
 }));
 

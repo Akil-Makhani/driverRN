@@ -30,6 +30,12 @@ import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { digitsOnly, groupDigits } from '@/core/utils/number-format';
 import { useAuthStore } from '@/features/auth/auth-store';
+import {
+  InlineMobileSuggestions,
+  KeyboardMobileSuggestions,
+  SUGGESTION_STRIP_HEIGHT,
+  useMobileSuggestions,
+} from '@/features/auth/mobile-suggestions';
 
 const MOBILE_LENGTH = 10;
 
@@ -40,6 +46,14 @@ export default function RegisterMobileScreen() {
   const [mobile, setMobile] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+  // autoFocus below, so the keyboard (and the strip on it) is up from the start.
+  const [focused, setFocused] = useState(true);
+  const { suggestions, showOnKeyboard, showInline } = useMobileSuggestions(mobile, focused);
+  const pickSuggestion = (n: string) => {
+    setMobile(n);
+    setError(null);
+    Keyboard.dismiss();
+  };
 
   const onSendOtp = async () => {
     Keyboard.dismiss();
@@ -65,7 +79,7 @@ export default function RegisterMobileScreen() {
     <View style={[styles.screen, { paddingTop: insets.top + 8 }]}>
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scroll}
-        bottomOffset={20}
+        bottomOffset={showOnKeyboard ? SUGGESTION_STRIP_HEIGHT + 20 : 20}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -95,8 +109,16 @@ export default function RegisterMobileScreen() {
             placeholderTextColor={TextShade.c400}
             maxLength={11} // 10 digits + the group separator
             autoFocus
+            autoComplete="tel"
+            textContentType="telephoneNumber"
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
           />
         </View>
+
+        {showInline ? (
+          <InlineMobileSuggestions numbers={suggestions} onPick={pickSuggestion} />
+        ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -106,6 +128,10 @@ export default function RegisterMobileScreen() {
 
         <Text style={styles.footNote}>{Strings.registerHaveAccount}</Text>
       </KeyboardAwareScrollView>
+
+      {showOnKeyboard ? (
+        <KeyboardMobileSuggestions numbers={suggestions} onPick={pickSuggestion} />
+      ) : null}
 
       {isSending && (
         <View style={styles.loadingOverlay} pointerEvents="auto">

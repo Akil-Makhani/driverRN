@@ -111,6 +111,9 @@ export const ApiUrls = {
   registerSession: '/driver/registration/session',
   lookupVehicle: '/driver/registration/lookup/vehicle',
   lookupLicence: '/driver/registration/lookup/driver',
+  // Pre-signed S3 PUT for one of the four document photos. Only answers for a
+  // number whose OTP has just verified — 401 otherwise, same as `register`.
+  registerDocumentUploadUrl: '/driver/registration/documents/upload-url',
 
   // ── Broadcast dispatch ─────────────────────────────────────
   // Offers reach the app over the socket; these exist so a driver who was
