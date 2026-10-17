@@ -22,11 +22,16 @@ import { AppBar } from '@/components/app-bar';
 import { Sidebar } from '@/components/sidebar';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Typography } from '@/core/constants/typography';
+import { Preference } from '@/core/storage/preference';
 import {
+  lastOfferPickup,
   LocationTracker,
   TEST_LOCATION_ENABLED,
   type TestLocation,
 } from '@/core/services/location-tracker';
+
+/** The pickup typed last time, so a tester sets it once, not before every order. */
+const KEY_TEST_PICKUP = 'tracking.testPickupText';
 
 /** Where the distances count from when no pickup is given: Morbi town centre. */
 const MORBI = { latitude: 22.8173, longitude: 70.8378 };
@@ -52,7 +57,12 @@ export default function TestLocationScreen() {
   const router = useRouter();
   const [current, setCurrent] = useState(() => LocationTracker.getTestLocation());
   /** The order's pickup, typed in so the distances count from it. */
-  const [pickupText, setPickupText] = useState('');
+  const [pickupText, setPickupTextState] = useState(() => Preference.raw.getString(KEY_TEST_PICKUP) ?? '');
+  const setPickupText = (text: string) => {
+    setPickupTextState(text);
+    Preference.raw.set(KEY_TEST_PICKUP, text);
+  };
+  const lastPickup = lastOfferPickup();
   /** How far from `from` to stand, typed in km (0 = right at it). */
   const [kmText, setKmText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -95,9 +105,19 @@ export default function TestLocationScreen() {
           instead of the GPS, so a new tempo order is offered to you as if you stood there.
         </Text>
         <Text style={styles.note}>
-          The distance counts from Morbi centre. For an exact distance from the order&apos;s
-          pickup, paste the pickup&apos;s latitude, longitude below first (optional).
+          Rings are measured from the order&apos;s PICKUP, so set the pickup first, then the km.
         </Text>
+
+        {lastPickup && (
+          <Pressable
+            onPress={() => setPickupText(`${lastPickup.latitude}, ${lastPickup.longitude}`)}
+            style={styles.option}
+          >
+            <Text style={styles.optionText}>
+              {`Use last order's pickup${lastPickup.name ? `: ${lastPickup.name}` : ''}`}
+            </Text>
+          </Pressable>
+        )}
 
         <TextInput
           style={styles.input}
@@ -109,6 +129,11 @@ export default function TestLocationScreen() {
         />
         {pickupText.length > 0 && !pickup && (
           <Text style={styles.warning}>Write it as  22.8653, 70.9333</Text>
+        )}
+        {pickupText.length === 0 && (
+          <Text style={styles.warning}>
+            No pickup set: the km will count from Morbi centre, NOT from the order&apos;s pickup.
+          </Text>
         )}
 
         <Text style={styles.current}>

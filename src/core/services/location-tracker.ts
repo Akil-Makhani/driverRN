@@ -140,6 +140,26 @@ export interface TestLocation {
 export const TEST_LOCATION_ENABLED = __DEV__ || process.env.EXPO_PUBLIC_TEST_LOCATION === 'true';
 
 /**
+ * Test builds only: the pickup of the last offer this phone received, so the
+ * Test location screen can measure from it in one tap. Distances typed there
+ * without a pickup count from Morbi centre, and testers kept reading "3 km"
+ * as 3 km from the pickup when it was 10 km from it.
+ */
+const KEY_LAST_OFFER_PICKUP = 'tracking.lastOfferPickup';
+export type OfferPickup = { latitude: number; longitude: number; name?: string };
+
+export const rememberOfferPickup = (pickup: { latitude?: string; longitude?: string; companyName?: string } | undefined): void => {
+  if (!TEST_LOCATION_ENABLED || !pickup) return;
+  const latitude = Number(pickup.latitude);
+  const longitude = Number(pickup.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || (latitude === 0 && longitude === 0)) return;
+  writeJson(KEY_LAST_OFFER_PICKUP, { latitude, longitude, name: pickup.companyName });
+};
+
+export const lastOfferPickup = (): OfferPickup | null =>
+  TEST_LOCATION_ENABLED ? readJson<OfferPickup | null>(KEY_LAST_OFFER_PICKUP, null) : null;
+
+/**
  * Test builds only: the GPS fix with the test position swapped in, so a
  * tester outside Morbi can stand a driver N km from a Morbi pickup. Production
  * builds never read the setting, whatever is stored.

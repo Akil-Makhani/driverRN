@@ -20,6 +20,7 @@ import { AppState } from 'react-native';
 import { create } from 'zustand';
 
 import { JobRepository } from '@/core/services/job-repository';
+import { rememberOfferPickup } from '@/core/services/location-tracker';
 import { NotificationManager } from '@/core/services/notification-manager';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 import { Siren } from '@/core/services/siren';
@@ -142,6 +143,7 @@ export const useJobStore = create<JobState>((set, get) => {
         typeof raw === 'string' ? safeParse(raw) : raw,
       );
       if (!offer.id) return;
+      rememberOfferPickup(offer.pickupAddress);
 
       const { offers, deadlines } = get();
       // Rule 1. Also covers the resync re-delivering what we already hold.
