@@ -63,7 +63,7 @@ const KEY_MODE = 'tracking.mode';
 const KEY_LAST_FIX = 'tracking.lastFix';
 const KEY_BUFFER = 'tracking.buffer';
 const KEY_LAST_DUTY_FIX = 'tracking.lastDutyFix';
-/** Debug builds only: a fixed position reported in place of the GPS. */
+/** Drivers with Test location access only: a fixed position reported in place of the GPS. */
 const KEY_TEST_LOCATION = 'tracking.testLocation';
 const KEY_LAST_LOG_AT = 'tracking.lastLogAt';
 /** Same key 1.1.x queued under, so pings it left unsent still go out. */
@@ -133,19 +133,25 @@ export interface TestLocation {
 }
 
 /**
- * Whether the Test location screen and its stand-in position exist in this
- * build: debug builds, plus the preview (testers') build, which sets
- * EXPO_PUBLIC_TEST_LOCATION in eas.json. Production builds never have it.
+ * Whether this driver may use the Test location screen and its stand-in
+ * position. Set per driver by the admin (Tempo > Driver Access) and off for
+ * everyone else, in every build including production. Read from MMKV rather
+ * than the session because the location task can run headless.
  */
-export const TEST_LOCATION_ENABLED = __DEV__ || process.env.EXPO_PUBLIC_TEST_LOCATION === 'true';
+export const testLocationAllowed = (): boolean => Preference.hasTestLocationAccess();
 
 /**
- * Test builds only: the GPS fix with the test position swapped in, so a
- * tester outside Morbi can stand a driver N km from a Morbi pickup. Production
- * builds never read the setting, whatever is stored.
+ * The GPS fix with the test position swapped in, so a tester outside Morbi can
+ * stand a driver N km from a Morbi pickup. Only for a driver the admin gave
+ * Test location access; for anyone else the stored setting is ignored.
  */
 const withTestLocation = (location: Location.LocationObject): Location.LocationObject => {
-  if (!TEST_LOCATION_ENABLED) return location;
+  if (!testLocationAllowed()) {
+    // Access was taken away while a test position was set: drop it, so the
+    // real GPS goes out from now on and switching access back on starts clean.
+    if (Preference.raw.contains(KEY_TEST_LOCATION)) Preference.raw.remove(KEY_TEST_LOCATION);
+    return location;
+  }
   const test = readJson<TestLocation | null>(KEY_TEST_LOCATION, null);
   if (!test) return location;
   return {
@@ -637,18 +643,18 @@ export const LocationTracker = {
     }
   },
 
-  /** Test builds only: the position standing in for the GPS, or null. */
+  /** Test location drivers only: the position standing in for the GPS, or null. */
   getTestLocation(): TestLocation | null {
-    return TEST_LOCATION_ENABLED ? readJson<TestLocation | null>(KEY_TEST_LOCATION, null) : null;
+    return testLocationAllowed() ? readJson<TestLocation | null>(KEY_TEST_LOCATION, null) : null;
   },
 
   /**
-   * Test builds only: stands the driver at `test` (null goes back to the GPS)
+   * Test location drivers only: stands the driver at `test` (null goes back to the GPS)
    * and reports it at once, rather than waiting up to two minutes for the next
    * duty ping, so the very next order is offered from there.
    */
   async setTestLocation(test: TestLocation | null): Promise<void> {
-    if (!TEST_LOCATION_ENABLED) return;
+    if (!testLocationAllowed()) return;
     if (test) writeJson(KEY_TEST_LOCATION, test);
     else Preference.raw.remove(KEY_TEST_LOCATION);
     // Lets the duty send gate through straight away.

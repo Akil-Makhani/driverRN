@@ -15,6 +15,7 @@ const REFRESH_TOKEN_KEY = 'refresh_token';
 const PENDING_REGISTRATION_KEY = 'pending_registration_mobile';
 const DEVICE_SECRET_KEY = 'registration_device_secret';
 const DETAILS_PENDING_KEY = 'registration_details_pending';
+const TEST_LOCATION_ACCESS_KEY = 'tracking.testLocationAccess';
 
 /** 32 bytes as hex — the length the API requires of a device secret. */
 const SECRET_BYTES = 32;
@@ -124,9 +125,23 @@ export const Preference = {
     storage.remove(DEVICE_SECRET_KEY);
   },
 
+  /**
+   * Whether the admin turned Test location on for this driver (Tempo > Driver
+   * Access). Copied from the profile on every session update, because the
+   * background location task can run headless with no session in memory.
+   */
+  setTestLocationAccess(allowed: boolean): void {
+    if (allowed) storage.set(TEST_LOCATION_ACCESS_KEY, true);
+    else storage.remove(TEST_LOCATION_ACCESS_KEY);
+  },
+  hasTestLocationAccess(): boolean {
+    return storage.getBoolean(TEST_LOCATION_ACCESS_KEY) === true;
+  },
+
   /** Logout / delete-account. Mirrors clearAuthData(). */
   clearAuthData(): void {
     storage.remove(ACCESS_TOKEN_KEY);
     storage.remove(REFRESH_TOKEN_KEY);
+    storage.remove(TEST_LOCATION_ACCESS_KEY);
   },
 } as const;

@@ -21,6 +21,7 @@ import { Typography } from '@/core/constants/typography';
 import { LocationTracker } from '@/core/services/location-tracker';
 import { NotificationManager } from '@/core/services/notification-manager';
 import { ensureLocationPermission } from '@/core/utils/maps';
+import { useAuthStore } from '@/features/auth/auth-store';
 import { DashboardCell } from '@/features/dashboard/dashboard-cell';
 import {
   DashboardEmptyView,
@@ -95,6 +96,8 @@ export default function DashboardScreen() {
     useCallback(() => {
       void useDashboardStore.getState().getTrips();
       void useNotificationStore.getState().getNotificationCount();
+      // Picks up the admin turning Test location on or off for this driver.
+      void useAuthStore.getState().loadProfile();
     }, []),
   );
 

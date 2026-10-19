@@ -1,13 +1,14 @@
 /**
- * Debug and preview builds only: stand this driver at a chosen distance from Morbi.
+ * Only for drivers the admin gave Test location access (Tempo > Driver Access
+ * in the panel): stand this driver at a chosen distance from Morbi.
  *
  * Tempo orders are offered in rings around the pickup - drivers within 5 km
  * first, then 10 km, and so on - and pickups are in Morbi. A tester anywhere
  * else would never be in any ring, so this reports a fixed position in place
- * of the GPS (LocationTracker.setTestLocation). Production builds have no way in.
+ * of the GPS (LocationTracker.setTestLocation). Every other driver has no way in.
  */
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   BackHandler,
   Pressable,
@@ -22,9 +23,9 @@ import { AppBar } from '@/components/app-bar';
 import { Sidebar } from '@/components/sidebar';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Typography } from '@/core/constants/typography';
+import { useSession } from '@/core/session';
 import {
   LocationTracker,
-  TEST_LOCATION_ENABLED,
   type TestLocation,
 } from '@/core/services/location-tracker';
 
@@ -57,6 +58,13 @@ export default function TestLocationScreen() {
   const [kmText, setKmText] = useState('');
   const [busy, setBusy] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const allowed = useSession((s) => s.user?.testLocationAccess === true);
+
+  // The admin can switch access off while the driver is on this screen; the
+  // next profile load (the menu, the dashboard) then sends them home.
+  useEffect(() => {
+    if (!allowed) router.replace('/dashboard');
+  }, [allowed, router]);
 
   // Opened from the side menu, which replaces the screen, so there is nothing
   // behind it to go back to: Back goes home instead of throwing GO_BACK.
@@ -70,7 +78,7 @@ export default function TestLocationScreen() {
     }, [router]),
   );
 
-  if (!TEST_LOCATION_ENABLED) return null;
+  if (!allowed) return null;
 
   const apply = async (test: TestLocation | null) => {
     setBusy(true);
@@ -91,7 +99,7 @@ export default function TestLocationScreen() {
       <AppBar title="Test location" leading="menu" onLeadingPress={() => setDrawerOpen(true)} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.note}>
-          Test builds only. Type a distance in km and tap Set. The app then reports that position
+          Testing only. Type a distance in km and tap Set. The app then reports that position
           instead of the GPS, so a new tempo order is offered to you as if you stood there.
         </Text>
         <Text style={styles.note}>

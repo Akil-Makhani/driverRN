@@ -17,6 +17,8 @@ export interface AppUser {
   refreshToken: string;
   tripCount?: number;
   completedTripCount?: number;
+  /** The admin turned the Test location screen on for this driver. */
+  testLocationAccess: boolean;
 }
 
 export function parseAppUser(json: any): AppUser {
@@ -37,6 +39,9 @@ export function parseAppUser(json: any): AppUser {
     refreshToken: json?.refreshToken ?? '',
     tripCount: num(json?.tripCount),
     completedTripCount: num(json?.completedTripCount),
+    // Absent on every driver the admin has not switched on, and on an API
+    // that predates the switch: both mean no.
+    testLocationAccess: json?.testLocationAccess === true,
   };
 }
 

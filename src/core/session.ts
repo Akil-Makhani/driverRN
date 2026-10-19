@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { isLanguage, useLanguageStore } from '@/core/i18n/language';
+import { Preference } from '@/core/storage/preference';
 import type { AppUser } from '@/types/user';
 
 /**
@@ -23,13 +24,17 @@ export const useSession = create<SessionState>((set, get) => ({
   isLoggedIn: () => get().user != null,
   updateSession: (user) => {
     set({ user });
+    Preference.setTestLocationAccess(user?.testLocationAccess === true);
     // The server's language is the driver's choice, whether the admin set it
     // or the driver changed it on another phone.
     if (isLanguage(user?.language)) {
       useLanguageStore.getState().setLanguage(user.language);
     }
   },
-  clearSession: () => set({ user: null }),
+  clearSession: () => {
+    set({ user: null });
+    Preference.setTestLocationAccess(false);
+  },
 }));
 
 /**

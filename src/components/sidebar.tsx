@@ -13,7 +13,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Application from 'expo-application';
 import { usePathname, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Image,
   Linking,
@@ -31,7 +31,6 @@ import { Images } from '@/core/constants/assets';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
-import { TEST_LOCATION_ENABLED } from '@/core/services/location-tracker';
 import { useSession } from '@/core/session';
 import { useAuthStore } from '@/features/auth/auth-store';
 
@@ -55,6 +54,14 @@ export function Sidebar({ visible, onClose }: Props) {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const user = useSession((s) => s.user);
+  const testLocationAccess = user?.testLocationAccess === true;
+
+  // The admin switches Test location on or off per driver from the panel, so
+  // re-read the profile each time the menu opens: the row appears or goes
+  // without the driver having to restart the app.
+  useEffect(() => {
+    if (visible) void useAuthStore.getState().loadProfile();
+  }, [visible]);
 
   const [dialog, setDialog] = useState<'logout' | 'delete' | null>(null);
 
@@ -139,9 +146,10 @@ export function Sidebar({ visible, onClose }: Props) {
             selected={pathname === '/profile'}
             onPress={() => go('/profile')}
           />
-          {/* Debug and preview builds only: lets a tester outside Morbi
-              receive tempo offers as if they were near the pickup. */}
-          {TEST_LOCATION_ENABLED && (
+          {/* Only for drivers the admin gave access (Tempo > Driver Access):
+              lets a tester outside Morbi receive tempo offers as if they were
+              near the pickup. */}
+          {testLocationAccess && (
             <SidebarCell
               icon="locate"
               title="Test location"
