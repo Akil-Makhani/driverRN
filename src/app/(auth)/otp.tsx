@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -57,6 +58,16 @@ export default function OtpScreen() {
 
   // Stop the countdown if the driver backs out before verifying.
   useEffect(() => () => useAuthStore.getState().stopTimer(), []);
+
+  // Closing the keyboard (back button, tapping outside) leaves the boxes'
+  // hidden input focused, and on Android focusing an input that already has
+  // focus does not bring the keyboard back — so a second tap on the boxes
+  // opened nothing. Letting go of focus with the keyboard means the next tap
+  // is a real focus, and the keyboard opens every time.
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidHide', () => otpRef.current?.blur());
+    return () => sub.remove();
+  }, []);
 
   // Android: when the OTP SMS lands, a one-tap "Allow" sheet appears; on Allow
   // the code is typed into the boxes, which fires onFilled -> onVerify. Login

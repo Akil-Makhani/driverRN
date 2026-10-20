@@ -12,6 +12,8 @@
  *   401/403/404/409 → UnauthorisedException(server `message`)
  *   500/other → FetchDataException
  */
+import * as Application from 'expo-application';
+
 import { API_BASE_URL } from './endpoints';
 import {
   BadRequestException,
@@ -28,6 +30,15 @@ type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
  */
 const DEFAULT_TIMEOUT_MS = 30000;
 
+/**
+ * Tiles Drop Saathi is for approved market drivers only. This code also ships
+ * as BST Driver (own drivers), and one number can be both, so the server is
+ * told which app is asking: with `market` it logs in the market account and
+ * refuses an own driver's. BST Driver sends nothing and keeps the old lookup.
+ */
+const DRIVER_APP_HEADER: Record<string, string> =
+  Application.applicationId === 'com.tilesdrop.partner' ? { 'X-Driver-App': 'market' } : {};
+
 async function request<T = any>(
   method: Method,
   url: string,
@@ -39,6 +50,7 @@ async function request<T = any>(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
+    ...DRIVER_APP_HEADER,
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
