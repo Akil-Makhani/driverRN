@@ -19,6 +19,7 @@ import { UnauthorisedException } from '@/core/api/errors';
 import { RegistrationRepository } from '@/core/services/registration-repository';
 import { Preference } from '@/core/storage/preference';
 import { Strings } from '@/core/constants/strings';
+import { toAsciiDigits } from '@/core/utils/number-format';
 import { isSuccess } from '@/types/api';
 import { REGISTRATION_DOCUMENT_KEYS, isRegistrationComplete } from '@/types/registration';
 import type {
@@ -1067,7 +1068,7 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
  * DOB is a number people know by heart, so typing it is no hardship.
  */
 export function formatDobInput(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 8);
+  const digits = toAsciiDigits(raw).replace(/\D/g, '').slice(0, 8);
   if (digits.length <= 4) return digits;
   if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
   return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;

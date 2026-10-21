@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { isLanguage, useLanguageStore } from '@/core/i18n/language';
+import { hasChosenLanguage, isLanguage, useLanguageStore } from '@/core/i18n/language';
 import { Preference } from '@/core/storage/preference';
 import type { AppUser } from '@/types/user';
 
@@ -25,9 +25,11 @@ export const useSession = create<SessionState>((set, get) => ({
   updateSession: (user) => {
     set({ user });
     Preference.setTestLocationAccess(user?.testLocationAccess === true);
-    // The server's language is the driver's choice, whether the admin set it
-    // or the driver changed it on another phone.
-    if (isLanguage(user?.language)) {
+    // The language picked on this phone wins: a driver who chose Gujarati
+    // before logging in must not be switched to the admin's default the
+    // moment the profile arrives. UserRepository pushes the phone's choice up
+    // instead. The server's copy is only taken by a phone that has none.
+    if (!hasChosenLanguage() && isLanguage(user?.language)) {
       useLanguageStore.getState().setLanguage(user.language);
     }
   },

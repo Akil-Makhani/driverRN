@@ -45,6 +45,7 @@ import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { formatTimestamp } from '@/core/utils/date-format';
+import { localDigits } from '@/core/i18n/language';
 import { groupDigits } from '@/core/utils/number-format';
 import { useAuthStore } from '@/features/auth/auth-store';
 import { useRegistrationStore } from '@/features/auth/registration-store';
@@ -208,7 +209,7 @@ export default function PendingApprovalScreen() {
             </Text>
             {pendingMobile ? (
               <Text style={styles.driverMobile}>
-                {`+${Strings.commonCountryCode} ${groupDigits(pendingMobile)}`}
+                {localDigits(`+${Strings.commonCountryCode} ${groupDigits(pendingMobile)}`)}
               </Text>
             ) : null}
           </View>

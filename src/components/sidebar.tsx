@@ -16,7 +16,6 @@ import { usePathname, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   Image,
-  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -33,8 +32,6 @@ import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { useSession } from '@/core/session';
 import { useAuthStore } from '@/features/auth/auth-store';
-
-const PRIVACY_POLICY_URL = 'https://www.tilesdrop.com/saathi-privacy.php';
 
 interface Props {
   visible: boolean;
@@ -163,7 +160,10 @@ export function Sidebar({ visible, onClose }: Props) {
             icon="shield-checkmark"
             title={Strings.sideBarPrivacyPolicy}
             selected={false}
-            onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+            onPress={() => {
+              onClose();
+              router.push('/privacy-policy');
+            }}
           />
           <SidebarCell
             icon="trash"

@@ -25,6 +25,7 @@ import { Images } from '@/core/constants/assets';
 import { AppColors, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { localDigits } from '@/core/i18n/language';
 import { takePendingTrip } from '@/core/services/notification-manager';
 import { LoginHistory } from '@/core/storage/login-history';
 import { formatTimer, useAuthStore } from '@/features/auth/auth-store';
@@ -186,7 +187,7 @@ export default function OtpScreen() {
             <Text style={styles.title}>{Strings.verifyMobile}</Text>
             <Text style={styles.subtitle}>
               {Strings.oneTimeString}
-              <Text style={styles.subtitleBold}>{mobile}</Text>
+              <Text style={styles.subtitleBold}>{localDigits(mobile)}</Text>
             </Text>
           </View>
           <Image source={Images.loginImage} style={styles.headerImage} />
@@ -199,6 +200,8 @@ export default function OtpScreen() {
             focusColor={AppColors.primary}
             autoFocus
             onTextChange={(text) => useAuthStore.getState().setOtp(text)}
+            // Drawn in the driver's script; the code itself stays 0-9 (patch).
+            formatChar={localDigits}
             onFilled={onVerify}
             theme={{
               containerStyle: styles.otpContainer,

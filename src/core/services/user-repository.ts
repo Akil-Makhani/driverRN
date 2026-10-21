@@ -14,7 +14,25 @@ import { ApiUrls } from '../api/endpoints';
 import { Preference } from '../storage/preference';
 import type { CommonResponse } from '@/types/api';
 import { type UserResponse, parseUserResponse } from '@/types/user';
+import { hasChosenLanguage, useLanguageStore } from '../i18n/language';
 import { useSession } from '../session';
+
+/**
+ * The phone's language is the driver's choice (see session.updateSession), so
+ * when the server holds a different one — the admin's default, or a choice
+ * made before login — the phone's is saved up rather than the server's taken
+ * down. Fire and forget: the app already shows the right language, and the
+ * next profile load tries again.
+ */
+function syncLanguageToServer(serverLanguage: string | undefined): void {
+  if (!hasChosenLanguage()) return;
+  const language = useLanguageStore.getState().language;
+  // No field at all means an API that predates languages, with nothing to save to.
+  if (!serverLanguage || serverLanguage === language) return;
+  UserRepository.updateLanguage(language).catch((e) => {
+    if (__DEV__) console.log('syncLanguageToServer failed:', e);
+  });
+}
 
 export const UserRepository = {
   async sendLoginOTP(mobile: string): Promise<CommonResponse> {
@@ -52,6 +70,7 @@ export const UserRepository = {
       useSession.getState().updateSession(model.data);
       Preference.saveAccessToken(model.data.accessToken);
       Preference.saveRefreshToken(model.data.refreshToken);
+      syncLanguageToServer(model.data.language);
     }
     return model;
   },
@@ -88,6 +107,7 @@ export const UserRepository = {
       useSession.getState().updateSession(model.data);
       Preference.saveAccessToken(model.data.accessToken);
       Preference.saveRefreshToken(model.data.refreshToken);
+      syncLanguageToServer(model.data.language);
     }
     return model;
   },
@@ -101,6 +121,7 @@ export const UserRepository = {
       if (refreshToken) model.data.refreshToken = refreshToken;
     }
     useSession.getState().updateSession(model.data ?? null);
+    if (model.data) syncLanguageToServer(model.data.language);
     return model;
   },
 

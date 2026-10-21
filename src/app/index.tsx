@@ -12,6 +12,7 @@ import { useEffect, useRef } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
 import { Images } from '@/core/constants/assets';
+import { hasChosenLanguage } from '@/core/i18n/language';
 import { AppColors } from '@/core/constants/colors';
 import {
   NotificationManager,
@@ -21,6 +22,11 @@ import { UserRepository } from '@/core/services/user-repository';
 import { useAuthStore } from '@/features/auth/auth-store';
 import { useRegistrationStore } from '@/features/auth/registration-store';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
+
+/** Login, by way of the language screen on a phone that has not picked one. */
+function loginRoute() {
+  return hasChosenLanguage() ? '/(auth)/login' : '/(auth)/language';
+}
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -65,7 +71,7 @@ export default function SplashScreen() {
         }
 
         router.replace(
-          pending === 'Pending' ? '/(auth)/pending-approval' : '/(auth)/login',
+          pending === 'Pending' ? '/(auth)/pending-approval' : loginRoute(),
         );
         return;
       }
@@ -79,7 +85,7 @@ export default function SplashScreen() {
       const gate = await useAuthStore.getState().ensureApproved();
       if (gate !== 'approved') {
         router.replace(
-          gate === 'pending' ? '/(auth)/pending-approval' : '/(auth)/login',
+          gate === 'pending' ? '/(auth)/pending-approval' : loginRoute(),
         );
         return;
       }

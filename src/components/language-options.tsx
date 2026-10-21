@@ -8,6 +8,7 @@ import { AppColors, Primary } from '@/core/constants/colors';
 import { Typography } from '@/core/constants/typography';
 import { type Language, LANGUAGES, useLanguageStore } from '@/core/i18n/language';
 import { UserRepository } from '@/core/services/user-repository';
+import { Preference } from '@/core/storage/preference';
 
 /**
  * Switches the app at once, then saves the choice on the server so the admin
@@ -16,6 +17,9 @@ import { UserRepository } from '@/core/services/user-repository';
  */
 export function chooseLanguage(language: Language) {
   useLanguageStore.getState().setLanguage(language);
+  // Before login (the first-run screen, the login pill) there is no account
+  // to save it on; the phone keeps it and login saves it up.
+  if (!Preference.getAccessToken()) return;
   UserRepository.updateLanguage(language).catch((e) => {
     if (__DEV__) console.log('updateLanguage failed:', e);
   });

@@ -37,6 +37,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { localDigits } from '@/core/i18n/language';
 import { groupDigits } from '@/core/utils/number-format';
 import { useAuthStore } from '@/features/auth/auth-store';
 import {
@@ -199,13 +200,13 @@ export default function RegisterScreen() {
               so letting it be edited here would undo the verification. */}
           <Field
             label={Strings.registerMobile}
-            placeholder="12345 67890"
-            value={groupDigits(form.mobileNo)}
+            placeholder={localDigits('12345 67890')}
+            value={localDigits(groupDigits(form.mobileNo))}
             onChangeText={() => {}}
             error={errors.mobileNo}
             keyboardType="number-pad"
             maxLength={11} // 10 digits + the group separator
-            prefix={`+ ${Strings.commonCountryCode}`}
+            prefix={localDigits(`+ ${Strings.commonCountryCode}`)}
             editable={false}
             note={Strings.registerMobileVerified}
           />
@@ -251,7 +252,7 @@ export default function RegisterScreen() {
           <Field
             label={Strings.registerDob}
             placeholder={Strings.registerDobHint}
-            value={form.dob}
+            value={localDigits(form.dob)}
             onChangeText={(t) => set('dob')(formatDobInput(t))}
             onBlur={() => void useRegistrationStore.getState().lookupLicence()}
             error={errors.dob}

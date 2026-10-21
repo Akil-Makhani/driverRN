@@ -17,10 +17,12 @@ import {
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LanguageButton } from '@/components/language-button';
 import { Images } from '@/core/constants/assets';
 import { AppColors, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { localDigits } from '@/core/i18n/language';
 import { digitsOnly, groupDigits } from '@/core/utils/number-format';
 import { useAuthStore } from '@/features/auth/auth-store';
 import { LoginTopImages } from '@/features/auth/login-top-images';
@@ -102,6 +104,12 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {/* The language picked on the first-run screen, changeable here
+            before logging in. */}
+        <View style={[styles.languageRow, { paddingTop: insets.top + 12 }]}>
+          <LanguageButton />
+        </View>
+
         {/* Flexible so at rest the artwork fills the space above the sheet. */}
         <View style={styles.topBlock}>
           <LoginTopImages />
@@ -117,10 +125,10 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.inputRow}>
-          <Text style={styles.countryCode}>{`+ ${Strings.commonCountryCode}`}</Text>
+          <Text style={styles.countryCode}>{localDigits(`+ ${Strings.commonCountryCode}`)}</Text>
           <TextInput
             style={styles.input}
-            value={groupDigits(mobile)}
+            value={localDigits(groupDigits(mobile))}
             onChangeText={(text) => {
               const digits = digitsOnly(text, MOBILE_LENGTH);
               useAuthStore.getState().setMobile(digits);
@@ -128,7 +136,7 @@ export default function LoginScreen() {
               if (digits.length === MOBILE_LENGTH) Keyboard.dismiss();
             }}
             keyboardType="number-pad"
-            placeholder="12345 67890"
+            placeholder={localDigits('12345 67890')}
             placeholderTextColor={TextShade.c700}
             maxLength={11} // 10 digits + the group separator
             autoComplete="tel"
@@ -189,6 +197,7 @@ const styles = StyleSheet.create({
   // Fills the viewport at rest so the artwork block can push the sheet to the
   // bottom; grows taller and scrolls once the keyboard is up.
   scroll: { flexGrow: 1 },
+  languageRow: { alignItems: 'flex-end', paddingHorizontal: 16 },
   // Flexible spacer: `justifyContent: flex-end` keeps the artwork just above
   // the sheet rather than pinned to the top with a gap below it.
   topBlock: { flex: 1, justifyContent: 'flex-end', paddingTop: 20 },

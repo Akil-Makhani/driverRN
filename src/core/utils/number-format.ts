@@ -7,9 +7,21 @@
  * for display.
  */
 
-/** "12345 67890" → "1234567890", capped at maxDigits. */
+/**
+ * Devanagari (०-९) and Gujarati (૦-૯) digits → ASCII. A Hindi or Gujarati
+ * keyboard can type these into a number field, and the API only reads 0-9.
+ * The fields show them in the driver's script again (localDigits).
+ */
+export function toAsciiDigits(value: string): string {
+  return value.replace(/[\u0966-\u096F\u0AE6-\u0AEF]/g, (c) => {
+    const code = c.charCodeAt(0);
+    return String(code - (code <= 0x096f ? 0x0966 : 0x0ae6));
+  });
+}
+
+/** "12345 67890" → "1234567890", capped at maxDigits. Any script's digits count. */
 export function digitsOnly(value: string, maxDigits = 10): string {
-  return value.replace(/\D/g, '').slice(0, maxDigits);
+  return toAsciiDigits(value).replace(/\D/g, '').slice(0, maxDigits);
 }
 
 /**

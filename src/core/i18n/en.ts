@@ -459,6 +459,21 @@ export const en = {
   walletModeUpi: 'Online (UPI)',
   walletLoadFailed: 'Could not load your wallet. Check your internet and try again.',
   walletRetry: 'Try again',
+
+  // Duty switch label when the driver is off duty
+  offDuty: 'OFF DUTY',
+
+  // First-run language screen, shown before login
+  chooseLanguageTitle: 'Choose your language',
+  chooseLanguageHint: 'You can change it later from the login screen or the dashboard.',
+  languageContinue: 'CONTINUE',
+
+
+  // Forced update, when a newer version is on the Play Store
+  updateRequiredTitle: 'Update required',
+  updateRequiredMessage:
+    'A new version of Tiles Drop Saathi is available. Please update to keep using the app. Your trips and data stay as they are.',
+  updateNow: 'UPDATE NOW',
 };
 
 export type StringKey = keyof typeof en;

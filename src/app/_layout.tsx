@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { UpdateGate } from '@/components/update-gate';
 import { Dispatch } from '@/core/realtime/dispatch';
 import {
   NotificationManager,
@@ -98,6 +99,7 @@ export default function RootLayout() {
             screenLayout={({ children }) => <LanguageScope>{children}</LanguageScope>}
           >
             <Stack.Screen name="index" />
+            <Stack.Screen name="(auth)/language" />
             <Stack.Screen name="(auth)/login" />
             <Stack.Screen name="(auth)/otp" />
             <Stack.Screen name="(auth)/register" />
@@ -108,6 +110,7 @@ export default function RootLayout() {
             <Stack.Screen name="notifications" />
             <Stack.Screen name="trip/[id]" />
             <Stack.Screen name="trip/lr/[id]" />
+            <Stack.Screen name="privacy-policy" />
           </Stack>
 
           {/* Above the Stack, so the registration popup belongs to the app
@@ -118,6 +121,10 @@ export default function RootLayout() {
           {/* Rendered as a sibling of the whole stack so it covers every
               screen, including modals, and is not unmounted by navigation. */}
           <JobOfferOverlay key={`job-offer-${language}`} />
+
+          {/* Last, so it sits over everything above, offers included: while a
+              newer version is on the store this build may not be used. */}
+          <UpdateGate key={`update-${language}`} />
         </SafeAreaProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>

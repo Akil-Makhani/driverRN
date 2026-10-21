@@ -164,7 +164,7 @@ export default function DashboardScreen() {
               trackColor={{ true: AppColors.success500, false: Primary.c300 }}
               thumbColor={AppColors.white}
             />
-            <Text style={styles.dutyText}>{Strings.onDuty}</Text>
+            <Text style={styles.dutyText}>{dutyValue ? Strings.onDuty : Strings.offDuty}</Text>
           </View>
         }
         actions={

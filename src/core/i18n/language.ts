@@ -28,6 +28,16 @@ export function isLanguage(v: unknown): v is Language {
   return v === 'en' || v === 'hi' || v === 'gu';
 }
 
+/**
+ * Whether this phone has a language of its own: picked on the first-run
+ * screen, changed in the app, or adopted from the server by an older build.
+ * Once it has, that choice wins over the server's copy, and survives logout
+ * because clearAuthData never touches it.
+ */
+export function hasChosenLanguage(): boolean {
+  return isLanguage(Preference.raw.getString(LANGUAGE_KEY));
+}
+
 function stored(): Language {
   const v = Preference.raw.getString(LANGUAGE_KEY);
   return isLanguage(v) ? v : DEFAULT_LANGUAGE;
@@ -47,3 +57,17 @@ export const useLanguageStore = create<LanguageState>((set) => ({
     set((s) => (s.language === language ? s : { language }));
   },
 }));
+
+/** Where each script's zero sits in Unicode; English keeps 0-9. */
+const DIGIT_ZERO: Record<Language, number | null> = { en: null, hi: 0x0966, gu: 0x0ae6 };
+
+/**
+ * Writes 0-9 in the current language's script: "98765 43210" reads
+ * "९८७६५ ४३२१०" in Hindi and "૯૮૭૬૫ ૪૩૨૧૦" in Gujarati. For display only —
+ * what is stored and sent stays ASCII (see toAsciiDigits).
+ */
+export function localDigits(value: string): string {
+  const zero = DIGIT_ZERO[useLanguageStore.getState().language];
+  if (zero == null) return value;
+  return value.replace(/[0-9]/g, (d) => String.fromCharCode(zero + Number(d)));
+}

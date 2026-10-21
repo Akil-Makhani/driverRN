@@ -16,6 +16,7 @@ import { KeyboardExtender, useKeyboardState } from 'react-native-keyboard-contro
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Typography } from '@/core/constants/typography';
 import { LoginHistory } from '@/core/storage/login-history';
+import { localDigits } from '@/core/i18n/language';
 import { groupDigits } from '@/core/utils/number-format';
 
 /** Room the strip takes above the keyboard — add it to the scroll's bottomOffset. */
@@ -60,7 +61,7 @@ function SuggestionChips({ numbers, onPick }: ChipsProps) {
           accessibilityLabel={`Use ${n}`}
           style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
         >
-          <Text style={styles.chipText}>{`+91 ${groupDigits(n)}`}</Text>
+          <Text style={styles.chipText}>{localDigits(`+91 ${groupDigits(n)}`)}</Text>
         </Pressable>
       ))}
     </>

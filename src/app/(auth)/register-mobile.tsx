@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppColors, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { localDigits } from '@/core/i18n/language';
 import { digitsOnly, groupDigits } from '@/core/utils/number-format';
 import { useAuthStore } from '@/features/auth/auth-store';
 import {
@@ -96,16 +97,16 @@ export default function RegisterMobileScreen() {
 
         <Text style={styles.label}>{Strings.registerMobileLabel}</Text>
         <View style={styles.inputRow}>
-          <Text style={styles.countryCode}>{`+ ${Strings.commonCountryCode}`}</Text>
+          <Text style={styles.countryCode}>{localDigits(`+ ${Strings.commonCountryCode}`)}</Text>
           <TextInput
             style={styles.input}
-            value={groupDigits(mobile)}
+            value={localDigits(groupDigits(mobile))}
             onChangeText={(text) => {
               setMobile(digitsOnly(text, MOBILE_LENGTH));
               setError(null);
             }}
             keyboardType="number-pad"
-            placeholder="12345 67890"
+            placeholder={localDigits('12345 67890')}
             placeholderTextColor={TextShade.c400}
             maxLength={11} // 10 digits + the group separator
             autoFocus

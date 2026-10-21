@@ -323,4 +323,13 @@ export const gu: Translations = {
   walletModeUpi: 'ઑનલાઇન (UPI)',
   walletLoadFailed: 'વૉલેટ લોડ ન થયું. ઇન્ટરનેટ ચેક કરીને ફરી પ્રયાસ કરો.',
   walletRetry: 'ફરી પ્રયાસ કરો',
+
+  offDuty: 'ડ્યુટી બંધ',
+  chooseLanguageTitle: 'તમારી ભાષા પસંદ કરો',
+  chooseLanguageHint: 'તમે પછીથી લૉગિન સ્ક્રીન અથવા ડેશબોર્ડ પરથી બદલી શકો છો.',
+  languageContinue: 'આગળ વધો',
+  updateRequiredTitle: 'અપડેટ જરૂરી છે',
+  updateRequiredMessage:
+    'Tiles Drop Saathi નું નવું વર્ઝન આવી ગયું છે. એપ વાપરતા રહેવા માટે કૃપા કરીને અપડેટ કરો. તમારી ટ્રિપ અને ડેટા જેમ છે તેમ રહેશે.',
+  updateNow: 'હમણાં અપડેટ કરો',
 };
