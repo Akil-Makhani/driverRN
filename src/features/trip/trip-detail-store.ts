@@ -73,7 +73,8 @@ interface TripDetailState {
     status: string,
     body?: Record<string, unknown>,
   ) => Promise<StatusChangeResult>;
-  updateTrip: (tripId: string) => Promise<void>;
+  /** Resolves whether the server took the confirmed load. */
+  updateTrip: (tripId: string) => Promise<boolean>;
   inTransit: (tripId: string, status: string) => Promise<void>;
 
   pickAndUpload: (tripId: string, documentType: DocumentTypeValue) => Promise<void>;
@@ -212,6 +213,7 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
       charges.push({ label: en.kataparchiCharge, charge: kataparchi });
     }
 
+    let ok = false;
     try {
       const response = await DashboardRepository.updateTrip(tripId, {
         productDifferences: { requested: requestedItems, dispatched: dispatchItems },
@@ -219,11 +221,13 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
       });
       if (isSuccess(response) && response.data) {
         set({ tripDetailData: response.data });
+        ok = true;
       }
     } catch (e) {
       if (__DEV__) console.log('updateTrip failed:', e);
     }
     set({ isLoading: false });
+    return ok;
   },
 
   async inTransit(tripId, status) {

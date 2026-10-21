@@ -85,11 +85,20 @@ export default function TripDetailScreen() {
   const loadedLines =
     trip?.orderKind === 'tempo' ? (trip.productDifferences?.dispatched ?? []) : [];
 
+  /**
+   * Back to the dashboard once a step has landed: the driver's next move is
+   * on another trip or another order, not on this screen. dismissTo pops to
+   * the dashboard already underneath, and puts one there when the trip was
+   * opened from a notification with nothing below it.
+   */
+  const goHome = () => router.dismissTo('/dashboard');
+
+  /** Resolves whether the server took the change. */
   const changeStatus = async (
     next: string,
     goBack = false,
     body?: Record<string, unknown>,
-  ) => {
+  ): Promise<boolean> => {
     const result = await useTripDetailStore.getState().statusChanged(id, next, body);
     if (!result.ok) {
       // Mostly the cancel-after-Vehicle-There refusal, which carries a
@@ -98,10 +107,11 @@ export default function TripDetailScreen() {
         next === TripStatus.rejected ? Strings.cancelTripFailed : Strings.tripActionFailed,
         result.message,
       );
-      return;
+      return false;
     }
     // The dashboard refetches on focus, so a decline can just pop.
     if (goBack) router.back();
+    return true;
   };
 
   /**
@@ -130,18 +140,27 @@ export default function TripDetailScreen() {
     if (stepInFlight.current) return;
     stepInFlight.current = true;
     try {
-      if (step === 'vehicleThere') await changeStatus(TripStatus.pickup);
-      else if (step === 'inTransit') {
+      if (step === 'vehicleThere') {
+        if (await changeStatus(TripStatus.pickup)) goHome();
+      } else if (step === 'inTransit') {
         await useTripDetailStore.getState().inTransit(id, TripStatus.inTransit);
         // Loaded and leaving: the next thing the driver needs is the way to
         // the drop, so hand them straight to it rather than make them find the
-        // button. Only once the server has the trip In Transit.
+        // button. Only once the server has the trip In Transit. The app goes
+        // home behind Maps, so coming back from the drive lands on the
+        // dashboard rather than on a trip that is done with for now.
         const after = useTripDetailStore.getState().tripDetailData;
-        if ((after?.statusNumber ?? 0) >= TripStatusNumber.inTransit) openDirections(after);
-      } else if (step === 'reached') await changeStatus(TripStatus.reached);
-      else {
+        if ((after?.statusNumber ?? 0) >= TripStatusNumber.inTransit) {
+          openDirections(after);
+          goHome();
+        }
+      } else if (step === 'reached') {
+        if (await changeStatus(TripStatus.reached)) goHome();
+      } else {
         const delivered = deliveredLines.current;
-        await changeStatus(TripStatus.delivered, false, delivered ? { delivered } : undefined);
+        if (await changeStatus(TripStatus.delivered, false, delivered ? { delivered } : undefined)) {
+          goHome();
+        }
       }
     } finally {
       stepInFlight.current = false;
@@ -322,7 +341,9 @@ export default function TripDetailScreen() {
         onCancel={() => setSheetOpen(false)}
         onConfirm={() => {
           setSheetOpen(false);
-          void useTripDetailStore.getState().updateTrip(id);
+          void (async () => {
+            if (await useTripDetailStore.getState().updateTrip(id)) goHome();
+          })();
         }}
       />
     </View>
