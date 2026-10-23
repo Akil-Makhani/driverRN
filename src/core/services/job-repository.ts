@@ -74,6 +74,27 @@ export const JobRepository = {
     return parseJobOfferListResponse(await ApiService.get(ApiUrls.openJobs));
   },
 
+  /**
+   * Test location screen: this driver's distance from pickup 1, 2, 3... of any
+   * tempo order, as the server's rings will read it (index 0 = pickup 1,
+   * null = unset). Null when the server ignores test distances or this driver has no access.
+   */
+  async getTestPickupKm(): Promise<(number | null)[] | null> {
+    try {
+      const body: any = await ApiService.get(ApiUrls.testPickupKm);
+      if (body?.data?.enabled === false) return null;
+      return Array.isArray(body?.data?.km) ? body.data.km.map((v: any) => (v == null ? null : Number(v))) : [];
+    } catch {
+      return null;
+    }
+  },
+
+  /** Saves them; an empty list clears them. Returns what the server stored, or throws. */
+  async setTestPickupKm(km: (number | null)[]): Promise<(number | null)[]> {
+    const body: any = await ApiService.put(ApiUrls.testPickupKm, { km });
+    return Array.isArray(body?.data?.km) ? body.data.km : [];
+  },
+
   /** Claims an offer. See AcceptResult for why losing is not thrown. */
   async accept(jobId: string): Promise<AcceptResult> {
     try {

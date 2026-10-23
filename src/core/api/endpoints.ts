@@ -121,6 +121,8 @@ export const ApiUrls = {
   // accept/reject go over HTTP where the response is the authoritative
   // won/lost answer rather than a fire-and-forget emit.
   openJobs: '/driver/jobs/open',
+  /** Test location screen (Driver Access drivers): this driver's km from each pickup. */
+  testPickupKm: '/driver/jobs/test-pickup-km',
   jobAccept: (jobId: string) => `/driver/jobs/${jobId}/accept`,
   jobReject: (jobId: string) => `/driver/jobs/${jobId}/reject`,
   /** Batched location fixes, the fallback path when the socket is down. */

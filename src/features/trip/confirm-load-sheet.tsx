@@ -77,8 +77,15 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
       onRequestClose={onCancel}
     >
       <View style={styles.scrim}>
-        {/* Behind the sheet: a tap on the dimmed area puts the keyboard away. */}
-        <Pressable style={StyleSheet.absoluteFill} onPress={Keyboard.dismiss} />
+        {/* A tap outside the sheet closes it, as the delivery sheet does. The
+            edits live in the store, so nothing typed is lost. */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={() => {
+            Keyboard.dismiss();
+            onCancel();
+          }}
+        />
 
         {/* Capped at 90% of a full-screen parent, so rows beyond that scroll
             instead of pushing the sheet off the top of the screen. */}

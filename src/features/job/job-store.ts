@@ -143,14 +143,22 @@ export const useJobStore = create<JobState>((set, get) => {
       );
       if (!offer.id) return;
 
-      const { offers, deadlines } = get();
-      // Rule 1. Also covers the resync re-delivering what we already hold.
-      if (offers.some((o) => o.id === offer.id)) return;
+      const { offers, deadlines, minimisedIds } = get();
+      // Rule 1. Also covers the resync re-delivering what we already hold -
+      // except a tempo order whose customer raised the fare: the server
+      // offers it again at a higher pay, and that one replaces the card,
+      // back in front and ringing.
+      const held = offers.find((o) => o.id === offer.id);
+      if (held && !((offer.payout ?? 0) > (held.payout ?? 0))) return;
+      if (held && get().acceptingId === offer.id) return;
 
       const siren = remainingSeconds(offer);
       const open = acceptSeconds(offer);
+      // Its time is already up: nothing to ring for or show.
+      if (open <= 0) return;
       set({
-        offers: [...offers, offer],
+        offers: held ? offers.map((o) => (o.id === offer.id ? offer : o)) : [...offers, offer],
+        minimisedIds: held ? minimisedIds.filter((id) => id !== offer.id) : minimisedIds,
         deadlines: {
           ...deadlines,
           [offer.id]: Date.now() + open * 1000,

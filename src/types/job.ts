@@ -159,7 +159,10 @@ export function remainingSeconds(offer: JobOffer, now = Date.now()): number {
     const parsed = Date.parse(offer.expiresAt);
     if (Number.isFinite(parsed)) {
       const left = (parsed - now) / 1000;
-      if (left > 0 && left <= ttl) return left;
+      // Already over (an old offer re-delivered by the resync): none left,
+      // not a fresh full siren.
+      if (left <= 0) return 0;
+      if (left <= ttl) return left;
     }
   }
   return ttl;

@@ -14,6 +14,7 @@ import {
   TripStatusNumber,
 } from '@/core/constants/enums';
 import { Strings } from '@/core/constants/strings';
+import { DispatchSocket, SocketEvent } from '@/core/realtime/socket';
 import {
   activeDestination,
   canShowRoute,
@@ -54,6 +55,18 @@ export default function TripDetailScreen() {
   const weightSlip = useTripDetailStore((s) => s.weightSlip);
   const invoice = useTripDetailStore((s) => s.invoice);
   const products = useDashboardStore((s) => s.products);
+
+  // The server finishes an accepted offer's paperwork (tempo, LR number) a
+  // few seconds after answering the accept, then says so; refetch then. Only
+  // sent right after an accept, before anything is being edited here.
+  useEffect(
+    () =>
+      DispatchSocket.on(SocketEvent.tripUpdated, (payload: any) => {
+        if (String(payload?.tripId) !== String(id)) return;
+        void useTripDetailStore.getState().getTrip(id, useDashboardStore.getState().products);
+      }),
+    [id],
+  );
 
   useEffect(() => {
     void useTripDetailStore.getState().getTrip(id, products);
@@ -134,11 +147,14 @@ export default function TripDetailScreen() {
    * ("Invalid status transition from inTransit to inTransit").
    */
   const stepInFlight = useRef(false);
+  /** Shows the "saving" overlay while a step or the loading is on its way. */
+  const [busy, setBusy] = useState(false);
 
   const runStep = async (step: ForwardStep) => {
     setPendingStep(null);
     if (stepInFlight.current) return;
     stepInFlight.current = true;
+    setBusy(true);
     try {
       if (step === 'vehicleThere') {
         if (await changeStatus(TripStatus.pickup)) goHome();
@@ -164,6 +180,21 @@ export default function TripDetailScreen() {
       }
     } finally {
       stepInFlight.current = false;
+      setBusy(false);
+    }
+  };
+
+  /** Confirm Load: saves the loaded quantities and charges, then goes home. */
+  const saveLoading = async () => {
+    if (stepInFlight.current) return;
+    stepInFlight.current = true;
+    setBusy(true);
+    try {
+      if (await useTripDetailStore.getState().updateTrip(id)) goHome();
+      else Alert.alert(Strings.tripActionFailed);
+    } finally {
+      stepInFlight.current = false;
+      setBusy(false);
     }
   };
 
@@ -341,11 +372,15 @@ export default function TripDetailScreen() {
         onCancel={() => setSheetOpen(false)}
         onConfirm={() => {
           setSheetOpen(false);
-          void (async () => {
-            if (await useTripDetailStore.getState().updateTrip(id)) goHome();
-          })();
+          void saveLoading();
         }}
       />
+
+      {busy ? (
+        <View style={styles.busy} pointerEvents="auto">
+          <ActivityIndicator size="large" color={AppColors.white} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -489,6 +524,12 @@ function ActionBar({
 }
 
 const styles = StyleSheet.create({
+  busy: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+  },
   screen: { flex: 1, backgroundColor: AppColors.white },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { paddingVertical: 10, paddingBottom: 40 },
