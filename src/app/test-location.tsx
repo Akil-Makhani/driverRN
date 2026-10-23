@@ -1,10 +1,13 @@
 /**
- * Debug and preview builds only: stand this driver at a chosen distance from Morbi.
+ * Debug and preview builds only: how far this driver is from each pickup.
  *
- * Tempo orders are offered in rings around the pickup - drivers within 5 km
- * first, then 10 km, and so on - and pickups are in Morbi. A tester anywhere
- * else would never be in any ring, so this reports a fixed position in place
- * of the GPS (LocationTracker.setTestLocation). Production builds have no way in.
+ * Tempo orders are offered in rings around EACH pickup - drivers within the
+ * first ring of it, then the next, and so on. A phone has one position, so it
+ * cannot stand 5 km from pickup 1 and 25 km from pickup 2 at once. Instead
+ * the tester types a km for pickup 1, 2, 3... and the server's rings use that
+ * distance for this driver for that pickup of every tempo order
+ * (Driver.testPickupKm), wherever the phone really is. A pickup left blank
+ * falls back to the phone's position. Production builds have no way in.
  */
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -22,78 +25,88 @@ import { AppBar } from '@/components/app-bar';
 import { Sidebar } from '@/components/sidebar';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Typography } from '@/core/constants/typography';
-import { Preference } from '@/core/storage/preference';
-import {
-  lastOfferPickup,
-  LocationTracker,
-  TEST_LOCATION_ENABLED,
-  type TestLocation,
-} from '@/core/services/location-tracker';
+import { JobRepository } from '@/core/services/job-repository';
+import { LocationTracker, TEST_LOCATION_ENABLED } from '@/core/services/location-tracker';
 
-/** The pickup typed last time, so a tester sets it once, not before every order. */
-const KEY_TEST_PICKUP = 'tracking.testPickupText';
+/** Matches the server's MAX_TEST_PICKUPS. */
+const MAX_PICKUPS = 10;
 
-/** Where the distances count from when no pickup is given: Morbi town centre. */
-const MORBI = { latitude: 22.8173, longitude: 70.8378 };
-const KM_PER_DEGREE_LAT = 111.32;
-
-type Point = { latitude: number; longitude: number };
-
-/** "22.8653, 70.9333" -> a point, or null while it is not one yet. */
-const parsePoint = (text: string): Point | null => {
-  const [lat, lng] = text.split(',').map((v) => Number(v.trim()));
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180 || (lat === 0 && lng === 0)) return null;
-  return { latitude: lat, longitude: lng };
+const parseKm = (text: string): number | null | typeof NaN => {
+  const t = text.trim();
+  if (t === '') return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 && n <= 500 ? n : NaN;
 };
 
-const presetFor = (km: number, from: Point, fromLabel: string): TestLocation => ({
-  latitude: Math.round((from.latitude + km / KM_PER_DEGREE_LAT) * 1e6) / 1e6,
-  longitude: from.longitude,
-  label: km === 0 ? `At ${fromLabel}` : `${km} km from ${fromLabel}`,
-});
+const describe = (km: (number | null)[]): string => {
+  const set = km
+    .map((v, i) => (v == null ? null : `Pickup ${i + 1}: ${v} km`))
+    .filter(Boolean);
+  return set.length ? set.join(' · ') : 'Not set - real GPS';
+};
 
 export default function TestLocationScreen() {
   const router = useRouter();
-  const [current, setCurrent] = useState(() => LocationTracker.getTestLocation());
-  /** The order's pickup, typed in so the distances count from it. */
-  const [pickupText, setPickupTextState] = useState(() => Preference.raw.getString(KEY_TEST_PICKUP) ?? '');
-  const setPickupText = (text: string) => {
-    setPickupTextState(text);
-    Preference.raw.set(KEY_TEST_PICKUP, text);
-  };
-  const lastPickup = lastOfferPickup();
-  /** How far from `from` to stand, typed in km (0 = right at it). */
-  const [kmText, setKmText] = useState('');
+  /** One box per pickup; at least two so a two-pickup order is one tap away. */
+  const [rows, setRows] = useState<string[]>(['', '']);
+  /** What the server has now. */
+  const [saved, setSaved] = useState<(number | null)[]>([]);
+  const [enabled, setEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const load = useCallback(() => {
+    void JobRepository.getTestPickupKm().then((km) => {
+      if (km == null) {
+        setEnabled(false);
+        return;
+      }
+      setEnabled(true);
+      setSaved(km);
+      const texts = km.map((v) => (v == null ? '' : String(v)));
+      while (texts.length < 2) texts.push('');
+      setRows(texts);
+    });
+  }, []);
 
   // Opened from the side menu, which replaces the screen, so there is nothing
   // behind it to go back to: Back goes home instead of throwing GO_BACK.
   useFocusEffect(
     useCallback(() => {
+      if (TEST_LOCATION_ENABLED) load();
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
         router.replace('/dashboard');
         return true;
       });
       return () => sub.remove();
-    }, [router]),
+    }, [router, load]),
   );
 
   if (!TEST_LOCATION_ENABLED) return null;
 
-  const apply = async (test: TestLocation | null) => {
+  const values = rows.map(parseKm);
+  const invalid = values.some((v) => Number.isNaN(v));
+
+  const save = async (km: (number | null)[]) => {
     setBusy(true);
-    await LocationTracker.setTestLocation(test);
-    setCurrent(LocationTracker.getTestLocation());
+    setMessage(null);
+    try {
+      const stored = await JobRepository.setTestPickupKm(km);
+      setSaved(stored);
+      setMessage('Saved. New orders will ring you at these distances.');
+    } catch (error: any) {
+      setMessage(error?.message || 'Could not save. Try again.');
+    }
     setBusy(false);
   };
 
-  const pickup = parsePoint(pickupText);
-  const from = pickup ?? MORBI;
-  const fromLabel = pickup ? 'pickup' : 'Morbi centre';
-  const km = kmText.trim() === '' ? NaN : Number(kmText.trim());
-  const kmValid = Number.isFinite(km) && km >= 0 && km <= 500;
+  const clearAll = async () => {
+    // The single stand-in position from older builds goes too.
+    await LocationTracker.setTestLocation(null);
+    setRows(['', '']);
+    await save([]);
+  };
 
   return (
     <View style={styles.screen}>
@@ -101,70 +114,59 @@ export default function TestLocationScreen() {
       <AppBar title="Test location" leading="menu" onLeadingPress={() => setDrawerOpen(true)} />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.note}>
-          Test builds only. Type a distance in km and tap Set. The app then reports that position
-          instead of the GPS, so a new tempo order is offered to you as if you stood there.
-        </Text>
-        <Text style={styles.note}>
-          Rings are measured from the order&apos;s PICKUP, so set the pickup first, then the km.
+          Test builds only. Type how many km you are from each pickup of an order and tap Save.
+          Every new tempo order then rings you as if you stood that far from each of its pickups.
+          Leave a pickup blank to use your real GPS for it.
         </Text>
 
-        {lastPickup && (
-          <Pressable
-            onPress={() => setPickupText(`${lastPickup.latitude}, ${lastPickup.longitude}`)}
-            style={styles.option}
-          >
-            <Text style={styles.optionText}>
-              {`Use last order's pickup${lastPickup.name ? `: ${lastPickup.name}` : ''}`}
-            </Text>
+        {!enabled && (
+          <Text style={styles.warning}>Test distances are switched off on this server.</Text>
+        )}
+
+        {rows.map((text, i) => (
+          <View key={i} style={styles.row}>
+            <Text style={styles.rowLabel}>{`Pickup ${i + 1}`}</Text>
+            <TextInput
+              style={[styles.input, styles.kmInput, Number.isNaN(values[i]) && styles.inputError]}
+              value={text}
+              onChangeText={(t) => setRows((r) => r.map((v, j) => (j === i ? t : v)))}
+              placeholder="km, e.g. 5"
+              placeholderTextColor={TextShade.c500}
+              keyboardType="decimal-pad"
+            />
+            <Text style={styles.unit}>km</Text>
+            {rows.length > 1 && (
+              <Pressable
+                hitSlop={8}
+                onPress={() => setRows((r) => r.filter((_, j) => j !== i))}
+                style={styles.remove}
+              >
+                <Text style={styles.removeText}>✕</Text>
+              </Pressable>
+            )}
+          </View>
+        ))}
+        {invalid && <Text style={styles.warning}>Enter km between 0 and 500, e.g. 17 or 4.5</Text>}
+
+        {rows.length < MAX_PICKUPS && (
+          <Pressable onPress={() => setRows((r) => [...r, ''])} style={styles.option}>
+            <Text style={styles.optionText}>+ Add pickup</Text>
           </Pressable>
         )}
 
-        <TextInput
-          style={styles.input}
-          value={pickupText}
-          onChangeText={setPickupText}
-          placeholder="Pickup: latitude, longitude (optional)"
-          placeholderTextColor={TextShade.c500}
-          keyboardType="numbers-and-punctuation"
-        />
-        {pickupText.length > 0 && !pickup && (
-          <Text style={styles.warning}>Write it as  22.8653, 70.9333</Text>
-        )}
-        {pickupText.length === 0 && (
-          <Text style={styles.warning}>
-            No pickup set: the km will count from Morbi centre, NOT from the order&apos;s pickup.
-          </Text>
-        )}
+        <Pressable
+          disabled={busy || invalid || !enabled}
+          onPress={() => void save(values as (number | null)[])}
+          style={[styles.saveButton, (busy || invalid || !enabled) && styles.disabled]}
+        >
+          <Text style={styles.saveText}>{busy ? 'Saving…' : 'Save'}</Text>
+        </Pressable>
 
-        <Text style={styles.current}>
-          {current ? `Now: ${current.label}` : 'Now: real GPS'}
-        </Text>
+        {message && <Text style={styles.hint}>{message}</Text>}
+        <Text style={styles.current}>{`Now: ${describe(saved)}`}</Text>
 
-        <View style={styles.kmRow}>
-          <TextInput
-            style={[styles.input, styles.kmInput]}
-            value={kmText}
-            onChangeText={setKmText}
-            placeholder="Distance in km, e.g. 17"
-            placeholderTextColor={TextShade.c500}
-            keyboardType="decimal-pad"
-            returnKeyType="done"
-            onSubmitEditing={() => kmValid && void apply(presetFor(km, from, fromLabel))}
-          />
-          <Pressable
-            disabled={busy || !kmValid}
-            onPress={() => void apply(presetFor(km, from, fromLabel))}
-            style={[styles.setButton, (busy || !kmValid) && styles.setButtonDisabled]}
-          >
-            <Text style={styles.optionTextSelected}>Set</Text>
-          </Pressable>
-        </View>
-        {kmText.length > 0 && !kmValid && (
-          <Text style={styles.warning}>Enter a number of km, e.g. 17 or 4.5</Text>
-        )}
-
-        <Pressable disabled={busy} onPress={() => void apply(null)} style={styles.option}>
-          <Text style={styles.optionText}>Use real GPS</Text>
+        <Pressable disabled={busy} onPress={() => void clearAll()} style={styles.option}>
+          <Text style={styles.optionText}>Clear all - use real GPS</Text>
         </Pressable>
       </ScrollView>
 
@@ -177,7 +179,13 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppColors.white },
   content: { padding: 16, gap: 10 },
   note: { ...Typography.body2.semiBold, color: TextShade.c700 },
+  hint: { ...Typography.body2.medium, color: TextShade.c700 },
   current: { ...Typography.body1.bold, color: AppColors.text, marginVertical: 6 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rowLabel: { ...Typography.body1.bold, color: AppColors.text, width: 76 },
+  unit: { ...Typography.body1.medium, color: TextShade.c700 },
+  remove: { paddingHorizontal: 6 },
+  removeText: { ...Typography.body1.bold, color: AppColors.error500 },
   option: {
     paddingVertical: 14,
     paddingHorizontal: 14,
@@ -185,19 +193,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Primary.c300,
   },
-  kmRow: { flexDirection: 'row', gap: 10 },
-  kmInput: { flex: 1 },
-  setButton: {
-    height: 46,
-    paddingHorizontal: 22,
+  optionText: { ...Typography.body1.semiBold, color: AppColors.text },
+  saveButton: {
+    height: 48,
     borderRadius: 6,
+    alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: AppColors.primary,
   },
-  setButtonDisabled: { opacity: 0.4 },
-  optionText: { ...Typography.body1.semiBold, color: AppColors.text },
-  optionTextSelected: { ...Typography.body1.semiBold, color: AppColors.white },
+  saveText: { ...Typography.body1.semiBold, color: AppColors.white },
+  disabled: { opacity: 0.4 },
   warning: { ...Typography.body2.semiBold, color: AppColors.error500 },
+  kmInput: { flex: 1 },
   input: {
     height: 46,
     paddingHorizontal: 12,
@@ -207,4 +214,5 @@ const styles = StyleSheet.create({
     ...Typography.body1.medium,
     color: AppColors.text,
   },
+  inputError: { borderColor: AppColors.error500 },
 });
