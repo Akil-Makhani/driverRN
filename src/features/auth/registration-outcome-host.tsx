@@ -21,6 +21,7 @@
 import { useRouter } from 'expo-router';
 
 import { RegistrationStatusDialog } from '@/components/registration-status-dialog';
+import { resetTo } from '@/core/navigation';
 import { useSession } from '@/core/session';
 import { useAuthStore } from '@/features/auth/auth-store';
 import { useRegistrationStore } from '@/features/auth/registration-store';
@@ -40,7 +41,7 @@ export function RegistrationOutcomeHost() {
   const goToLogin = () => {
     dismiss();
     useRegistrationStore.getState().clearPending();
-    router.replace('/(auth)/login');
+    resetTo('/(auth)/login');
   };
 
   /**
@@ -59,7 +60,7 @@ export function RegistrationOutcomeHost() {
 
     if (await useAuthStore.getState().claimApprovedSession(mobile)) {
       useDashboardStore.getState().syncDutyFromSession();
-      router.replace('/dashboard');
+      resetTo('/dashboard');
       return;
     }
 

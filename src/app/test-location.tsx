@@ -62,7 +62,7 @@ export default function TestLocationScreen() {
   // The admin can switch access off while the driver is on this screen; the
   // next profile load (the menu, the dashboard) then sends them home.
   useEffect(() => {
-    if (!allowed) router.replace('/dashboard');
+    if (!allowed) router.dismissTo('/dashboard');
   }, [allowed, router]);
 
   const load = useCallback(() => {
@@ -79,13 +79,13 @@ export default function TestLocationScreen() {
     });
   }, []);
 
-  // Opened from the side menu, which replaces the screen, so there is nothing
-  // behind it to go back to: Back goes home instead of throwing GO_BACK.
+  // The side menu opens this on top of the dashboard, so Back would get there
+  // anyway; dismissTo also covers a stack where the dashboard is missing.
   useFocusEffect(
     useCallback(() => {
       if (allowed) load();
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        router.replace('/dashboard');
+        router.dismissTo('/dashboard');
         return true;
       });
       return () => sub.remove();

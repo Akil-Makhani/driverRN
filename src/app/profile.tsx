@@ -2,7 +2,6 @@
  * Port of lib/screens/profile/view/profile_screen.dart +
  * sub_view/profile_view.dart.
  */
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -13,11 +12,11 @@ import { Sidebar } from '@/components/sidebar';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { resetTo } from '@/core/navigation';
 import { useSession } from '@/core/session';
 import { useAuthStore } from '@/features/auth/auth-store';
 
 export default function ProfileScreen() {
-  const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const user = useSession((s) => s.user);
@@ -27,7 +26,7 @@ export default function ProfileScreen() {
     await useAuthStore.getState().logout();
     useAuthStore.getState().resetLogin();
     useAuthStore.getState().resetOtp();
-    router.replace('/(auth)/login');
+    resetTo('/(auth)/login');
   };
 
   return (

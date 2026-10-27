@@ -39,6 +39,22 @@ const DEFAULT_TIMEOUT_MS = 30000;
 const DRIVER_APP_HEADER: Record<string, string> =
   Application.applicationId === 'com.tilesdrop.partner' ? { 'X-Driver-App': 'market' } : {};
 
+/**
+ * Called when the server stops accepting this phone's token.
+ *
+ * The server keeps one session per driver: logging in on a second phone
+ * replaces the first phone's token, and every call the first phone makes after
+ * that is a 401. Those used to surface as a stray error message while the
+ * first phone stayed on the dashboard, looking signed in — so one number was
+ * in use on two phones at once. The auth store registers the handler (this
+ * file cannot import it without a cycle) and signs the phone out.
+ */
+let onSessionEnded: (() => void) | null = null;
+
+export function setSessionEndedHandler(handler: () => void): void {
+  onSessionEnded = handler;
+}
+
 async function request<T = any>(
   method: Method,
   url: string,
@@ -122,6 +138,12 @@ async function request<T = any>(
         parsed && typeof parsed === 'object' && typeof parsed.message === 'string'
           ? parsed.message
           : text;
+      // Only a call that carried a token can lose its session. The
+      // registration routes answer 401 with `needsOtp` when the number's OTP
+      // proof has gone stale, which has nothing to do with being signed in.
+      if (response.status === 401 && token && !parsed?.data?.needsOtp) {
+        onSessionEnded?.();
+      }
       throw new UnauthorisedException(
         message,
         response.status,

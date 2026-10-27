@@ -30,6 +30,7 @@ import { Images } from '@/core/constants/assets';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { resetTo } from '@/core/navigation';
 import { useSession } from '@/core/session';
 import { useAuthStore } from '@/features/auth/auth-store';
 
@@ -66,7 +67,14 @@ export function Sidebar({ visible, onClose }: Props) {
     onClose();
     // Already there: just close, so tapping the current row is a no-op rather
     // than pushing a duplicate screen.
-    if (pathname !== destination) router.replace(destination);
+    if (pathname === destination) return;
+    // Every menu screen sits directly on the dashboard, so the phone's Back
+    // button goes home from any of them, and Back on the dashboard closes the
+    // app. `replace` used to swap the dashboard out, which made Back from
+    // History or Wallet close the app instead. dismissTo pops back to the
+    // dashboard, or puts it in place when it is not on the stack.
+    router.dismissTo('/dashboard');
+    if (destination !== '/dashboard') router.push(destination);
   };
 
   const handleLogout = async () => {
@@ -75,7 +83,7 @@ export function Sidebar({ visible, onClose }: Props) {
     await useAuthStore.getState().logout();
     useAuthStore.getState().resetLogin();
     useAuthStore.getState().resetOtp();
-    router.replace('/(auth)/login');
+    resetTo('/(auth)/login');
   };
 
   const handleDelete = async () => {
@@ -84,7 +92,7 @@ export function Sidebar({ visible, onClose }: Props) {
     await useAuthStore.getState().deleteAccount();
     useAuthStore.getState().resetLogin();
     useAuthStore.getState().resetOtp();
-    router.replace('/(auth)/login');
+    resetTo('/(auth)/login');
   };
 
   return (

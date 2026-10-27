@@ -11,10 +11,13 @@
  * What remains is the state the screens actually render: loading, validation,
  * error text, and the resend countdown.
  */
+import { Alert } from 'react-native';
 import { create } from 'zustand';
 
+import { setSessionEndedHandler } from '@/core/api/api-service';
 import { AppException, UnauthorisedException } from '@/core/api/errors';
 import { Strings } from '@/core/constants/strings';
+import { resetTo } from '@/core/navigation';
 import { Dispatch } from '@/core/realtime/dispatch';
 import { LocationTracker } from '@/core/services/location-tracker';
 import { NotificationManager } from '@/core/services/notification-manager';
@@ -490,6 +493,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 }));
+
+/**
+ * Signs this phone out once the server stops taking its token — in practice,
+ * because the same number logged in on another phone. One session per number:
+ * the newest login keeps it, and this phone goes back to login with a popup
+ * saying why, instead of sitting on a dashboard that can no longer do anything.
+ *
+ * Several calls usually fail together (profile, trips, the location ping), so
+ * only the first one does the work; the rest find the token already gone.
+ */
+async function endReplacedSession(): Promise<void> {
+  if (!Preference.getAccessToken()) return;
+  // On a cold start the splash screen is still deciding where to go, and its
+  // own failed profile call sends the driver to login. Only a driver who was
+  // inside the app needs moving and telling.
+  const wasSignedIn = useSession.getState().user != null;
+  Preference.clearAuthData();
+  await endDriverSession();
+  useSession.getState().clearSession();
+  useAuthStore.getState().resetLogin();
+  useAuthStore.getState().resetOtp();
+  if (!wasSignedIn) return;
+  resetTo('/(auth)/login');
+  Alert.alert(Strings.sessionEndedTitle, Strings.sessionEndedMessage);
+}
+
+setSessionEndedHandler(() => void endReplacedSession());
 
 /** "00:59" — mirrors OtpViewModel.timerText. */
 export function formatTimer(seconds: number): string {

@@ -20,7 +20,8 @@
  */
 import { io, type Socket } from 'socket.io-client';
 
-import { SOCKET_URL } from '../api/endpoints';
+import { ApiService } from '../api/api-service';
+import { ApiUrls, SOCKET_URL } from '../api/endpoints';
 import { Preference } from '../storage/preference';
 
 /** Server → client. Payloads are parsed by the subscriber, not here. */
@@ -43,6 +44,12 @@ const Emit = {
   location: 'driver:location',
 } as const;
 
+/**
+ * Sent to a driver's open sockets when the same number logs in on another
+ * phone, just before the server closes them.
+ */
+const SESSION_REPLACED = 'session:replaced';
+
 type Handler = (payload: any) => void;
 
 let socket: Socket | null = null;
@@ -62,6 +69,29 @@ function setConnected(value: boolean): void {
   if (connected === value) return;
   connected = value;
   connectionListeners.forEach((listener) => listener(value));
+}
+
+/**
+ * Asks the server whether this phone's session is still good. A 401 signs the
+ * phone out through api-service's session-ended handler; nothing else here has
+ * to decide that. The socket's own signals are only a hint: an `unauthorised`
+ * handshake is also what a server that could not reach its database answers.
+ */
+let checkingSession = false;
+
+function verifySession(reconnect: boolean): void {
+  if (checkingSession || !Preference.getAccessToken()) return;
+  checkingSession = true;
+  ApiService.get(ApiUrls.profile)
+    // Still signed in, yet the server closed the socket: open it again, since
+    // a server-side disconnect is never retried by socket.io on its own.
+    .then(() => {
+      if (reconnect && socket && !socket.connected) socket.connect();
+    })
+    .catch(() => {})
+    .finally(() => {
+      checkingSession = false;
+    });
 }
 
 function bindHandlers(target: Socket): void {
@@ -107,11 +137,18 @@ export const DispatchSocket = {
       setConnected(true);
       socket?.emit(Emit.online);
     });
-    socket.on('disconnect', () => setConnected(false));
+    socket.on('disconnect', (reason) => {
+      setConnected(false);
+      if (reason === 'io server disconnect') verifySession(true);
+    });
     socket.on('connect_error', (e) => {
       setConnected(false);
       if (__DEV__) console.log('socket connect_error:', e.message);
+      // The handshake is refused once the token has been replaced; without
+      // this the phone retried every ten seconds for as long as it was open.
+      if (e.message === 'unauthorised') verifySession(false);
     });
+    socket.on(SESSION_REPLACED, () => verifySession(false));
 
     bindHandlers(socket);
   },

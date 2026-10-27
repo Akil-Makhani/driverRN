@@ -22,6 +22,8 @@ export const gu: Translations = {
   logoutTitle: 'શું તમે ચોક્કસ છો?',
   logoutMessage: 'તમે Tiles Drop Saathi માંથી લૉગઆઉટ થશો અને નવા ઓર્ડર આવવાના બંધ થઈ જશે. ગમે ત્યારે તમારા મોબાઇલ નંબરથી ફરી લૉગિન કરી શકો છો.',
   logoutAction: 'હા, લૉગઆઉટ કરો',
+  sessionEndedTitle: 'લૉગઆઉટ થઈ ગયું',
+  sessionEndedMessage: 'તમારો નંબર બીજા ફોન પર લૉગિન થયો છે, એટલે આ ફોનમાંથી તમે લૉગઆઉટ થઈ ગયા છો. આ ફોન પર Tiles Drop Saathi વાપરવા માટે ફરી લૉગિન કરો.',
   totalBalance: 'કુલ બેલેન્સ',
   recentTransactions: 'તાજેતરના વ્યવહાર',
   tripComplete: 'ટ્રિપ પૂરી',

@@ -44,6 +44,7 @@ import { Images } from '@/core/constants/assets';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { resetTo } from '@/core/navigation';
 import { formatTimestamp } from '@/core/utils/date-format';
 import { localDigits } from '@/core/i18n/language';
 import { groupDigits } from '@/core/utils/number-format';
@@ -102,7 +103,7 @@ export default function PendingApprovalScreen() {
   // re-subscribe on every render.
   const goToLogin = useCallback(() => {
     useRegistrationStore.getState().dismissOutcome();
-    router.replace('/(auth)/login');
+    resetTo('/(auth)/login');
   }, [router]);
 
   /**

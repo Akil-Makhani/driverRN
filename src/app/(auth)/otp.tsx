@@ -26,6 +26,7 @@ import { AppColors, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { localDigits } from '@/core/i18n/language';
+import { resetTo } from '@/core/navigation';
 import { takePendingTrip } from '@/core/services/notification-manager';
 import { LoginHistory } from '@/core/storage/login-history';
 import { formatTimer, useAuthStore } from '@/features/auth/auth-store';
@@ -121,7 +122,7 @@ export default function OtpScreen() {
     } else if (next === 'pending') {
       router.replace('/(auth)/pending-approval');
     } else {
-      router.replace('/(auth)/login');
+      resetTo('/(auth)/login');
     }
   };
 
@@ -141,7 +142,7 @@ export default function OtpScreen() {
 
       useDashboardStore.getState().syncDutyFromSession();
       const tripId = takePendingTrip();
-      router.replace('/dashboard');
+      resetTo('/dashboard');
       if (tripId) router.push(`/trip/${tripId}`);
     } finally {
       verifying.current = false;

@@ -31,6 +31,10 @@ export const en = {
   logoutMessage:
     'You will be logged out of Tiles Drop Saathi and stop receiving new orders. Log in again with your mobile number any time.',
   logoutAction: 'YES, LOGOUT',
+  // Shown on a phone whose session ended because the number logged in elsewhere.
+  sessionEndedTitle: 'Logged out',
+  sessionEndedMessage:
+    'Your number was logged in on another phone, so you have been logged out here. Log in again to use Tiles Drop Saathi on this phone.',
 
   // Wallet Screen
   totalBalance: 'Total Balance',

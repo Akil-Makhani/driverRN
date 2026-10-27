@@ -37,11 +37,21 @@ export function PendingOffersStrip() {
   // Re-render once a second so the countdowns move. Cheap: this component only
   // exists while something is actually pending.
   const [, tick] = useState(0);
-  const pending = offers.filter((o) => minimisedIds.includes(o.id));
+  // An offer whose time is up is never shown, not even for the second before
+  // the store drops it: a card at 0s invites a tap on an order that is gone.
+  const now = Date.now();
+  const pending = offers.filter(
+    (o) => minimisedIds.includes(o.id) && (deadlines[o.id] ?? 0) > now,
+  );
 
   useEffect(() => {
     if (!pending.length) return;
-    const id = setInterval(() => tick((n) => n + 1), 1000);
+    const id = setInterval(() => {
+      // Timers sleep while the app is in the background, so the store's own
+      // expiry can be late; the tick catches anything it missed.
+      useJobStore.getState().expireDue();
+      tick((n) => n + 1);
+    }, 1000);
     return () => clearInterval(id);
   }, [pending.length]);
 

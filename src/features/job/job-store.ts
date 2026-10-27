@@ -76,6 +76,8 @@ interface JobState {
   accept: (jobId: string) => Promise<void>;
   reject: (jobId: string) => Promise<void>;
   expire: (jobId: string) => void;
+  /** Expires every offer whose time is up, minimised ones included. */
+  expireDue: () => void;
   settle: (jobId: string, outcome: JobOutcome) => void;
   dismissNotice: () => void;
   syncOpenJobs: () => Promise<void>;
@@ -166,6 +168,13 @@ export const useJobStore = create<JobState>((set, get) => {
       });
       syncSiren();
 
+      // The overlay's countdown only expires the offer facing the driver. One
+      // pushed aside to the dashboard strip has no countdown watching it, so
+      // it sat there at 0s — and tapping it brought it back ringing for an
+      // order nobody can take. The deadline is re-read when this fires, so a
+      // raised-fare replacement's later deadline is not cut short by it.
+      setTimeout(() => get().expireDue(), open * 1000);
+
       // A ring offer outlives its siren: the order is now ringing further out,
       // but this driver can still take it. Once their siren time is up the card
       // steps aside to the pending strip, silent, until the offer closes.
@@ -189,6 +198,12 @@ export const useJobStore = create<JobState>((set, get) => {
     },
 
     restore(jobId) {
+      // A tap that lands as the countdown hits zero must not bring back, and
+      // ring for, an offer that is already over.
+      if ((get().deadlines[jobId] ?? 0) <= Date.now()) {
+        get().expire(jobId);
+        return;
+      }
       set({ minimisedIds: get().minimisedIds.filter((id) => id !== jobId) });
       syncSiren();
     },
@@ -233,9 +248,21 @@ export const useJobStore = create<JobState>((set, get) => {
       // Rule 2: an accept in flight outranks the countdown. The tap landed in
       // time even if the response has not come back yet.
       if (!offer || get().acceptingId === jobId) return;
+      // Only the offer the driver was looking at gets the "expired" line; one
+      // that runs out on the dashboard strip just leaves it.
+      const { offers, minimisedIds } = get();
+      const wasOnScreen = offers.find((o) => !minimisedIds.includes(o.id))?.id === jobId;
       drop(jobId);
-      showNotice({ offer, outcome: 'expired' });
+      if (wasOnScreen) showNotice({ offer, outcome: 'expired' });
       syncSiren();
+    },
+
+    expireDue() {
+      const { offers, deadlines } = get();
+      const now = Date.now();
+      offers
+        .filter((o) => (deadlines[o.id] ?? 0) <= now)
+        .forEach((o) => get().expire(o.id));
     },
 
     settle(jobId, outcome) {

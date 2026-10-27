@@ -38,6 +38,7 @@ import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { localDigits } from '@/core/i18n/language';
+import { resetTo } from '@/core/navigation';
 import { groupDigits } from '@/core/utils/number-format';
 import { useAuthStore } from '@/features/auth/auth-store';
 import {
@@ -117,7 +118,7 @@ export default function RegisterScreen() {
       return;
     }
     useRegistrationStore.getState().reset();
-    router.replace('/(auth)/login');
+    resetTo('/(auth)/login');
   };
 
   /**
