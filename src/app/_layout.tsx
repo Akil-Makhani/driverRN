@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { NetworkBanner } from '@/components/network-banner';
 import { UpdateGate } from '@/components/update-gate';
 import { Dispatch } from '@/core/realtime/dispatch';
 import {
@@ -121,6 +122,9 @@ export default function RootLayout() {
           {/* Rendered as a sibling of the whole stack so it covers every
               screen, including modals, and is not unmounted by navigation. */}
           <JobOfferOverlay key={`job-offer-${language}`} />
+
+          {/* Over every screen. The offer card is a Modal, so it draws its own. */}
+          <NetworkBanner key={`network-${language}`} />
 
           {/* Last, so it sits over everything above, offers included: while a
               newer version is on the store this build may not be used. */}

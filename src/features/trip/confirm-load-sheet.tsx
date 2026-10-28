@@ -28,18 +28,57 @@ import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
-import type { DispatchedProduct, Product, RequestedProduct } from '@/types/trip';
+import { type DispatchedProduct, offeredIn, type Product, type RequestedProduct } from '@/types/trip';
 import { ProductPicker } from './product-picker';
 import { isAddedItem, useTripDetailStore } from './trip-detail-store';
 
 interface Props {
   visible: boolean;
   products: Product[];
+  /** 'tempo' or 'truck': only that module's products are offered. */
+  orderKind?: string;
   onCancel: () => void;
   onConfirm: () => void;
 }
 
-export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Props) {
+/**
+ * A size compared by what it says, not by its id: the catalogue holds the same
+ * size more than once under different ids (Slab has two 800*2400s, Tiles three
+ * 300*1200s), so matching ids let a second 800*2400 line through.
+ */
+const sizeName = (size?: Product | null): string =>
+  (size?.name ?? '').replace(/\s+/g, '').toUpperCase();
+
+/** Products are compared by name too, for the same reason. */
+const productName = (product?: Product | null): string =>
+  (product?.name ?? product?.code ?? '').replace(/\s+/g, '').toUpperCase();
+
+/** One entry per size name, first occurrence kept. */
+function uniqueSizes(sizes: Product[]): Product[] {
+  const seen = new Set<string>();
+  return sizes.filter((s) => {
+    const name = sizeName(s);
+    if (seen.has(name)) return false;
+    seen.add(name);
+    return true;
+  });
+}
+
+/**
+ * A row's product and size as one key, or null while it is not fully chosen
+ * (a product that has sizes, with none picked yet).
+ */
+function pairKey(row: DispatchedProduct | undefined, products: Product[]): string | null {
+  const selected = row?.selectedProduct;
+  const name = productName(selected);
+  if (!name) return null;
+  const catalogue = products.find((p) => p.id === selected?.id || productName(p) === name);
+  const hasSizes = (catalogue?.subItems.length ?? 0) > 0;
+  if (hasSizes && !row?.selectedSubProduct) return null;
+  return `${name}|${sizeName(row?.selectedSubProduct)}`;
+}
+
+export function ConfirmLoadSheet({ visible, products, orderKind, onCancel, onConfirm }: Props) {
   const insets = useSafeAreaInsets();
   const requestedItems = useTripDetailStore((s) => s.requestedItems);
   const dispatchItems = useTripDetailStore((s) => s.dispatchItems);
@@ -123,6 +162,8 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
                 index={index}
                 requestedCount={requestedItems.length}
                 products={products}
+                orderKind={orderKind}
+                rows={dispatchItems}
               />
             ))}
 
@@ -177,6 +218,16 @@ export function ConfirmLoadSheet({ visible, products, onCancel, onConfirm }: Pro
                   Alert.alert(Strings.confirmLoad, Strings.enterWeightFirst);
                   return;
                 }
+                // The pickers already hide a product and size another row
+                // carries, but a row changed afterwards can still collide.
+                const keys = dispatchItems.map((d) => pairKey(d, products));
+                const duplicate = keys.some(
+                  (k, i) => k != null && keys.indexOf(k) !== i,
+                );
+                if (duplicate) {
+                  Alert.alert(Strings.confirmLoad, Strings.duplicateLoadItem);
+                  return;
+                }
                 onConfirm();
               }}
               style={styles.confirmButton}
@@ -200,6 +251,8 @@ function LoadRow({
   index,
   requestedCount,
   products,
+  orderKind,
+  rows,
 }: {
   /** Absent for a driver-added row — there is no customer line to compare to. */
   requested?: RequestedProduct;
@@ -207,6 +260,9 @@ function LoadRow({
   index: number;
   requestedCount: number;
   products: Product[];
+  orderKind?: string;
+  /** Every row on the sheet, this one included. */
+  rows: DispatchedProduct[];
 }) {
   // Sub-items belong to the *selected* product, so changing the product
   // changes which sub-items are offered.
@@ -217,6 +273,36 @@ function LoadRow({
   // control, an "extra" label, and in place of the ordered figures the name of
   // each field — a bare dash left the driver guessing which box was which.
   const isAdded = isAddedItem(index, requestedCount);
+
+  // Only what this order's module offers (the admin's App Setting choice), so
+  // a tempo driver is not offered Carton or Sanitary the tempo module left out.
+  const offered = products.filter((p) => offeredIn(p, orderKind));
+
+  // An added line is for something not on the load yet: 600x600 tiles can be
+  // added next to 100x100 ones, but not a second 100x100 line. Pairs other
+  // rows already carry are left out of this row's choices, and a product with
+  // every size taken is left out altogether.
+  const taken = new Set(
+    rows
+      .filter((_, i) => i !== index)
+      .map((r) => pairKey(r, products))
+      .filter((k): k is string => k != null),
+  );
+  const productOptions = isAdded
+    ? offered.filter((p) =>
+        p.subItems.length
+          ? p.subItems.some((s) => !taken.has(`${productName(p)}|${sizeName(s)}`))
+          : !taken.has(`${productName(p)}|`),
+      )
+    : offered;
+  // The same size listed twice in the catalogue is offered once.
+  const sizeOptions = uniqueSizes(
+    isAdded
+      ? subItems.filter(
+          (s) => !taken.has(`${productName(dispatched?.selectedProduct)}|${sizeName(s)}`),
+        )
+      : subItems,
+  );
 
   return (
     <View style={styles.row}>
@@ -245,7 +331,7 @@ function LoadRow({
         right={
           <ProductPicker
             value={dispatched?.selectedProduct}
-            options={products}
+            options={productOptions}
             placeholder={isAdded ? Strings.selectProduct : undefined}
             onChange={(p) => useTripDetailStore.getState().updateProduct(index, p)}
           />
@@ -262,7 +348,7 @@ function LoadRow({
           right={
             <ProductPicker
               value={dispatched?.selectedSubProduct}
-              options={subItems}
+              options={sizeOptions}
               placeholder={Strings.selectSize}
               onChange={(p) => useTripDetailStore.getState().updateSubItem(index, p)}
             />

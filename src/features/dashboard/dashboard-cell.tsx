@@ -54,9 +54,15 @@ export function DashboardCell({ trip, onPress, onAcceptPress }: Props) {
         </Text>
 
         <View style={styles.numbersRow}>
+          {/* A tempo trip is driven in a tempo, so it is labelled with the
+              tempo's number; "Truck Number" there read as the wrong vehicle. */}
           <View style={styles.numberBlock}>
-            <Text style={styles.numberLabel}>{Strings.truckNumber}</Text>
-            <Text style={styles.numberValue}>{trip.truckNumber ?? ''}</Text>
+            <Text style={styles.numberLabel}>
+              {trip.orderKind === 'tempo' ? Strings.tempoNumber : Strings.truckNumber}
+            </Text>
+            <Text style={styles.numberValue}>
+              {(trip.orderKind === 'tempo' ? trip.tempoNumber : trip.truckNumber) ?? ''}
+            </Text>
           </View>
           <View style={[styles.numberBlock, styles.numberBlockSpaced]}>
             <Text style={styles.numberLabel}>{Strings.lrNumber}</Text>

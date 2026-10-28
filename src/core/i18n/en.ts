@@ -31,6 +31,28 @@ export const en = {
   logoutMessage:
     'You will be logged out of Tiles Drop Saathi and stop receiving new orders. Log in again with your mobile number any time.',
   logoutAction: 'YES, LOGOUT',
+
+  // Network. The banner lines stay short: they sit over every screen.
+  networkOfflineBanner: 'No internet connection',
+  networkSlowBanner: 'Your network is slow',
+  networkOfflineMessage: 'No internet connection. Check your mobile data or Wi-Fi and try again.',
+  networkSlowMessage: 'Your network is slow, so this is taking too long. Please try again.',
+  serverErrorMessage: 'The server is not responding right now. Please try again in a moment.',
+  networkStartupTitle: 'Network problem',
+  networkRetry: 'TRY AGAIN',
+
+  // Confirm Load, when an added line repeats a product and size already on it.
+  duplicateLoadItem: 'This product and size is already on the load. Choose another size.',
+
+  // Reason asked for when a driver cancels a trip they accepted.
+  cancelReasonPrompt: 'Why are you cancelling?',
+  cancelReasonVehicle: 'Vehicle broke down',
+  cancelReasonFar: 'Pickup is too far',
+  cancelReasonCustomer: "Can't reach the customer",
+  cancelReasonLoad: "Load won't fit my vehicle",
+  cancelReasonEmergency: 'Personal emergency',
+  cancelReasonOther: 'Other reason',
+  cancelReasonPlaceholder: 'Write the reason',
   // Shown on a phone whose session ended because the number logged in elsewhere.
   sessionEndedTitle: 'Logged out',
   sessionEndedMessage:
@@ -413,6 +435,7 @@ export const en = {
   offerExpiredNotice: 'The order expired before you answered',
   offerCancelledNotice: 'This order was cancelled',
   offerFailedNotice: 'Could not accept the order. Please try again.',
+  offerUnavailableNotice: 'This order is no longer available',
   offerWaiting: 'Confirming…',
   offerYouEarn: 'YOU EARN',
   offerFare: 'ORDER FARE',

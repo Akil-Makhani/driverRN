@@ -74,6 +74,12 @@ export interface Product {
   price?: number;
   bstOfficePrice?: number;
   subItems: Product[];
+  /**
+   * The modules ('truck', 'tempo') that offer this product, as picked on each
+   * module's App Setting page. Absent from older servers, which read as
+   * "offered everywhere".
+   */
+  modules?: string[];
 }
 
 export function parseProduct(j: any): Product {
@@ -84,8 +90,13 @@ export function parseProduct(j: any): Product {
     price: num(j?.price),
     bstOfficePrice: num(j?.bstOfficePrice),
     subItems: list(j?.subItems, parseProduct),
+    modules: Array.isArray(j?.modules) ? j.modules.map(String) : undefined,
   };
 }
+
+/** Whether the module a trip came from offers this product. */
+export const offeredIn = (product: Product, orderKind?: string): boolean =>
+  !product.modules || !orderKind || product.modules.includes(orderKind);
 
 export type ProductResponse = Envelope<Product[]>;
 
@@ -112,6 +123,8 @@ export interface TripItem {
   updatedAt?: string;
   pickupAddress?: string;
   totalWeight?: number;
+  /** 'tempo' or 'truck': which number the card labels the vehicle with. */
+  orderKind?: string;
   tempoNumber?: string;
   truckNumber?: string;
   lrNumber?: string;
@@ -130,6 +143,7 @@ export const parseTripItem = (j: any): TripItem => ({
   updatedAt: str(j?.updatedAt),
   pickupAddress: str(j?.pickupAddress),
   totalWeight: num(j?.totalWeight),
+  orderKind: str(j?.orderKind),
   tempoNumber: str(j?.tempoNumber),
   truckNumber: str(j?.truckNumber),
   lrNumber: str(j?.lrNumber),

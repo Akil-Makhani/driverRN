@@ -23,7 +23,12 @@ export type JobOutcome =
   /** This driver declined it. */
   | 'declined'
   /** The accept call itself failed (network, server). */
-  | 'failed';
+  | 'failed'
+  /**
+   * The server stopped listing it and the news of why never arrived — taken
+   * or cancelled while this phone's socket and push were both lagging.
+   */
+  | 'unavailable';
 
 /** Which module the offer came from. Tempo orders carry a real fare and distance. */
 export type JobOrderKind = 'truck' | 'tempo';

@@ -11,7 +11,8 @@
  * needs to stand apart.
  */
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import type { ReactNode } from 'react';
+import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Typography } from '@/core/constants/typography';
@@ -51,6 +52,10 @@ interface Props {
   cancelIcon?: IconName;
   onConfirm?: () => void;
   onCancel: () => void;
+  /** Extra content between the message and the buttons, e.g. a reason picker. */
+  children?: ReactNode;
+  /** Greys out the confirm button until the content above is filled in. */
+  confirmDisabled?: boolean;
 }
 
 export function ActionConfirmDialog({
@@ -68,6 +73,8 @@ export function ActionConfirmDialog({
   cancelIcon = 'close',
   onConfirm,
   onCancel,
+  children,
+  confirmDisabled = false,
 }: Props) {
   const colors = TONES[tone];
   const hasConfirm = Boolean(confirmLabel && onConfirm);
@@ -84,80 +91,87 @@ export function ActionConfirmDialog({
       // Android hardware back cancels, like every other dialog in the app.
       onRequestClose={onCancel}
     >
-      <Pressable style={styles.scrim} onPress={onCancel}>
-        {/* Stop taps inside the card from reaching the scrim. */}
-        <Pressable style={[styles.card, { borderTopColor: colors.strong }]} onPress={() => {}}>
-          <View style={[styles.iconWrap, { backgroundColor: colors.soft, borderColor: colors.ring }]}>
-            <MaterialCommunityIcons name={icon} size={40} color={colors.strong} />
-          </View>
-
-          {(label || badge) && (
-            <View style={styles.labelRow}>
-              {!!label && (
-                <View style={[styles.labelPill, { backgroundColor: colors.soft }]}>
-                  <Text style={[styles.labelText, { color: colors.strong }]}>{label}</Text>
-                </View>
-              )}
-              {!!badge && (
-                <View style={[styles.badge, { borderColor: colors.ring }]}>
-                  <MaterialCommunityIcons name="timer-sand" size={13} color={colors.strong} />
-                  <Text style={[styles.badgeText, { color: colors.strong }]}>{badge}</Text>
-                </View>
-              )}
+      {/* Lifts the card clear of the keyboard when the content has a text field. */}
+      <KeyboardAvoidingView style={styles.fill} behavior="padding">
+        <Pressable style={styles.scrim} onPress={onCancel}>
+          {/* Stop taps inside the card from reaching the scrim. */}
+          <Pressable style={[styles.card, { borderTopColor: colors.strong }]} onPress={() => {}}>
+            <View style={[styles.iconWrap, { backgroundColor: colors.soft, borderColor: colors.ring }]}>
+              <MaterialCommunityIcons name={icon} size={40} color={colors.strong} />
             </View>
-          )}
 
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
-
-          {!!details?.length && (
-            <View style={[styles.details, { backgroundColor: colors.soft }]}>
-              {details.map((line) => (
-                <Text key={line} style={styles.detailText} numberOfLines={2}>
-                  {line}
-                </Text>
-              ))}
-            </View>
-          )}
-
-          <View style={styles.actions}>
-            <Pressable
-              onPress={onCancel}
-              style={({ pressed }) => [
-                styles.button,
-                hasConfirm ? styles.cancelButton : [styles.soleButton, { backgroundColor: colors.strong }],
-                pressed && styles.pressed,
-              ]}
-            >
-              <MaterialCommunityIcons name={cancelIcon} size={18} color={cancelTint} />
-              <Text style={[styles.buttonText, { color: cancelTint }]} numberOfLines={1}>
-                {cancelLabel}
-              </Text>
-            </Pressable>
-            {hasConfirm && (
-            <Pressable
-              onPress={onConfirm}
-              style={({ pressed }) => [
-                styles.button,
-                styles.confirmButton,
-                { backgroundColor: colors.strong },
-                pressed && styles.pressed,
-              ]}
-            >
-              <MaterialCommunityIcons name={confirmIcon} size={18} color={AppColors.white} />
-              <Text
-                style={[styles.buttonText, { color: AppColors.white }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.8}
-              >
-                {confirmLabel}
-              </Text>
-            </Pressable>
+            {(label || badge) && (
+              <View style={styles.labelRow}>
+                {!!label && (
+                  <View style={[styles.labelPill, { backgroundColor: colors.soft }]}>
+                    <Text style={[styles.labelText, { color: colors.strong }]}>{label}</Text>
+                  </View>
+                )}
+                {!!badge && (
+                  <View style={[styles.badge, { borderColor: colors.ring }]}>
+                    <MaterialCommunityIcons name="timer-sand" size={13} color={colors.strong} />
+                    <Text style={[styles.badgeText, { color: colors.strong }]}>{badge}</Text>
+                  </View>
+                )}
+              </View>
             )}
-          </View>
+
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.message}>{message}</Text>
+
+            {!!details?.length && (
+              <View style={[styles.details, { backgroundColor: colors.soft }]}>
+                {details.map((line) => (
+                  <Text key={line} style={styles.detailText} numberOfLines={2}>
+                    {line}
+                  </Text>
+                ))}
+              </View>
+            )}
+
+            {children}
+
+            <View style={styles.actions}>
+              <Pressable
+                onPress={onCancel}
+                style={({ pressed }) => [
+                  styles.button,
+                  hasConfirm ? styles.cancelButton : [styles.soleButton, { backgroundColor: colors.strong }],
+                  pressed && styles.pressed,
+                ]}
+              >
+                <MaterialCommunityIcons name={cancelIcon} size={18} color={cancelTint} />
+                <Text style={[styles.buttonText, { color: cancelTint }]} numberOfLines={1}>
+                  {cancelLabel}
+                </Text>
+              </Pressable>
+              {hasConfirm && (
+              <Pressable
+                onPress={onConfirm}
+                disabled={confirmDisabled}
+                style={({ pressed }) => [
+                  styles.button,
+                  styles.confirmButton,
+                  { backgroundColor: colors.strong },
+                  pressed && styles.pressed,
+                  confirmDisabled && styles.disabled,
+                ]}
+              >
+                <MaterialCommunityIcons name={confirmIcon} size={18} color={AppColors.white} />
+                <Text
+                  style={[styles.buttonText, { color: AppColors.white }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  {confirmLabel}
+                </Text>
+              </Pressable>
+              )}
+            </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -243,5 +257,7 @@ const styles = StyleSheet.create({
   confirmButton: { flex: 1.4 },
   soleButton: { flex: 1 },
   pressed: { opacity: 0.8 },
+  disabled: { opacity: 0.4 },
+  fill: { flex: 1 },
   buttonText: { ...Typography.button2.extraBold },
 });

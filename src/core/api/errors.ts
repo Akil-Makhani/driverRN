@@ -46,10 +46,14 @@ export class AppException extends Error {
   }
 }
 
-/** Connectivity / 5xx / unexpected status. */
+/**
+ * Connectivity / 5xx / unexpected status. No prefix: api-service writes the
+ * message for the driver, in their language, and an English "Error During
+ * Communication:" in front of a Gujarati sentence helped nobody.
+ */
 export class FetchDataException extends AppException {
   constructor(message?: string, statusCode?: number, code?: string) {
-    super(message, 'Error During Communication: ', statusCode, code);
+    super(message, '', statusCode, code);
   }
 }
 

@@ -55,7 +55,11 @@ export function OrderDetails({ details }: { details: TripDetailsData | null }) {
 
       <View style={styles.numbersRow}>
         <NumberBlock label={Strings.tempoNumber} value={details?.tempoNumber} />
-        <NumberBlock label={Strings.truckNumber} value={details?.truckNumber} />
+        {/* A tempo trip has no truck; the server fills this with the tempo's
+            own number, so it only repeated the block before it. */}
+        {details?.orderKind !== 'tempo' && (
+          <NumberBlock label={Strings.truckNumber} value={details?.truckNumber} />
+        )}
         <NumberBlock label={Strings.lrNumber} value={details?.lrNumber} />
       </View>
 

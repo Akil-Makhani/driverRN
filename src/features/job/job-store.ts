@@ -85,6 +85,20 @@ interface JobState {
 }
 
 let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+/** syncOpenJobs runs one at a time; see the poll in startJobListener. */
+let syncInFlight = false;
+/**
+ * How often the held offers are re-checked against the server.
+ *
+ * `job:taken` and `job:cancelled` reach a phone by socket and by push, and on
+ * a weak network both can be late or lost. A phone that missed them kept
+ * ringing for an order another driver had already taken; when that driver
+ * then cancelled and the order went out again as a new offer, the slow phone
+ * went on showing the first one in front of it. Asking the server while an
+ * offer is held clears both within a few seconds of any answer getting
+ * through.
+ */
+const OFFER_RECHECK_MS = 5000;
 /** Unsubscribers for the socket listeners; set by `startJobListener`. */
 let unsubscribers: (() => void)[] = [];
 
@@ -119,6 +133,15 @@ export const useJobStore = create<JobState>((set, get) => {
       deadlines: rest,
       minimisedIds: minimisedIds.filter((id) => id !== jobId),
     });
+  };
+
+  /** Whether the driver has looked at this offer: facing them, or minimised. */
+  const wasSeen = (jobId: string): boolean => {
+    const { offers, minimisedIds } = get();
+    return (
+      minimisedIds.includes(jobId) ||
+      offers.find((o) => !minimisedIds.includes(o.id))?.id === jobId
+    );
   };
 
   const showNotice = (notice: JobOutcomeNotice): void => {
@@ -284,13 +307,15 @@ export const useJobStore = create<JobState>((set, get) => {
       if (!offer) return;
 
       // Read before dropping. Afterwards this offer is by definition no longer
-      // at the head of the queue, so asking then would always answer "no".
-      const wasOnScreen = get().offers[0]?.id === jobId;
+      // in the queue, so asking then would always answer "no".
+      const seen = wasSeen(jobId);
 
       drop(jobId);
-      // Only interrupt the driver about the offer they were actually looking
-      // at. A queued offer being claimed elsewhere is not news.
-      if (wasOnScreen) showNotice({ offer, outcome });
+      // Tell the driver about an offer they have seen — on screen, or pushed
+      // aside to the dashboard strip, where it used to vanish without a word
+      // when an admin deleted the order. One still queued behind another
+      // offer being claimed elsewhere is not news.
+      if (seen) showNotice({ offer, outcome });
       syncSiren();
     },
 
@@ -301,6 +326,9 @@ export const useJobStore = create<JobState>((set, get) => {
     },
 
     async syncOpenJobs() {
+      // On a slow network one request can outlast the poll interval.
+      if (syncInFlight) return;
+      syncInFlight = true;
       try {
         // Only offers already held when the request went out can be judged
         // stale by its answer; one that arrives meanwhile is newer than it.
@@ -316,7 +344,14 @@ export const useJobStore = create<JobState>((set, get) => {
         const open = new Set((response.data ?? []).map((o) => o.id));
         const stale = heldBefore.filter((id) => !open.has(id) && id !== get().acceptingId);
         if (stale.length) {
+          // The settle that should have explained this never arrived, so say
+          // what is known: the order the driver was looking at is gone.
+          const seenStale = stale
+            .filter(wasSeen)
+            .map((id) => get().offers.find((o) => o.id === id))
+            .find((o): o is JobOffer => o != null);
           stale.forEach(drop);
+          if (seenStale) showNotice({ offer: seenStale, outcome: 'unavailable' });
           void NotificationManager.dismissOfferNotifications();
           syncSiren();
         }
@@ -326,6 +361,8 @@ export const useJobStore = create<JobState>((set, get) => {
         response.data?.forEach((offer) => get().receive(offer));
       } catch (e) {
         if (__DEV__) console.log('syncOpenJobs failed:', e);
+      } finally {
+        syncInFlight = false;
       }
     },
 
@@ -371,9 +408,33 @@ export function startJobListener(): () => void {
       if (isConnected) void useJobStore.getState().syncOpenJobs();
     }),
     onForegroundChange(),
+    recheckWhileHolding(),
   ];
 
   return stopJobListener;
+}
+
+/**
+ * Re-asks the server what is still open for as long as any offer is held,
+ * so an offer settled while the news was lost does not linger. See
+ * OFFER_RECHECK_MS.
+ */
+function recheckWhileHolding(): () => void {
+  let timer: ReturnType<typeof setInterval> | null = null;
+  const follow = (holding: boolean) => {
+    if (holding && !timer) {
+      timer = setInterval(() => void useJobStore.getState().syncOpenJobs(), OFFER_RECHECK_MS);
+    } else if (!holding && timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  };
+  follow(useJobStore.getState().offers.length > 0);
+  const unsubscribe = useJobStore.subscribe((state) => follow(state.offers.length > 0));
+  return () => {
+    unsubscribe();
+    follow(false);
+  };
 }
 
 /**

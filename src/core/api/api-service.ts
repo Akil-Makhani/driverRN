@@ -14,12 +14,14 @@
  */
 import * as Application from 'expo-application';
 
-import { API_BASE_URL } from './endpoints';
+import { API_BASE_URL, ApiUrls } from './endpoints';
 import {
   BadRequestException,
   FetchDataException,
   UnauthorisedException,
 } from './errors';
+import { Strings } from '../constants/strings';
+import { SLOW_AFTER_MS, useNetworkStatus } from '../network-status';
 import { Preference } from '../storage/preference';
 
 type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -72,6 +74,13 @@ async function request<T = any>(
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  // Still waiting after a few seconds: say so now, rather than leaving the
+  // driver looking at a spinner until the thirty-second timeout.
+  const slowTimer = setTimeout(
+    () => useNetworkStatus.getState().setStatus('slow'),
+    SLOW_AFTER_MS,
+  );
+  const startedAt = Date.now();
 
   const init: RequestInit = { method, headers, signal: controller.signal };
   if (body !== undefined && body !== null && method !== 'GET' && method !== 'DELETE') {
@@ -91,11 +100,18 @@ async function request<T = any>(
   } catch (e) {
     // Abort (timeout) and transport failures both land here. Dart surfaced
     // these by rethrowing the SocketException; the stores only need one type.
-    const reason = (e as Error)?.name === 'AbortError' ? 'Request timed out' : 'No internet connection';
-    throw new FetchDataException(reason);
+    // The message is what the driver reads, so it is in their language.
+    const timedOut = (e as Error)?.name === 'AbortError';
+    useNetworkStatus.getState().setStatus(timedOut ? 'slow' : 'offline');
+    throw new FetchDataException(timedOut ? Strings.networkSlowMessage : Strings.networkOfflineMessage);
   } finally {
     clearTimeout(timer);
+    clearTimeout(slowTimer);
   }
+  // Any answer at all means the network is up; a late one means it is weak.
+  useNetworkStatus
+    .getState()
+    .setStatus(Date.now() - startedAt > SLOW_AFTER_MS ? 'slow' : 'ok');
 
   if (__DEV__) console.log(`${url} → ${response.status} ${text}`);
 
@@ -153,10 +169,21 @@ async function request<T = any>(
     }
 
     default:
-      throw new FetchDataException(
-        `Error occurred while Communication with Server with Status Code : ${response.status}`,
-        response.status,
-      );
+      if (__DEV__) console.log(`Unexpected status ${response.status} from ${url}`);
+      throw new FetchDataException(Strings.serverErrorMessage, response.status);
+  }
+}
+
+/**
+ * Whether the server can be reached at all, for the network banner to find out
+ * when a bad connection has come back. Any HTTP answer counts, including an
+ * error status: the question is the network, not the endpoint.
+ */
+export async function checkConnection(): Promise<void> {
+  try {
+    await request('GET', ApiUrls.profile);
+  } catch {
+    // request() has already recorded the outcome.
   }
 }
 

@@ -203,9 +203,9 @@ export default function TripDetailScreen() {
    * trips and only before Vehicle There — the server enforces the same window,
    * this just stops the driver reaching for a button that would be refused.
    */
-  const confirmCancel = () => {
+  const confirmCancel = (reason: string) => {
     setCancelOpen(false);
-    void changeStatus(TripStatus.rejected, true);
+    void changeStatus(TripStatus.rejected, true, { reason });
   };
 
   // Routes from the driver's current location to wherever the trip is headed
@@ -369,6 +369,7 @@ export default function TripDetailScreen() {
       <ConfirmLoadSheet
         visible={sheetOpen}
         products={products}
+        orderKind={trip?.orderKind}
         onCancel={() => setSheetOpen(false)}
         onConfirm={() => {
           setSheetOpen(false);

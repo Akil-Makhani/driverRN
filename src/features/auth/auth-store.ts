@@ -15,7 +15,7 @@ import { Alert } from 'react-native';
 import { create } from 'zustand';
 
 import { setSessionEndedHandler } from '@/core/api/api-service';
-import { AppException, UnauthorisedException } from '@/core/api/errors';
+import { AppException, FetchDataException, UnauthorisedException } from '@/core/api/errors';
 import { Strings } from '@/core/constants/strings';
 import { resetTo } from '@/core/navigation';
 import { Dispatch } from '@/core/realtime/dispatch';
@@ -127,6 +127,12 @@ interface AuthState {
 
   /** Splash: resolves true when the stored token still yields a profile. */
   loadProfile: () => Promise<boolean>;
+  /**
+   * loadProfile for the splash screen, which must tell "not signed in" from
+   * "could not ask": the message when the server could not be reached, null
+   * when it answered (true/false as loadProfile).
+   */
+  loadStartupProfile: () => Promise<{ ok: boolean; networkError: string | null }>;
   /**
    * Splash: 'approved' when the driver behind the loaded profile may reach the
    * dashboard. Anything else ends the session locally — 'pending' belongs on
@@ -439,6 +445,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return true;
     } catch {
       return false;
+    }
+  },
+
+  async loadStartupProfile() {
+    try {
+      await UserRepository.profile();
+      return { ok: true, networkError: null };
+    } catch (e) {
+      // No answer, or a server error: the session may be perfectly good, so
+      // this is no reason to send the driver to login.
+      if (e instanceof FetchDataException) return { ok: false, networkError: e.message };
+      return { ok: false, networkError: null };
     }
   },
 

@@ -32,6 +32,7 @@ import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionConfirmDialog } from '@/components/action-confirm-dialog';
+import { NetworkBanner } from '@/components/network-banner';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
@@ -81,6 +82,7 @@ const NOTICE_TEXT = (): Record<JobOutcome, string> => ({
   expired: Strings.offerExpiredNotice,
   cancelled: Strings.offerCancelledNotice,
   failed: Strings.offerFailedNotice,
+  unavailable: Strings.offerUnavailableNotice,
   // A decline is the driver's own doing; it needs no explanation back to them.
   declined: '',
 });
@@ -376,9 +378,10 @@ export function JobOfferOverlay() {
                       <Text style={styles.loadWeight}>{loadWeight}</Text>
                     )}
                     {Boolean(loadProduct) && (
-                      <Text style={styles.loadProduct} numberOfLines={2}>
-                        {loadProduct}
-                      </Text>
+                      // One line per product from the server ("TILES · 149 qty"
+                      // then "SLAB · 131 qty"), so no line limit: a cap of two
+                      // hid the third product on a three-product pickup.
+                      <Text style={styles.loadProduct}>{loadProduct}</Text>
                     )}
                   </View>
                 )}
@@ -459,6 +462,10 @@ export function JobOfferOverlay() {
           }}
         />
       )}
+
+      {/* The root layout's banner cannot draw over a Modal, and a driver about
+          to tap Accept on a weak signal is the one who most needs to know. */}
+      <NetworkBanner />
     </Modal>
   );
 }
