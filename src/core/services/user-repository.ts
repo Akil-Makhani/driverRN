@@ -125,6 +125,41 @@ export const UserRepository = {
     return model;
   },
 
+  /**
+   * Adds or changes the driver's photo: uploads the picture straight to S3,
+   * then files its key. The session takes the profile that comes back, so the
+   * dashboard and sidebar switch to the new photo at once.
+   */
+  async updateProfilePhoto(uri: string, contentType: string): Promise<boolean> {
+    const raw = await ApiService.post(ApiUrls.profilePhotoUploadUrl, { contentType });
+    const uploadUrl: string | undefined = raw?.data?.uploadUrl;
+    const fileKey: string | undefined = raw?.data?.fileKey;
+    if (!uploadUrl || !fileKey) return false;
+
+    const blob = await (await fetch(uri)).blob();
+    const s3 = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: blob,
+    });
+    if (!s3.ok) return false;
+    return await UserRepository.savePhoto(fileKey);
+  },
+
+  /** Takes the photo off; the stock avatar shows again. */
+  async removeProfilePhoto(): Promise<boolean> {
+    return await UserRepository.savePhoto(null);
+  },
+
+  async savePhoto(fileKey: string | null): Promise<boolean> {
+    const model = parseUserResponse(await ApiService.patch(ApiUrls.profilePhoto, { fileKey }));
+    const { user, updateSession } = useSession.getState();
+    if (model.status !== 'success' || !model.data || !user) return false;
+    // The endpoint does not echo the tokens back; keep the ones held.
+    updateSession({ ...model.data, accessToken: user.accessToken, refreshToken: user.refreshToken });
+    return true;
+  },
+
   /** Saves the driver's language on the server, where the admin sees it. */
   async updateLanguage(language: string): Promise<CommonResponse> {
     const raw: CommonResponse = await ApiService.patch(ApiUrls.language, { language });

@@ -15,7 +15,7 @@ import type { CommonResponse } from '@/types/api';
 import {
   type DriverLicenceInfo,
   type RegistrationDetails,
-  type RegistrationDocumentKey,
+  type RegistrationPhotoKey,
   type RegistrationForm,
   type RegistrationStatusInfo,
   type VehicleInfo,
@@ -52,12 +52,15 @@ async function deviceBody(): Promise<Record<string, unknown>> {
 
 /** The form fields, normalised the way the server expects them. */
 function detailsBody(details: RegistrationDetails): Record<string, unknown> {
+  // The driver's own photo travels beside the four documents, not among them.
+  const { profilePhoto, ...documents } = details.documents;
   return {
     driverName: details.driverName.trim(),
     vehicleNumber: details.vehicleNumber.trim().toUpperCase(),
     driverLicenceNumber: details.driverLicenceNumber.trim(),
     dob: details.dob.trim(),
-    documents: details.documents,
+    documents,
+    ...(profilePhoto ? { profilePhoto } : {}),
   };
 }
 
@@ -167,7 +170,7 @@ export const RegistrationRepository = {
    */
   async uploadDocument(
     mobileNo: string,
-    documentType: RegistrationDocumentKey,
+    documentType: RegistrationPhotoKey,
     uri: string,
     contentType: string,
   ): Promise<string> {

@@ -501,6 +501,47 @@ export const en = {
   updateRequiredMessage:
     'A new version of Tiles Drop Saathi is available. Please update to keep using the app. Your trips and data stay as they are.',
   updateNow: 'UPDATE NOW',
+  // Trip earning on the dashboard card and trip details. It follows the
+  // loaded/delivered weight, so it can differ from what the offer showed.
+  tripEarning: 'Your earning',
+  tripEarningWas: 'Was',
+  tripEarningChanged: 'Changed with the loaded / delivered weight',
+  // Fireworks screen after a delivery
+  deliveredCelebrateTitle: 'Well done! Delivered 🎉',
+  deliveredCelebrateBody: 'The load has reached the customer. Thank you for a safe trip!',
+  deliveredCelebrateDone: 'DONE',
+  // After answering an offer: congratulations on an accept, encouragement on a decline
+  acceptedCheerTitle: 'Congratulations! 🎉',
+  acceptedCheerBody: 'This trip is yours. Drive safe and deliver on time.',
+  acceptedCheerAction: "LET'S GO",
+  cheerFromBrand: 'Best wishes from Tiles Drop Saathi',
+  rejectedCheerTitle: 'No problem 👍',
+  rejectedCheerBody: 'Please accept the next trip.',
+  rejectedCheerHint: 'More trips, more earning!',
+  rejectedCheerAction: 'OK',
+  // Optional driver photo at registration
+  registerProfilePhotoTitle: 'Your photo (optional)',
+  registerProfilePhotoNote: 'A clear photo of your face. It shows on your dashboard; you can skip it.',
+  registerProfilePhotoAdd: 'Add photo',
+  // Profile screen
+  profilePhotoTitle: 'Profile photo',
+  profilePhotoAdd: 'Add photo',
+  profilePhotoChange: 'Change photo',
+  profilePhotoRemove: 'Remove photo',
+  profilePhotoFailed: 'Could not update the photo. Please try again.',
+  profileActive: 'Active',
+  profileMemberSince: 'Member since',
+  profileVehicleSection: 'Vehicle & Licence',
+  profilePersonalSection: 'Personal Details',
+  profileDrivingLicence: 'Driving Licence',
+  profilePhotoSheetHint: 'Shown on your dashboard and to the office',
+  profilePhotoCameraHint: 'Click a new photo with the camera',
+  profilePhotoGalleryHint: 'Pick a photo from your phone',
+  profilePhotoView: 'View photo',
+  profilePhotoViewHint: 'See your photo full screen',
+  profilePhotoRemoveHint: 'The default avatar will show instead',
+  profilePhotoRemoveConfirm: 'Remove your photo?',
+  profilePhotoRemoveYes: 'Yes, remove',
 };
 
 export type StringKey = keyof typeof en;

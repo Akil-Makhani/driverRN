@@ -24,7 +24,7 @@ import { isSuccess } from '@/types/api';
 import { REGISTRATION_DOCUMENT_KEYS, isRegistrationComplete } from '@/types/registration';
 import type {
   DriverLicenceInfo,
-  RegistrationDocumentKey,
+  RegistrationPhotoKey,
   RegistrationForm,
   RegistrationStatus,
   RegistrationStatusInfo,
@@ -48,11 +48,13 @@ export interface PhotoSlot {
 
 export type PhotoSource = 'camera' | 'library';
 
-const EMPTY_PHOTOS = (): Record<RegistrationDocumentKey, PhotoSlot> => ({
+const EMPTY_PHOTOS = (): Record<RegistrationPhotoKey, PhotoSlot> => ({
   dlFront: { status: 'idle' },
   dlBack: { status: 'idle' },
   rcFront: { status: 'idle' },
   rcBack: { status: 'idle' },
+  // Optional: the driver's own photo, for the dashboard.
+  profilePhoto: { status: 'idle' },
 });
 
 /**
@@ -91,7 +93,7 @@ interface RegistrationState {
   licenceInfo: DriverLicenceInfo | null;
   licenceLookup: LookupState;
 
-  photos: Record<RegistrationDocumentKey, PhotoSlot>;
+  photos: Record<RegistrationPhotoKey, PhotoSlot>;
   /** Shown under the photo grid — a missing photo or a failed upload. */
   photoError: string | null;
 
@@ -175,12 +177,12 @@ interface RegistrationState {
   lookupLicence: () => Promise<void>;
 
   /** Takes or chooses a photo for one slot and starts uploading it. */
-  pickPhoto: (key: RegistrationDocumentKey, source: PhotoSource) => Promise<void>;
+  pickPhoto: (key: RegistrationPhotoKey, source: PhotoSource) => Promise<void>;
   /**
    * Uploads one picked photo. 'needs-otp' is the server refusing because the
    * mobile verification has lapsed — the same ending submit has.
    */
-  uploadPhoto: (key: RegistrationDocumentKey) => Promise<'done' | 'needs-otp' | 'failed'>;
+  uploadPhoto: (key: RegistrationPhotoKey) => Promise<'done' | 'needs-otp' | 'failed'>;
 
   /**
    * Verifies the registration OTP and reports where the driver goes next:
@@ -625,6 +627,12 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
         set({ isSubmitting: false, photoError: Strings.registerPhotoUploadFailed });
         return 'failed';
       }
+    }
+    // The driver's own photo is optional, so one that will not go up is left
+    // out rather than holding the registration back.
+    if (get().photos.profilePhoto.uri && (await get().uploadPhoto('profilePhoto')) !== 'done') {
+      const { profilePhoto: _dropped, ...documents } = get().form.documents;
+      set({ form: { ...get().form, documents } });
     }
 
     const { form } = get();

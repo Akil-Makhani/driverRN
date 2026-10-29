@@ -42,6 +42,11 @@ export interface JobOutcomeNotice {
   message?: string;
 }
 
+export interface OfferCheerState {
+  kind: 'accepted' | 'rejected';
+  offer: JobOffer;
+}
+
 interface JobState {
   /** Open offers, oldest first. Only `offers[0]` is ever on screen. */
   offers: JobOffer[];
@@ -65,6 +70,11 @@ interface JobState {
   minimisedIds: string[];
   /** The one-line result shown as an offer leaves the screen. */
   notice: JobOutcomeNotice | null;
+  /**
+   * The driver's own answer, cheered: a celebration after an accept that won,
+   * a word of encouragement after a decline (see OfferCheer).
+   */
+  cheer: OfferCheerState | null;
 
   receive: (raw: unknown) => void;
   /** Re-decides whether the siren rings; for changes outside the store, like the app state. */
@@ -80,6 +90,7 @@ interface JobState {
   expireDue: () => void;
   settle: (jobId: string, outcome: JobOutcome) => void;
   dismissNotice: () => void;
+  dismissCheer: () => void;
   syncOpenJobs: () => Promise<void>;
   clearAll: () => void;
 }
@@ -159,6 +170,7 @@ export const useJobStore = create<JobState>((set, get) => {
     acceptingId: null,
     minimisedIds: [],
     notice: null,
+    cheer: null,
 
     receive(raw) {
       const offer = parseJobOffer(
@@ -253,6 +265,7 @@ export const useJobStore = create<JobState>((set, get) => {
 
         const tripId = result.tripId ?? offer?.tripId;
         if (tripId) router.push(`/trip/${tripId}`);
+        if (offer) set({ cheer: { kind: 'accepted', offer } });
       } else if (offer) {
         showNotice({ offer, outcome: result.outcome, message: result.message });
       }
@@ -261,8 +274,15 @@ export const useJobStore = create<JobState>((set, get) => {
     },
 
     async reject(jobId) {
+      const offer = get().offers.find((o) => o.id === jobId);
       drop(jobId);
       syncSiren();
+      // Encouragement for the next one - unless another offer is already on
+      // screen, which is the better answer to "what next".
+      const { offers, minimisedIds } = get();
+      if (offer && !offers.some((o) => !minimisedIds.includes(o.id))) {
+        set({ cheer: { kind: 'rejected', offer } });
+      }
       await JobRepository.reject(jobId);
     },
 
@@ -325,6 +345,10 @@ export const useJobStore = create<JobState>((set, get) => {
       set({ notice: null });
     },
 
+    dismissCheer() {
+      set({ cheer: null });
+    },
+
     async syncOpenJobs() {
       // On a slow network one request can outlast the poll interval.
       if (syncInFlight) return;
@@ -369,7 +393,7 @@ export const useJobStore = create<JobState>((set, get) => {
     clearAll() {
       if (noticeTimer) clearTimeout(noticeTimer);
       noticeTimer = null;
-      set({ offers: [], deadlines: {}, acceptingId: null, minimisedIds: [], notice: null });
+      set({ offers: [], deadlines: {}, acceptingId: null, minimisedIds: [], notice: null, cheer: null });
       void Siren.stop();
     },
   };

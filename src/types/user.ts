@@ -19,6 +19,13 @@ export interface AppUser {
   completedTripCount?: number;
   /** The admin turned the Test location screen on for this driver. */
   testLocationAccess: boolean;
+  /** A signed link to the driver's photo; absent when none was uploaded. */
+  profilePhotoUrl?: string;
+  /** The tempo / truck number the driver is registered with. */
+  vehicleNumber?: string;
+  driverLicenceNumber?: string;
+  /** 'YYYY-MM-DD', as registered. */
+  dob?: string;
 }
 
 export function parseAppUser(json: any): AppUser {
@@ -42,6 +49,11 @@ export function parseAppUser(json: any): AppUser {
     // Absent on every driver the admin has not switched on, and on an API
     // that predates the switch: both mean no.
     testLocationAccess: json?.testLocationAccess === true,
+    profilePhotoUrl: str(json?.profilePhotoUrl),
+    vehicleNumber: str(json?.vehicleNumber),
+    // Market drivers carry driverLicenceNumber; own drivers, licenceNumber.
+    driverLicenceNumber: str(json?.driverLicenceNumber ?? json?.licenceNumber),
+    dob: str(json?.dob),
   };
 }
 

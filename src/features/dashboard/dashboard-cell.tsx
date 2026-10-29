@@ -7,6 +7,7 @@ import { AppColors, GreenGradient, Primary, TextShade } from '@/core/constants/c
 import { TripStatusNumber } from '@/core/constants/enums';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
+import { formatRupees } from '@/core/utils/number-format';
 import { RouteButton } from '@/features/dashboard/route-button';
 import type { TripItem } from '@/types/trip';
 
@@ -42,6 +43,15 @@ export function DashboardCell({ trip, onPress, onAcceptPress }: Props) {
               {`${Math.trunc(trip.totalWeight ?? 0)}${Strings.kg}`}
             </Text>
           </View>
+          {/* What the trip pays, next to its weight. A hand-assigned trip
+              carries no fare and shows nothing here. */}
+          {trip.driverPayout != null && (
+            <View style={styles.earningPill}>
+              <Text style={styles.earningText}>
+                {`${Strings.tripEarning} ${Strings.rupeesSign}${formatRupees(trip.driverPayout)}`}
+              </Text>
+            </View>
+          )}
           <View style={styles.tempo}>
             <Image source={Images.truck} style={styles.truckIcon} />
             <Text style={styles.tempoText}>{trip.tempoNumber ?? ''}</Text>
@@ -104,6 +114,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   weightText: { ...Typography.body1.extraBold, color: AppColors.white },
+  earningPill: {
+    height: 26,
+    marginLeft: 6,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: AppColors.success300,
+    backgroundColor: AppColors.success50,
+    justifyContent: 'center',
+  },
+  earningText: { ...Typography.body1.extraBold, color: AppColors.success500 },
   tempo: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
   truckIcon: { height: 25, width: 34, resizeMode: 'contain' },
   tempoText: { ...Typography.body1.extraBold, color: AppColors.text, marginLeft: 5 },

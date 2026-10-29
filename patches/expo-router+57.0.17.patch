@@ -1,0 +1,37 @@
+diff --git a/node_modules/expo-router/build/fork/NavigationContainer.js b/node_modules/expo-router/build/fork/NavigationContainer.js
+--- a/node_modules/expo-router/build/fork/NavigationContainer.js
++++ b/node_modules/expo-router/build/fork/NavigationContainer.js
+@@ -40,7 +40,32 @@
+     (0, useBackButton_1.useBackButton)(refContainer);
+     (0, useDocumentTitle_1.useDocumentTitle)(refContainer, documentTitle);
+     (0, imperative_api_1.useImperativeApiEmitter)(refContainer);
+-    const [lastUnhandledLink, setLastUnhandledLink] = react_1.default.useState();
++    const [lastUnhandledLink, setLastUnhandledLinkState] = react_1.default.useState();
++    // driverRN patch: on Android the initial URL arrives as a promise, which
++    // can resolve before this container's first commit; setting state then is
++    // React's "update on a component that hasn't mounted yet" error. Hold the
++    // link until the container has mounted, then apply it.
++    const mountedRef = react_1.default.useRef(false);
++    const pendingLinkRef = react_1.default.useRef(null);
++    const setLastUnhandledLink = react_1.default.useCallback((value) => {
++        if (mountedRef.current) {
++            setLastUnhandledLinkState(value);
++        }
++        else {
++            pendingLinkRef.current = { value };
++        }
++    }, []);
++    react_1.default.useEffect(() => {
++        mountedRef.current = true;
++        if (pendingLinkRef.current) {
++            const { value } = pendingLinkRef.current;
++            pendingLinkRef.current = null;
++            setLastUnhandledLinkState(value);
++        }
++        return () => {
++            mountedRef.current = false;
++        };
++    }, []);
+     const { getInitialState } = (0, useLinking_1.useLinking)(refContainer, {
+         enabled: isLinkingEnabled,
+         prefixes: [],

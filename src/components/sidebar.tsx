@@ -33,6 +33,7 @@ import { Typography } from '@/core/constants/typography';
 import { resetTo } from '@/core/navigation';
 import { useSession } from '@/core/session';
 import { useAuthStore } from '@/features/auth/auth-store';
+import { DriverAvatar } from '@/components/driver-avatar';
 
 interface Props {
   visible: boolean;
@@ -104,7 +105,7 @@ export function Sidebar({ visible, onClose }: Props) {
     >
       <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
         <View style={styles.header}>
-          <Image source={Images.avatar} style={styles.avatar} />
+          <DriverAvatar style={styles.avatar} />
           <Pressable onPress={onClose} hitSlop={12}>
             <Image source={Images.close} style={styles.close} />
           </Pressable>

@@ -70,6 +70,9 @@ export const ApiUrls = {
   logout: '/driver/account/logout',
   deleteAccount: '/driver/account/delete-account',
   profile: '/driver/account/profile',
+  /** The driver's own photo, from Profile: an upload link, then the key (or null). */
+  profilePhotoUploadUrl: '/driver/account/photo/upload-url',
+  profilePhoto: '/driver/account/photo',
   language: '/driver/account/language',
   /** Re-registers this device's push token; see UserRepository.registerFcmToken. */
   fcmToken: '/driver/account/fcm-token',

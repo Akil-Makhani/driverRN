@@ -37,6 +37,8 @@ import { PickupLoadingDetail } from '@/features/trip/pickup-loading-detail';
 import { ShipmentStatusTracker } from '@/features/trip/shipment-status-tracker';
 import { TripLiveMap } from '@/features/trip/trip-live-map';
 import { TripStatusTopView } from '@/features/trip/trip-status-top-view';
+import { TripEarningCard } from '@/features/trip/trip-earning-card';
+import { DeliveryCelebration } from '@/features/trip/delivery-celebration';
 import { useTripDetailStore } from '@/features/trip/trip-detail-store';
 
 export default function TripDetailScreen() {
@@ -46,6 +48,8 @@ export default function TripDetailScreen() {
   const [knowMoreOpen, setKnowMoreOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [deliverOpen, setDeliverOpen] = useState(false);
+  /** Delivered went through: fireworks, then home. */
+  const [celebrating, setCelebrating] = useState(false);
   /** What the Confirm Delivery sheet handed over, sent with Delivered. */
   const deliveredLines = useRef<DeliveredLine[] | undefined>(undefined);
 
@@ -175,7 +179,8 @@ export default function TripDetailScreen() {
       } else {
         const delivered = deliveredLines.current;
         if (await changeStatus(TripStatus.delivered, false, delivered ? { delivered } : undefined)) {
-          goHome();
+          // Fireworks first; its Done (or its own timer) goes home.
+          setCelebrating(true);
         }
       }
     } finally {
@@ -254,6 +259,10 @@ export default function TripDetailScreen() {
         </View>
       ) : (
         <>
+          {/* Outside the ScrollView so the earning stays pinned at the top
+              while the rest of the trip scrolls under it. */}
+          <TripEarningCard details={trip} />
+
           <ScrollView contentContainerStyle={styles.content}>
             <View style={styles.divider} />
             <TripStatusTopView
@@ -374,6 +383,16 @@ export default function TripDetailScreen() {
         onConfirm={() => {
           setSheetOpen(false);
           void saveLoading();
+        }}
+      />
+
+      <DeliveryCelebration
+        visible={celebrating}
+        earning={trip?.driverPayout}
+        onDone={() => {
+          if (!celebrating) return;
+          setCelebrating(false);
+          goHome();
         }}
       />
 

@@ -144,8 +144,13 @@ export type RegistrationDetails = Omit<RegistrationForm, 'mobileNo'>;
  */
 export const REGISTRATION_DOCUMENT_KEYS = ['dlFront', 'dlBack', 'rcFront', 'rcBack'] as const;
 export type RegistrationDocumentKey = (typeof REGISTRATION_DOCUMENT_KEYS)[number];
+/**
+ * Every photo the form can carry: the four documents plus the driver's own
+ * photo, which is optional and goes up as `profilePhoto` beside `documents`.
+ */
+export type RegistrationPhotoKey = RegistrationDocumentKey | 'profilePhoto';
 /** S3 keys of the uploaded photos, as the server hands them back. */
-export type RegistrationDocuments = Partial<Record<RegistrationDocumentKey, string>>;
+export type RegistrationDocuments = Partial<Record<RegistrationPhotoKey, string>>;
 
 /** Fields the registration form collects. */
 export interface RegistrationForm {
@@ -155,7 +160,10 @@ export interface RegistrationForm {
   driverLicenceNumber: string;
   /** Always 'YYYY-MM-DD' — the format ULIP's sarthi-driver requires. */
   dob: string;
-  /** All four are required; filled in by the store as each upload lands. */
+  /**
+   * The four documents are required, profilePhoto is not; filled in by the
+   * store as each upload lands.
+   */
   documents: RegistrationDocuments;
 }
 

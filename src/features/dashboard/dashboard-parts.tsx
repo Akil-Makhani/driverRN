@@ -3,14 +3,14 @@
  *   dashboard_deliver_all_cell.dart, dashboard_top_view.dart,
  *   dashboard_emptyview.dart.
  */
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { LanguageButton } from '@/components/language-button';
-import { Images } from '@/core/constants/assets';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { useSession } from '@/core/session';
+import { DriverAvatar } from '@/components/driver-avatar';
 
 /**
  * The batch "DELIVER ALL" button, shown below the in-transit trips. Those
@@ -33,7 +33,7 @@ export function DashboardTopView({ completedTripCount }: { completedTripCount: n
   const user = useSession((s) => s.user);
   return (
     <View style={styles.topView}>
-      <Image source={Images.avatar} style={styles.topAvatar} />
+      <DriverAvatar style={styles.topAvatar} />
       <View style={styles.topText}>
         <Text style={styles.topName} numberOfLines={1}>
           {user?.name ?? ''}

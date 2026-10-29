@@ -20,6 +20,7 @@ import { useAppFonts } from '@/core/theme/use-app-fonts';
 import { RegistrationOutcomeHost } from '@/features/auth/registration-outcome-host';
 import { useRegistrationStore } from '@/features/auth/registration-store';
 import { JobOfferOverlay } from '@/features/job/job-offer-overlay';
+import { OfferCheer } from '@/features/job/offer-cheer';
 
 // Registering the background location task is a side effect of importing the
 // tracker, and it has to happen before the OS can hand the task back to us —
@@ -122,6 +123,10 @@ export default function RootLayout() {
           {/* Rendered as a sibling of the whole stack so it covers every
               screen, including modals, and is not unmounted by navigation. */}
           <JobOfferOverlay key={`job-offer-${language}`} />
+
+          {/* After the overlay, so its congratulations / "take the next one"
+              draws over a following offer card rather than under it. */}
+          <OfferCheer key={`offer-cheer-${language}`} />
 
           {/* Over every screen. The offer card is a Modal, so it draws its own. */}
           <NetworkBanner key={`network-${language}`} />

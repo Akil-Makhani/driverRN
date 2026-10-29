@@ -130,6 +130,8 @@ export interface TripItem {
   lrNumber?: string;
   /** Set once Mark Reached is pressed; the trip stays In Transit. */
   reachedAt?: string;
+  /** What this trip pays the driver; follows the loaded/delivered weight. */
+  driverPayout?: number;
 }
 
 export const parseTripItem = (j: any): TripItem => ({
@@ -148,6 +150,7 @@ export const parseTripItem = (j: any): TripItem => ({
   truckNumber: str(j?.truckNumber),
   lrNumber: str(j?.lrNumber),
   reachedAt: str(j?.reachedAt),
+  driverPayout: num(j?.driverPayout),
 });
 
 export interface TripListData {
@@ -387,6 +390,10 @@ export interface TripDetailsData {
    * (statusNumber 4); this is what swaps that button for Delivered.
    */
   reachedAt?: string;
+  /** What this trip pays the driver, re-priced when the weight changes. */
+  driverPayout?: number;
+  /** What the offer showed when accepted; set once the weight changed it. */
+  offeredPayout?: number;
   weightSlips: Attachment[];
   invoices: Attachment[];
 }
@@ -421,6 +428,8 @@ export const parseTripDetailsResponse = (j: any): TripDetailsResponse => ({
         tempoNumber: str(j.data.tempoNumber),
         isOrderLoaded: j.data.isOrderLoaded === true,
         reachedAt: str(j.data.reachedAt),
+        driverPayout: num(j.data.driverPayout),
+        offeredPayout: num(j.data.offeredPayout),
         weightSlips: list(j.data.weightSlips, parseAttachment),
         invoices: list(j.data.invoices, parseAttachment),
       }

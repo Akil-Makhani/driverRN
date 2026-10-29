@@ -49,7 +49,11 @@ import {
   formatVehicleInput,
   useRegistrationStore,
 } from '@/features/auth/registration-store';
-import type { RegistrationDocumentKey } from '@/types/registration';
+import {
+  REGISTRATION_DOCUMENT_KEYS,
+  type RegistrationDocumentKey,
+  type RegistrationPhotoKey,
+} from '@/types/registration';
 
 const MOBILE_LENGTH = 10;
 
@@ -62,7 +66,7 @@ const photoLabels = (): [RegistrationDocumentKey, string][] => [
 ];
 
 /** Camera or gallery — a driver at a truck stand usually has the papers in hand. */
-function choosePhotoSource(key: RegistrationDocumentKey) {
+function choosePhotoSource(key: RegistrationPhotoKey) {
   Keyboard.dismiss();
   const pick = (source: 'camera' | 'library') =>
     void useRegistrationStore.getState().pickPhoto(key, source);
@@ -89,7 +93,8 @@ export default function RegisterScreen() {
   const photoError = useRegistrationStore((s) => s.photoError);
   // The four photos are compulsory, so the submit stays disabled until every
   // one of them has actually reached S3 — picked is not enough.
-  const allPhotosUploaded = Object.values(photos).every((p) => p.status === 'done');
+  // The four documents only: the driver's own photo is optional.
+  const allPhotosUploaded = REGISTRATION_DOCUMENT_KEYS.every((k) => photos[k].status === 'done');
   // Set when this form was opened carrying a rejected registration's details.
   const statusInfo = useRegistrationStore((s) => s.statusInfo);
   // True once the OTP step has filed a registration this form is completing —
@@ -278,6 +283,23 @@ export default function RegisterScreen() {
             onRetry={() => void useRegistrationStore.getState().lookupLicence()}
           />
 
+          {/* The driver's own photo, optional: shown on their dashboard once
+              approved, the stock avatar otherwise. */}
+          <View style={styles.field}>
+            <Text style={styles.label}>{Strings.registerProfilePhotoTitle}</Text>
+            <Text style={styles.photosNote}>{Strings.registerProfilePhotoNote}</Text>
+            <ProfilePhotoPicker
+              slot={photos.profilePhoto}
+              onPress={() => {
+                if (photos.profilePhoto.status === 'failed') {
+                  void useRegistrationStore.getState().uploadPhoto('profilePhoto');
+                } else if (photos.profilePhoto.status !== 'uploading') {
+                  choosePhotoSource('profilePhoto');
+                }
+              }}
+            />
+          </View>
+
           <View style={styles.field}>
             <Text style={styles.label}>{`${Strings.registerPhotosTitle} *`}</Text>
             <Text style={styles.photosNote}>{Strings.registerPhotosNote}</Text>
@@ -418,6 +440,50 @@ function Field({
       {error ? <Text style={styles.error}>{error}</Text> : null}
       {!error && note ? <Text style={styles.note}>{note}</Text> : null}
     </View>
+  );
+}
+
+/** A round photo of the driver, with the same upload states as a document tile. */
+function ProfilePhotoPicker({ slot, onPress }: { slot: PhotoSlot; onPress: () => void }) {
+  const failed = slot.status === 'failed';
+  return (
+    <Pressable onPress={onPress} style={styles.profileRow}>
+      <View
+        style={[
+          styles.profileCircle,
+          slot.status === 'done' ? styles.photoBoxDone : null,
+          failed ? styles.photoBoxFailed : null,
+        ]}
+      >
+        {slot.uri ? (
+          <Image source={{ uri: slot.uri }} style={styles.profileImage} resizeMode="cover" />
+        ) : (
+          <Ionicons name="person-outline" size={34} color={Primary.c900} />
+        )}
+        {slot.status === 'uploading' ? (
+          <View style={[styles.photoOverlay, styles.profileOverlay]}>
+            <ActivityIndicator size="small" color={AppColors.white} />
+          </View>
+        ) : null}
+        {failed ? (
+          <View style={[styles.photoOverlay, styles.photoOverlayFailed, styles.profileOverlay]}>
+            <Ionicons name="refresh" size={20} color={AppColors.white} />
+          </View>
+        ) : null}
+      </View>
+      <View style={styles.profileText}>
+        <Text style={styles.photoChange}>
+          {failed
+            ? Strings.registerPhotoRetry
+            : slot.uri
+              ? Strings.registerPhotoChange
+              : Strings.registerProfilePhotoAdd}
+        </Text>
+        {slot.status === 'done' ? (
+          <Ionicons name="checkmark-circle" size={18} color={AppColors.success500} />
+        ) : null}
+      </View>
+    </Pressable>
   );
 }
 
@@ -667,6 +733,22 @@ const styles = StyleSheet.create({
     borderRadius: 11,
   },
   photoFoot: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+  profileRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+  profileCircle: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: Primary.c300,
+    backgroundColor: Primary.c100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  profileImage: { width: '100%', height: '100%' },
+  profileOverlay: { borderRadius: 42 },
+  profileText: { flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 14 },
   photoLabel: { ...Typography.caption.regular, color: AppColors.text, flex: 1 },
   photoChange: { ...Typography.caption.extraBold, color: AppColors.primary },
   backLink: { marginTop: 12, alignItems: 'center', paddingVertical: 8 },
