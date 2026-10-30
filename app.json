@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tiles Drop Saathi",
     "slug": "driverRN",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon/app_logo.png",
     "scheme": "tilesdropsaathi",
@@ -32,7 +32,7 @@
     "android": {
       "allowBackup": false,
       "package": "com.tilesdrop.partner",
-      "versionCode": 6,
+      "versionCode": 7,
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./firebase/google-services.json",
       "adaptiveIcon": {
@@ -51,7 +51,8 @@
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION",
-        "android.permission.WAKE_LOCK"
+        "android.permission.WAKE_LOCK",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
       "config": {
         "googleMaps": {
@@ -143,9 +144,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "beb26929-e9f8-428c-866b-19d34d9168e7"
+        "projectId": "4dc032d4-d6c5-46b9-9599-c7a7aa8f94fa"
       }
     },
-    "owner": "faiz_kureshi"
+    "owner": "webminiindia"
   }
 }
