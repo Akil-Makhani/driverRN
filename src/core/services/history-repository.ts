@@ -2,7 +2,9 @@
 import { ApiService } from '../api/api-service';
 import { ApiUrls } from '../api/endpoints';
 import {
+  type RejectedJobsResponse,
   type TripHistoryResponse,
+  parseRejectedJobsResponse,
   parseTripHistoryResponse,
 } from '@/types/history';
 
@@ -21,6 +23,13 @@ export const TripHistoryRepository = {
   async cancelledTrips(page: number, perPage: number): Promise<TripHistoryResponse> {
     return parseTripHistoryResponse(
       await ApiService.get(ApiUrls.cancelledPage(page, perPage)),
+    );
+  },
+
+  /** Offers this driver declined, newest first. */
+  async rejectedJobs(page: number, perPage: number): Promise<RejectedJobsResponse> {
+    return parseRejectedJobsResponse(
+      await ApiService.get(ApiUrls.rejectedPage(page, perPage)),
     );
   },
 } as const;

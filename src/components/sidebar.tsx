@@ -123,31 +123,31 @@ export function Sidebar({ visible, onClose }: Props) {
           contentContainerStyle={[styles.menuContent, { paddingBottom: insets.bottom + 20 }]}
         >
           <SidebarCell
-            icon="home"
+            icon="home-outline"
             title={Strings.sideBarHome}
             selected={pathname === '/dashboard'}
             onPress={() => go('/dashboard')}
           />
           <SidebarCell
-            icon="bus"
+            icon="time-outline"
             title={Strings.sideBarTripHistory}
             selected={pathname === '/history'}
             onPress={() => go('/history')}
           />
           <SidebarCell
-            icon="close-circle"
+            icon="close-circle-outline"
             title={Strings.sideBarCancelledTrips}
             selected={pathname === '/cancelled'}
             onPress={() => go('/cancelled')}
           />
           <SidebarCell
-            icon="wallet"
+            icon="wallet-outline"
             title={Strings.sideBarWallet}
             selected={pathname === '/wallet'}
             onPress={() => go('/wallet')}
           />
           <SidebarCell
-            icon="person"
+            icon="person-circle-outline"
             title={Strings.sideBarProfile}
             selected={pathname === '/profile'}
             onPress={() => go('/profile')}
@@ -157,7 +157,7 @@ export function Sidebar({ visible, onClose }: Props) {
               near the pickup. */}
           {testLocationAccess && (
             <SidebarCell
-              icon="locate"
+              icon="locate-outline"
               title="Test location"
               selected={pathname === '/test-location'}
               onPress={() => go('/test-location')}
@@ -166,7 +166,7 @@ export function Sidebar({ visible, onClose }: Props) {
           {/* Play requires the privacy policy to be reachable from inside the
               app, not only from the store listing. */}
           <SidebarCell
-            icon="shield-checkmark"
+            icon="shield-checkmark-outline"
             title={Strings.sideBarPrivacyPolicy}
             selected={false}
             onPress={() => {
@@ -175,9 +175,10 @@ export function Sidebar({ visible, onClose }: Props) {
             }}
           />
           <SidebarCell
-            icon="trash"
+            icon="trash-outline"
             title={Strings.sideBarDeleteAccount}
             selected={false}
+            danger
             onPress={() => setDialog('delete')}
           />
           <View style={styles.logoutGap} />
@@ -240,17 +241,42 @@ interface CellProps {
   title: string;
   selected: boolean;
   onPress: () => void;
+  /** Red icon tile, for the row that cannot be undone. */
+  danger?: boolean;
 }
 
-function SidebarCell({ icon, title, selected, onPress }: CellProps) {
-  const tint = selected ? AppColors.white : TextShade.c700;
+function SidebarCell({ icon, title, selected, onPress, danger }: CellProps) {
+  const accent = danger ? AppColors.error600 : AppColors.primary;
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.cell, selected && styles.cellSelected]}
+      style={({ pressed }) => [
+        styles.cell,
+        selected && styles.cellSelected,
+        pressed && !selected && styles.cellPressed,
+      ]}
     >
-      <Ionicons name={icon} size={22} color={tint} />
-      <Text style={[styles.cellText, { color: tint }]}>{title}</Text>
+      <View
+        style={[
+          styles.iconTile,
+          { backgroundColor: selected ? 'rgba(255,255,255,0.18)' : danger ? '#FEF3F2' : Primary.c100 },
+        ]}
+      >
+        <Ionicons name={icon} size={20} color={selected ? AppColors.white : accent} />
+      </View>
+      <Text
+        style={[
+          styles.cellText,
+          { color: selected ? AppColors.white : danger ? AppColors.error600 : AppColors.text },
+        ]}
+      >
+        {title}
+      </Text>
+      <Ionicons
+        name="chevron-forward"
+        size={18}
+        color={selected ? AppColors.white : TextShade.c400}
+      />
     </Pressable>
   );
 }
@@ -285,11 +311,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    marginVertical: 5,
+    marginVertical: 3,
     borderRadius: 10,
   },
   cellSelected: { backgroundColor: AppColors.primary },
-  cellText: { ...Typography.button2.extraBold, marginLeft: 10 },
+  cellPressed: { backgroundColor: AppColors.secondary100 },
+  iconTile: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cellText: { ...Typography.button2.extraBold, marginLeft: 12, flex: 1 },
   logoutButton: {
     height: 50,
     // Sits at the foot of a tall screen, and simply follows the list (with a

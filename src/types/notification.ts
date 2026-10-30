@@ -11,6 +11,8 @@ export interface NotificationMetadata {
   pickupLocation?: string;
   tempoId?: string;
   notificationTitle?: string;
+  /** 'wallet-payment' | 'trip-weight-changed'; absent on a trip assignment. */
+  type?: string;
 }
 
 export const parseNotificationMetadata = (j: any): NotificationMetadata => ({
@@ -19,6 +21,7 @@ export const parseNotificationMetadata = (j: any): NotificationMetadata => ({
   pickupLocation: str(j?.pickupLocation),
   tempoId: str(j?.tempoId),
   notificationTitle: str(j?.notificationTitle),
+  type: str(j?.type),
 });
 
 export interface NotificationDoc {
@@ -33,6 +36,8 @@ export interface NotificationDoc {
   orderId?: string;
   /** Pre-formatted for display ("7:05 PM 3 Feb 2026"), as Dart did at parse. */
   createdAt?: string;
+  /** The raw timestamp, so the list can group by day. */
+  createdAtIso?: string;
   updatedAt?: string;
 }
 
@@ -47,6 +52,7 @@ export const parseNotificationDoc = (j: any): NotificationDoc => ({
   tripId: str(j?.tripId),
   orderId: str(j?.orderId),
   createdAt: formatTimestamp(j?.createdAt),
+  createdAtIso: str(j?.createdAt),
   updatedAt: str(j?.updatedAt),
 });
 

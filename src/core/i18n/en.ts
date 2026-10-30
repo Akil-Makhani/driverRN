@@ -542,6 +542,16 @@ export const en = {
   profilePhotoRemoveHint: 'The default avatar will show instead',
   profilePhotoRemoveConfirm: 'Remove your photo?',
   profilePhotoRemoveYes: 'Yes, remove',
+  today: 'Today',
+  yesterday: 'Yesterday',
+  historyEmpty: 'No trips yet. Trips you accept will show up here.',
+  tabRejected: 'Rejected',
+  rejectedSubtitle: 'Trip offers you declined',
+  rejectedEmpty: 'You have not rejected any trip offers.',
+  rejectedOffer: 'Offer',
+  notificationsEmpty: 'No notifications yet. New trips and payments will show up here.',
+  notificationNewTrip: 'New trip assigned',
+  notificationNew: 'New',
 };
 
 export type StringKey = keyof typeof en;

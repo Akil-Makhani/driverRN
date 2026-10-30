@@ -98,6 +98,8 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/images/icon/notification_icon.png",
+          "color": "#004B64",
           "sounds": [
             "./assets/sounds/new_order_siren.wav"
           ]

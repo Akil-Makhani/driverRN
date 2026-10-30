@@ -146,4 +146,7 @@ export const ApiUrls = {
   /** Trips this driver cancelled — the Cancelled Trips screen. */
   cancelledPage: (page: number, perPage: number) =>
     `/driver/trips/cancelled/${page}/${perPage}`,
+  /** Offers this driver declined — the Rejected tab of that screen. */
+  rejectedPage: (page: number, perPage: number) =>
+    `/driver/jobs/rejected/${page}/${perPage}`,
 } as const;

@@ -12,8 +12,12 @@ export interface TripDoc {
   driverTripNumber?: number;
   /** Pre-formatted for display, as Dart did at parse time. */
   updatedAt?: string;
+  /** The raw timestamp, so lists can group trips by day. */
+  updatedAtIso?: string;
   pickupAddress?: string;
   totalWeight?: number;
+  /** What the trip pays the driver; absent on a hand-assigned trip. */
+  driverPayout?: number;
 }
 
 export const parseTripDoc = (j: any): TripDoc => ({
@@ -24,8 +28,10 @@ export const parseTripDoc = (j: any): TripDoc => ({
   state: j?.state ? parseTripState(j.state) : undefined,
   driverTripNumber: num(j?.driverTripNumber),
   updatedAt: formatTimestamp(j?.updatedAt),
+  updatedAtIso: str(j?.updatedAt),
   pickupAddress: str(j?.pickupAddress),
   totalWeight: num(j?.totalWeight),
+  driverPayout: num(j?.driverPayout),
 });
 
 export interface History {
@@ -59,5 +65,41 @@ export const parseTripHistoryResponse = (j: any): TripHistoryResponse => ({
           : undefined,
         completedTripsCount: num(j.data.completedTripsCount),
       }
+    : null,
+});
+
+/** An offer this driver declined. There is no trip behind it to open. */
+export interface RejectedJob {
+  id?: string;
+  rejectedAtIso?: string;
+  pickupAddress?: string;
+  pickupCity?: string;
+  deliveryAddress?: string;
+  deliveryCity?: string;
+  distanceKm?: number;
+  totalWeight?: number;
+  /** What it would have paid this driver. */
+  payout?: number;
+}
+
+export const parseRejectedJob = (j: any): RejectedJob => ({
+  id: str(j?._id),
+  rejectedAtIso: str(j?.rejectedAt),
+  pickupAddress: str(j?.pickupAddress),
+  pickupCity: str(j?.pickupCity),
+  deliveryAddress: str(j?.deliveryAddress),
+  deliveryCity: str(j?.deliveryCity),
+  distanceKm: num(j?.distanceKm),
+  totalWeight: num(j?.totalWeight),
+  payout: num(j?.payout),
+});
+
+export type RejectedJobsResponse = Envelope<{ history?: { docs: RejectedJob[] } }>;
+
+export const parseRejectedJobsResponse = (j: any): RejectedJobsResponse => ({
+  status: j?.status,
+  message: j?.message,
+  data: j?.data
+    ? { history: j.data.history ? { docs: list(j.data.history.docs, parseRejectedJob) } : undefined }
     : null,
 });
