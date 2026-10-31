@@ -29,6 +29,7 @@ import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 import { type DispatchedProduct, offeredIn, type Product, type RequestedProduct } from '@/types/trip';
+import { LoadChangeNotice } from './load-change-notice';
 import { ProductPicker } from './product-picker';
 import { isAddedItem, useTripDetailStore } from './trip-detail-store';
 
@@ -37,6 +38,8 @@ interface Props {
   products: Product[];
   /** 'tempo' or 'truck': only that module's products are offered. */
   orderKind?: string;
+  /** The trip pays a fare, so a weight change moves the driver's earning. */
+  hasFare: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -46,11 +49,11 @@ interface Props {
  * size more than once under different ids (Slab has two 800*2400s, Tiles three
  * 300*1200s), so matching ids let a second 800*2400 line through.
  */
-const sizeName = (size?: Product | null): string =>
+const sizeName = (size?: { name?: string } | null): string =>
   (size?.name ?? '').replace(/\s+/g, '').toUpperCase();
 
 /** Products are compared by name too, for the same reason. */
-const productName = (product?: Product | null): string =>
+const productName = (product?: { name?: string; code?: string } | null): string =>
   (product?.name ?? product?.code ?? '').replace(/\s+/g, '').toUpperCase();
 
 /** One entry per size name, first occurrence kept. */
@@ -78,7 +81,31 @@ function pairKey(row: DispatchedProduct | undefined, products: Product[]): strin
   return `${name}|${sizeName(row?.selectedSubProduct)}`;
 }
 
-export function ConfirmLoadSheet({ visible, products, orderKind, onCancel, onConfirm }: Props) {
+/** A chosen product or size that is not the one the customer ordered. */
+function differsFromOrder(row: DispatchedProduct, ordered?: RequestedProduct): boolean {
+  const product = row.selectedProduct;
+  const size = row.selectedSubProduct;
+  // Id first: an ordered line can spell a name differently from the catalogue,
+  // and that must not read as a change the driver made.
+  const sameProduct =
+    product?.id === ordered?.product?.productId ||
+    productName(product) === productName(ordered?.product);
+  const sameSize =
+    size?.id === ordered?.subItem?.productId || sizeName(size) === sizeName(ordered?.subItem);
+  return (product != null && !sameProduct) || (size != null && !sameSize);
+}
+
+const sum = (rows: { qty?: number; weight?: number }[], key: 'qty' | 'weight') =>
+  rows.reduce((total, row) => total + Math.trunc(row[key] ?? 0), 0);
+
+export function ConfirmLoadSheet({
+  visible,
+  products,
+  orderKind,
+  hasFare,
+  onCancel,
+  onConfirm,
+}: Props) {
   const insets = useSafeAreaInsets();
   const requestedItems = useTripDetailStore((s) => s.requestedItems);
   const dispatchItems = useTripDetailStore((s) => s.dispatchItems);
@@ -131,6 +158,20 @@ export function ConfirmLoadSheet({ visible, products, orderKind, onCancel, onCon
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 10 }]}>
           <View style={styles.handle} />
           <Text style={styles.title}>{Strings.confirmLoad}</Text>
+
+          {/* Outside the scroll, so it stays in view while a field is edited. */}
+          <LoadChangeNotice
+            hint={hasFare ? Strings.loadNoticeLoadHint : Strings.loadNoticeNoFareLoadHint}
+            fromWeight={sum(requestedItems, 'weight')}
+            toWeight={sum(dispatchItems, 'weight')}
+            fromQty={sum(requestedItems, 'qty')}
+            toQty={sum(dispatchItems, 'qty')}
+            addedItems={dispatchItems.length - requestedItems.length}
+            productChanged={requestedItems.some((r, i) =>
+              dispatchItems[i] ? differsFromOrder(dispatchItems[i], r) : false,
+            )}
+            hasFare={hasFare}
+          />
 
           {/* Keyboard-aware rather than a plain list: the app draws edge to
               edge, so Android no longer shrinks the window for the keyboard,

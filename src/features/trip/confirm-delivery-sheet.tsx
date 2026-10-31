@@ -13,6 +13,7 @@ import { TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import type { DispatchedProduct } from '@/types/trip';
 import { loadSheetStyles as styles, NumberField, RowLine } from './confirm-load-sheet';
+import { LoadChangeNotice } from './load-change-notice';
 
 export interface DeliveredLine {
   qty: number;
@@ -23,11 +24,13 @@ interface Props {
   visible: boolean;
   /** The trip's confirmed load, one row per line, in the server's order. */
   loaded: DispatchedProduct[];
+  /** The trip pays a fare, so a weight change moves the driver's earning. */
+  hasFare: boolean;
   onCancel: () => void;
   onConfirm: (lines: DeliveredLine[]) => void;
 }
 
-export function ConfirmDeliverySheet({ visible, loaded, onCancel, onConfirm }: Props) {
+export function ConfirmDeliverySheet({ visible, loaded, hasFare, onCancel, onConfirm }: Props) {
   const insets = useSafeAreaInsets();
   const [lines, setLines] = useState<DeliveredLine[]>([]);
 
@@ -41,6 +44,9 @@ export function ConfirmDeliverySheet({ visible, loaded, onCancel, onConfirm }: P
 
   const update = (index: number, change: Partial<DeliveredLine>) =>
     setLines((prev) => prev.map((l, i) => (i === index ? { ...l, ...change } : l)));
+
+  const sum = (rows: { qty?: number; weight?: number }[], key: 'qty' | 'weight') =>
+    rows.reduce((total, row) => total + Math.trunc(row[key] ?? 0), 0);
 
   return (
     <Modal
@@ -64,6 +70,16 @@ export function ConfirmDeliverySheet({ visible, loaded, onCancel, onConfirm }: P
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 10 }]}>
           <View style={styles.handle} />
           <Text style={styles.title}>{Strings.confirmDelivery}</Text>
+
+          {/* Outside the scroll, so it stays in view while a field is edited. */}
+          <LoadChangeNotice
+            hint={Strings.loadNoticeDeliverHint}
+            fromWeight={sum(loaded, 'weight')}
+            toWeight={sum(lines, 'weight')}
+            fromQty={sum(loaded, 'qty')}
+            toQty={sum(lines, 'qty')}
+            hasFare={hasFare}
+          />
 
           <KeyboardAwareScrollView
             style={styles.list}

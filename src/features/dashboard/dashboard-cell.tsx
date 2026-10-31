@@ -31,81 +31,87 @@ function stageLabel(trip: TripItem): string {
 
 export function DashboardCell({ trip, onPress, onAcceptPress }: Props) {
   const isAccepted = trip.statusNumber !== TripStatusNumber.assigned;
+  // A tempo trip's number is already in the row below; repeating it up here
+  // pushed it off the edge of the card next to the earning.
+  const extraTempoNumber = trip.orderKind === 'tempo' ? null : trip.tempoNumber;
 
   return (
-    <Pressable onPress={onPress}>
-      <View style={styles.spacer} />
-      <View style={styles.divider} />
-      <View style={styles.body}>
-        <View style={styles.topRow}>
-          <View style={styles.weightPill}>
-            <Text style={styles.weightText}>
-              {`${Math.trunc(trip.totalWeight ?? 0)}${Strings.kg}`}
-            </Text>
-          </View>
-          {/* What the trip pays, next to its weight. A hand-assigned trip
-              carries no fare and shows nothing here. */}
-          {trip.driverPayout != null && (
-            <View style={styles.earningPill}>
-              <Text style={styles.earningText}>
-                {`${Strings.tripEarning} ${Strings.rupeesSign}${formatRupees(trip.driverPayout)}`}
-              </Text>
-            </View>
-          )}
-          <View style={styles.tempo}>
-            <Image source={Images.truck} style={styles.truckIcon} />
-            <Text style={styles.tempoText}>{trip.tempoNumber ?? ''}</Text>
-            <RouteButton tripId={trip.id ?? ''} />
-          </View>
+    <Pressable onPress={onPress} style={styles.card}>
+      <View style={styles.topRow}>
+        <View style={styles.weightPill}>
+          <Text style={styles.weightText}>
+            {`${Math.trunc(trip.totalWeight ?? 0)}${Strings.kg}`}
+          </Text>
         </View>
-
-        <Text style={styles.address}>
-          {`#${trip.driverTripNumber ?? ''}${trip.pickupAddress ?? ''}`}
-        </Text>
-
-        <View style={styles.numbersRow}>
-          {/* A tempo trip is driven in a tempo, so it is labelled with the
-              tempo's number; "Truck Number" there read as the wrong vehicle. */}
-          <View style={styles.numberBlock}>
-            <Text style={styles.numberLabel}>
-              {trip.orderKind === 'tempo' ? Strings.tempoNumber : Strings.truckNumber}
-            </Text>
-            <Text style={styles.numberValue}>
-              {(trip.orderKind === 'tempo' ? trip.tempoNumber : trip.truckNumber) ?? ''}
+        {/* What the trip pays, next to its weight. A hand-assigned trip
+            carries no fare and shows nothing here. */}
+        {trip.driverPayout != null && (
+          <View style={styles.earningPill}>
+            <Text style={styles.earningText}>
+              {`${Strings.tripEarning} ${Strings.rupeesSign}${formatRupees(trip.driverPayout)}`}
             </Text>
           </View>
-          <View style={[styles.numberBlock, styles.numberBlockSpaced]}>
-            <Text style={styles.numberLabel}>{Strings.lrNumber}</Text>
-            <Text style={styles.numberValue}>{trip.lrNumber ?? ''}</Text>
-          </View>
-        </View>
-
-        {isAccepted ? (
-          <LinearGradient
-            colors={GreenGradient.colors}
-            locations={GreenGradient.locations}
-            start={GreenGradient.start}
-            end={GreenGradient.end}
-            style={styles.statusBar}
-          >
-            <Text style={styles.statusLabel}>{Strings.tripInProcess}</Text>
-            <Text style={styles.statusValue}>{stageLabel(trip)}</Text>
-          </LinearGradient>
-        ) : (
-          <Pressable onPress={onAcceptPress} style={styles.acceptButton}>
-            <Text style={styles.acceptText}>{Strings.acceptTrip}</Text>
-          </Pressable>
         )}
+        <View style={styles.tempo}>
+          <Image source={Images.truck} style={styles.truckIcon} />
+          {extraTempoNumber ? <Text style={styles.tempoText}>{extraTempoNumber}</Text> : null}
+          <RouteButton tripId={trip.id ?? ''} />
+        </View>
       </View>
+
+      <View style={styles.addressRow}>
+        <Text style={styles.tripNumber}>{`#${trip.driverTripNumber ?? ''}`}</Text>
+        <Text style={styles.address}>{trip.pickupAddress ?? ''}</Text>
+      </View>
+
+      <View style={styles.numbersRow}>
+        {/* A tempo trip is driven in a tempo, so it is labelled with the
+            tempo's number; "Truck Number" there read as the wrong vehicle. */}
+        <View style={styles.numberBlock}>
+          <Text style={styles.numberLabel}>
+            {trip.orderKind === 'tempo' ? Strings.tempoNumber : Strings.truckNumber}
+          </Text>
+          <Text style={styles.numberValue}>
+            {(trip.orderKind === 'tempo' ? trip.tempoNumber : trip.truckNumber) ?? ''}
+          </Text>
+        </View>
+        <View style={[styles.numberBlock, styles.numberBlockSpaced]}>
+          <Text style={styles.numberLabel}>{Strings.lrNumber}</Text>
+          <Text style={styles.numberValue}>{trip.lrNumber ?? ''}</Text>
+        </View>
+      </View>
+
+      {isAccepted ? (
+        <LinearGradient
+          colors={GreenGradient.colors}
+          locations={GreenGradient.locations}
+          start={GreenGradient.start}
+          end={GreenGradient.end}
+          style={styles.statusBar}
+        >
+          <Text style={styles.statusLabel}>{Strings.tripInProcess}</Text>
+          <Text style={styles.statusValue}>{stageLabel(trip)}</Text>
+        </LinearGradient>
+      ) : (
+        <Pressable onPress={onAcceptPress} style={styles.acceptButton}>
+          <Text style={styles.acceptText}>{Strings.acceptTrip}</Text>
+        </Pressable>
+      )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  spacer: { height: 10 },
-  divider: { height: 10, backgroundColor: Primary.c100 },
-  body: { paddingHorizontal: 10, paddingVertical: 5, marginTop: 10 },
-  topRow: { flexDirection: 'row', alignItems: 'center' },
+  card: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Primary.c300,
+    backgroundColor: AppColors.white,
+  },
+  topRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   weightPill: {
     height: 26,
     paddingHorizontal: 10,
@@ -116,7 +122,6 @@ const styles = StyleSheet.create({
   weightText: { ...Typography.body1.extraBold, color: AppColors.white },
   earningPill: {
     height: 26,
-    marginLeft: 6,
     paddingHorizontal: 10,
     borderRadius: 5,
     borderWidth: 1,
@@ -128,9 +133,11 @@ const styles = StyleSheet.create({
   tempo: { flexDirection: 'row', alignItems: 'center', marginLeft: 'auto' },
   truckIcon: { height: 25, width: 34, resizeMode: 'contain' },
   tempoText: { ...Typography.body1.extraBold, color: AppColors.text, marginLeft: 5 },
-  address: { ...Typography.subtitle1.extraBold, color: AppColors.text, marginTop: 5 },
+  addressRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 10 },
+  tripNumber: { ...Typography.subtitle2.extraBold, color: AppColors.primary, marginRight: 6 },
+  address: { ...Typography.subtitle2.extraBold, color: AppColors.text, flex: 1 },
   numbersRow: { flexDirection: 'row', marginTop: 10 },
-  numberBlock: { paddingLeft: 3 },
+  numberBlock: { flex: 1 },
   numberBlockSpaced: { marginLeft: 10 },
   numberLabel: { ...Typography.body2.semiBold, color: TextShade.c700 },
   numberValue: {

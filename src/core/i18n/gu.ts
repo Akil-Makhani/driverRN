@@ -355,6 +355,24 @@ export const gu: Translations = {
   tripEarning: 'તમારી કમાણી',
   tripEarningWas: 'પહેલાં',
   tripEarningChanged: 'લોડ / ડિલિવર કરેલા વજન મુજબ બદલાઈ',
+  // Confirm Load / Confirm Delivery નું બેનર. ભાડું ફક્ત વજનથી બદલાય છે.
+  loadNoticeLoadHint:
+    'જેટલો માલ ખરેખર લોડ થયો તે જ ભરો. KG વધે તો તમારી કમાણી વધી શકે, ઘટે તો ઘટી શકે. ફક્ત ક્વોન્ટિટી બદલવાથી કમાણી બદલાતી નથી. વધારાના માલ માટે Add Item દબાવો.',
+  loadNoticeDeliverHint:
+    'આંકડા ત્યારે જ બદલો જ્યારે લોડ કરતાં ઓછો માલ આપ્યો હોય. KG ઘટે તો તમારી કમાણી ઘટી શકે. ફક્ત ક્વોન્ટિટી બદલવાથી કમાણી બદલાતી નથી.',
+  loadNoticeNoFareLoadHint:
+    'જેટલો માલ ખરેખર લોડ થયો તે જ ભરો. વધારાના માલ માટે Add Item દબાવો. આ આંકડા ઓફિસને દેખાશે.',
+  loadNoticeChanged: 'લોડ બદલાયો',
+  loadNoticeMoreWeight: 'વજન વધ્યું: તમારી કમાણી વધી શકે અને ગ્રાહકે વધુ ચૂકવવું પડશે.',
+  loadNoticeLessWeight: 'વજન ઘટ્યું: તમારી કમાણી ઘટી શકે અને ગ્રાહકે ઓછું ચૂકવવું પડશે.',
+  loadNoticeQtyOnly: 'વજન એ જ છે, એટલે તમારી કમાણી બદલાશે નહીં.',
+  loadNoticeItemsAdded: 'વધારાની આઇટમ ઉમેરી',
+  loadNoticeProductChanged: 'પ્રોડક્ટ અથવા સાઇઝ બદલાઈ. ઓફિસ અને ગ્રાહકને નવો લોડ દેખાશે.',
+  loadNoticeAfterConfirm: 'ચોક્કસ કમાણી કન્ફર્મ કર્યા પછી અપડેટ થશે.',
+  dutyOffLocationTitle: 'લોકેશન બંધ છે',
+  dutyOffLocationBody:
+    'લોકેશન બંધ હોવાથી તમે Off Duty થઈ ગયા છો. ટ્રિપ મેળવવા લોકેશન ચાલુ કરીને ફરીથી On Duty થાઓ.',
+  dutyNeedsLocationBody: 'On Duty થવા માટે લોકેશન ચાલુ કરો અને આ એપને મંજૂરી આપો.',
   deliveredCelebrateTitle: 'શાબાશ! ડિલિવરી પૂરી 🎉',
   deliveredCelebrateBody: 'માલ ગ્રાહક સુધી પહોંચી ગયો. સુરક્ષિત ટ્રિપ માટે આભાર!',
   deliveredCelebrateDone: 'બરાબર',

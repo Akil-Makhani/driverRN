@@ -547,6 +547,35 @@ AppState.addEventListener('change', (state) => {
 // ── Public surface ───────────────────────────────────────────
 
 export const LocationTracker = {
+  /**
+   * Whether the phone can give this app a position at all: location switched
+   * on, and the permission still granted. A check that fails answers true, so a
+   * glitch here never takes a driver off duty.
+   */
+  async locationAvailable(): Promise<boolean> {
+    try {
+      const [services, permission] = await Promise.all([
+        Location.hasServicesEnabledAsync(),
+        Location.getForegroundPermissionsAsync(),
+      ]);
+      return services && permission.granted;
+    } catch {
+      return true;
+    }
+  },
+
+  /**
+   * Same check for a driver going on duty, first offering Android's own "turn
+   * on location" dialog when the phone's location is off.
+   */
+  async ensureLocationOn(): Promise<boolean> {
+    if (Platform.OS === 'android' && !(await LocationTracker.locationAvailable())) {
+      // Rejects when the driver says no; the check below answers either way.
+      await Location.enableNetworkProviderAsync().catch(() => {});
+    }
+    return LocationTracker.locationAvailable();
+  },
+
   /** The trip currently being tracked, if any. */
   activeTripId: (): string | undefined => Preference.raw.getString(KEY_TRIP),
 

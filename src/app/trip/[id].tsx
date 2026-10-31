@@ -367,6 +367,7 @@ export default function TripDetailScreen() {
       <ConfirmDeliverySheet
         visible={deliverOpen}
         loaded={loadedLines}
+        hasFare={trip?.driverPayout != null}
         onCancel={() => setDeliverOpen(false)}
         onConfirm={(lines) => {
           setDeliverOpen(false);
@@ -379,6 +380,7 @@ export default function TripDetailScreen() {
         visible={sheetOpen}
         products={products}
         orderKind={trip?.orderKind}
+        hasFare={trip?.driverPayout != null}
         onCancel={() => setSheetOpen(false)}
         onConfirm={() => {
           setSheetOpen(false);

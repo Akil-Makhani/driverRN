@@ -119,6 +119,15 @@ Notifications.setNotificationHandler({
 });
 
 export const NotificationManager = {
+  /** A notice raised by the app itself, on the normal channel. */
+  async notifyNow(title: string, body: string): Promise<void> {
+    await NotificationManager.createChannel();
+    await Notifications.scheduleNotificationAsync({
+      content: { title, body },
+      trigger: { channelId: CHANNEL_ID },
+    });
+  },
+
   /** Creates the Android channels. No-op elsewhere. */
   async createChannel(): Promise<void> {
     if (Platform.OS !== 'android') return;

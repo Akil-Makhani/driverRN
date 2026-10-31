@@ -355,6 +355,24 @@ export const hi: Translations = {
   tripEarning: 'आपकी कमाई',
   tripEarningWas: 'पहले',
   tripEarningChanged: 'लोड / डिलीवर किए गए वज़न के हिसाब से बदली',
+  // Confirm Load / Confirm Delivery का बैनर। किराया सिर्फ़ वज़न से बदलता है।
+  loadNoticeLoadHint:
+    'जितना माल सच में लोड हुआ वही भरें। KG बढ़ने पर आपकी कमाई बढ़ सकती है, घटने पर घट सकती है। सिर्फ़ क्वांटिटी बदलने से कमाई नहीं बदलती। अतिरिक्त माल के लिए Add Item दबाएँ।',
+  loadNoticeDeliverHint:
+    'आँकड़े तभी बदलें जब लोड से कम माल दिया गया हो। KG घटने पर आपकी कमाई घट सकती है। सिर्फ़ क्वांटिटी बदलने से कमाई नहीं बदलती।',
+  loadNoticeNoFareLoadHint:
+    'जितना माल सच में लोड हुआ वही भरें। अतिरिक्त माल के लिए Add Item दबाएँ। ये आँकड़े ऑफ़िस को दिखेंगे।',
+  loadNoticeChanged: 'लोड बदल गया',
+  loadNoticeMoreWeight: 'वज़न बढ़ा: आपकी कमाई बढ़ सकती है और ग्राहक को ज़्यादा देना होगा।',
+  loadNoticeLessWeight: 'वज़न घटा: आपकी कमाई घट सकती है और ग्राहक को कम देना होगा।',
+  loadNoticeQtyOnly: 'वज़न वही है, इसलिए आपकी कमाई नहीं बदलेगी।',
+  loadNoticeItemsAdded: 'अतिरिक्त आइटम जोड़े',
+  loadNoticeProductChanged: 'प्रोडक्ट या साइज़ बदला। ऑफ़िस और ग्राहक को नया लोड दिखेगा।',
+  loadNoticeAfterConfirm: 'सही कमाई कन्फ़र्म करने के बाद अपडेट होगी।',
+  dutyOffLocationTitle: 'लोकेशन बंद है',
+  dutyOffLocationBody:
+    'लोकेशन बंद होने से आप Off Duty हो गए हैं। ट्रिप पाने के लिए लोकेशन चालू करके फिर से On Duty हों।',
+  dutyNeedsLocationBody: 'On Duty होने के लिए लोकेशन चालू करें और इस ऐप को अनुमति दें।',
   deliveredCelebrateTitle: 'शाबाश! डिलीवरी पूरी 🎉',
   deliveredCelebrateBody: 'माल ग्राहक तक पहुँच गया। सुरक्षित ट्रिप के लिए धन्यवाद!',
   deliveredCelebrateDone: 'ठीक है',

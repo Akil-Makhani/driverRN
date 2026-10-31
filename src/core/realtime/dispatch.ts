@@ -13,8 +13,10 @@
  * dashboard — and a cycle through three `create()` calls at module scope fails
  * in ways that are painful to debug.
  */
-import { AppState, type AppStateStatus } from 'react-native';
+import { Alert, AppState, type AppStateStatus } from 'react-native';
 
+import { watchLocationSetting } from '../../../modules/location-setting';
+import { Strings } from '../constants/strings';
 import { LocationTracker } from '../services/location-tracker';
 import { NotificationManager, PushType } from '../services/notification-manager';
 import { UserRepository } from '../services/user-repository';
@@ -26,6 +28,47 @@ import { startJobListener, stopJobListener, useJobStore } from '@/features/job/j
 
 let enabled = false;
 let unregisterPush: (() => void) | null = null;
+let stopLocationWatch: (() => void) | null = null;
+let locationRetry: ReturnType<typeof setTimeout> | null = null;
+let checkingLocation = false;
+
+/** A failed Off Duty request (no network, say) is tried again this soon. */
+const LOCATION_RETRY_MS = 30000;
+
+/**
+ * Takes the driver off duty once the phone can no longer report where they are:
+ * dispatch offers work by position, so staying on duty would offer trips from
+ * wherever the driver last was. They go back on duty themselves, from the
+ * toggle, once location is on again.
+ */
+async function enforceLocation(): Promise<void> {
+  if (!enabled || checkingLocation) return;
+  checkingLocation = true;
+  try {
+    if (await LocationTracker.locationAvailable()) return;
+    if (!enabled) return;
+
+    await useDashboardStore.getState().setDuty(false);
+
+    if (useDashboardStore.getState().selectedDutyValue) {
+      locationRetry ??= setTimeout(() => {
+        locationRetry = null;
+        void enforceLocation();
+      }, LOCATION_RETRY_MS);
+      return;
+    }
+    if (AppState.currentState === 'active') {
+      Alert.alert(Strings.dutyOffLocationTitle, Strings.dutyOffLocationBody);
+    } else {
+      void NotificationManager.notifyNow(
+        Strings.dutyOffLocationTitle,
+        Strings.dutyOffLocationBody,
+      ).catch(() => {});
+    }
+  } finally {
+    checkingLocation = false;
+  }
+}
 
 /**
  * The FCM half of offer delivery, for when the socket is not up — which is
@@ -77,12 +120,18 @@ function enable(): void {
   // it is actually up. Asking immediately means a driver clocking on with a
   // flaky connection still sees what is open.
   void useJobStore.getState().syncOpenJobs();
+  stopLocationWatch = watchLocationSetting(() => void enforceLocation());
+  void enforceLocation();
 }
 
 function disable(): void {
   if (!enabled) return;
   enabled = false;
 
+  stopLocationWatch?.();
+  stopLocationWatch = null;
+  if (locationRetry) clearTimeout(locationRetry);
+  locationRetry = null;
   stopJobListener();
   unregisterPush?.();
   unregisterPush = null;
@@ -97,6 +146,8 @@ function disable(): void {
 
 function handleAppStateChange(state: AppStateStatus): void {
   if (!enabled || state !== 'active') return;
+  // Covers iOS, and anything missed while the process was not running.
+  void enforceLocation();
   // Android tears down sockets in the background, and an offer may have come
   // and gone while the app slept. Reconnect, then re-ask what is still open.
   DispatchSocket.connect();

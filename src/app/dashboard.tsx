@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 
 import { AppBar } from '@/components/app-bar';
+import { BrandMark } from '@/components/brand-mark';
 import { LocationDisclosureDialog } from '@/components/location-disclosure-dialog';
 import { NotificationBell } from '@/components/notification-bell';
 import { Sidebar } from '@/components/sidebar';
@@ -108,9 +110,9 @@ export default function DashboardScreen() {
 
   /**
    * Going on duty is when the driver starts needing directions, so location is
-   * requested here rather than at the first map tap. Refusing does not block
-   * the toggle — Maps still routes using its own permission, so the duty
-   * change goes through either way.
+   * requested here rather than at the first map tap. Without location the
+   * toggle stays off: dispatch would take the driver straight back off duty
+   * (see core/realtime/dispatch.ts).
    *
    * Starting and stopping the reporting itself is not done here: the dispatch
    * layer follows the duty value, which also covers a driver who was already
@@ -119,7 +121,13 @@ export default function DashboardScreen() {
    * one request that is never made without a driver action.
    */
   const handleDutyChange = async (value: boolean) => {
-    if (value) await ensureLocationPermission();
+    if (value) {
+      await ensureLocationPermission();
+      if (!(await LocationTracker.ensureLocationOn())) {
+        Alert.alert(Strings.dutyOffLocationTitle, Strings.dutyNeedsLocationBody);
+        return;
+      }
+    }
     await useDashboardStore.getState().setDuty(value);
     if (value) await LocationTracker.requestBackground(confirmLocationDisclosure);
   };
@@ -156,6 +164,7 @@ export default function DashboardScreen() {
       <AppBar
         leading="menu"
         onLeadingPress={() => setDrawerOpen(true)}
+        leadingExtra={<BrandMark />}
         titleContent={
           <View style={styles.dutyRow}>
             <Switch
@@ -164,7 +173,9 @@ export default function DashboardScreen() {
               trackColor={{ true: AppColors.success500, false: Primary.c300 }}
               thumbColor={AppColors.white}
             />
-            <Text style={styles.dutyText}>{dutyValue ? Strings.onDuty : Strings.offDuty}</Text>
+            <Text style={styles.dutyText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+              {dutyValue ? Strings.onDuty : Strings.offDuty}
+            </Text>
           </View>
         }
         actions={
@@ -253,6 +264,6 @@ const styles = StyleSheet.create({
   topWrap: { paddingHorizontal: 10 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyContent: { flexGrow: 1 },
-  dutyRow: { flexDirection: 'row', alignItems: 'center' },
-  dutyText: { ...Typography.h4.extraBold, color: AppColors.text, marginLeft: 5 },
+  dutyRow: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
+  dutyText: { ...Typography.h4.extraBold, color: AppColors.text, marginLeft: 8, flexShrink: 1 },
 });

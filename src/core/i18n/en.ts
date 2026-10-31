@@ -506,6 +506,24 @@ export const en = {
   tripEarning: 'Your earning',
   tripEarningWas: 'Was',
   tripEarningChanged: 'Changed with the loaded / delivered weight',
+  // Banner on Confirm Load / Confirm Delivery. Fares follow weight only.
+  loadNoticeLoadHint:
+    'Enter what was actually loaded. More KG can raise your earning, less KG can lower it. Quantity alone does not change it. Use Add Item for anything extra.',
+  loadNoticeDeliverHint:
+    'Change the figures only if less was handed over than was loaded. Less KG can lower your earning. Quantity alone does not change it.',
+  loadNoticeNoFareLoadHint:
+    'Enter what was actually loaded. Use Add Item for anything extra. The office will see these figures.',
+  loadNoticeChanged: 'Load changed',
+  loadNoticeMoreWeight: 'More weight: your earning can go up, and the customer pays more.',
+  loadNoticeLessWeight: 'Less weight: your earning can go down, and the customer pays less.',
+  loadNoticeQtyOnly: 'Weight is the same, so your earning does not change.',
+  loadNoticeItemsAdded: 'Extra items added',
+  loadNoticeProductChanged: 'Product or size changed. The office and customer will see the new load.',
+  loadNoticeAfterConfirm: 'Your exact earning updates after you confirm.',
+  dutyOffLocationTitle: 'Location is off',
+  dutyOffLocationBody:
+    'You have gone Off Duty because location is off. Turn it on and go On Duty again to get trips.',
+  dutyNeedsLocationBody: 'Turn on location and allow it for this app to go On Duty.',
   // Fireworks screen after a delivery
   deliveredCelebrateTitle: 'Well done! Delivered 🎉',
   deliveredCelebrateBody: 'The load has reached the customer. Thank you for a safe trip!',

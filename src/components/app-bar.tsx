@@ -23,6 +23,8 @@ interface Props {
   /** 'menu' opens the drawer, 'back' pops. Omit for no leading button. */
   leading?: 'menu' | 'back';
   onLeadingPress?: () => void;
+  /** Drawn after the leading button. Widens both gutters to keep the title centred. */
+  leadingExtra?: ReactNode;
   /** Rendered at the trailing edge (bell, "clear all"). */
   actions?: ReactNode;
   /** Dashboard and the drawer screens use the tinted bar; details use white. */
@@ -35,6 +37,7 @@ export function AppBar({
   titleContent,
   leading,
   onLeadingPress,
+  leadingExtra,
   actions,
   variant = 'tinted',
   centerTitle = true,
@@ -54,7 +57,7 @@ export function AppBar({
       ]}
     >
       <View style={styles.row}>
-        <View style={styles.side}>
+        <View style={[styles.side, leadingExtra ? styles.sideWide : null]}>
           {leading && (
             <Pressable onPress={onLeadingPress} hitSlop={8} style={styles.iconButton}>
               <Ionicons
@@ -64,6 +67,7 @@ export function AppBar({
               />
             </Pressable>
           )}
+          {leadingExtra}
         </View>
 
         <View style={[styles.titleWrap, centerTitle ? styles.center : styles.left]}>
@@ -74,7 +78,9 @@ export function AppBar({
           )}
         </View>
 
-        <View style={[styles.side, styles.actions]}>{actions}</View>
+        <View style={[styles.side, leadingExtra ? styles.sideWide : null, styles.actions]}>
+          {actions}
+        </View>
       </View>
     </View>
   );
@@ -99,6 +105,7 @@ const styles = StyleSheet.create({
   // Equal-width gutters keep a centred title optically centred regardless of
   // how wide the trailing action is.
   side: { minWidth: 48, flexDirection: 'row', alignItems: 'center' },
+  sideWide: { width: 92 },
   actions: { justifyContent: 'flex-end', paddingRight: 13 },
   iconButton: { padding: 12 },
   titleWrap: { flex: 1, flexDirection: 'row', alignItems: 'center' },

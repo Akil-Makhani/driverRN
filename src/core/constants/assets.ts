@@ -23,6 +23,7 @@ export const Images = {
   loginImage: require('../../../assets/images/login_image.png'),
   majuri: require('../../../assets/images/majuri.png'),
   splashLogo: require('../../../assets/images/splash_logo.png'),
+  appMark: require('../../../assets/images/icon/app_mark.png'),
   truck: require('../../../assets/images/truck.png'),
   truckImage: require('../../../assets/images/truck_image.png'),
   umbrella: require('../../../assets/images/umbrella.png'),

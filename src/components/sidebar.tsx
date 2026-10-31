@@ -15,7 +15,6 @@ import * as Application from 'expo-application';
 import { usePathname, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -26,7 +25,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionConfirmDialog } from '@/components/action-confirm-dialog';
-import { Images } from '@/core/constants/assets';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
@@ -103,20 +101,27 @@ export function Sidebar({ visible, onClose }: Props) {
       onRequestClose={onClose}
       presentationStyle="fullScreen"
     >
-      <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
-        <View style={styles.header}>
+      <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.profileCard}>
           <DriverAvatar style={styles.avatar} />
-          <Pressable onPress={onClose} hitSlop={12}>
-            <Image source={Images.close} style={styles.close} />
+          <View style={styles.profileText}>
+            <Text style={styles.name} numberOfLines={1}>
+              {user?.name ?? ''}
+            </Text>
+            <Text style={styles.mobile} numberOfLines={1}>
+              {`+${Strings.commonCountryCode} ${user?.mobileNumber ?? ''}`}
+            </Text>
+          </View>
+          <Pressable
+            onPress={onClose}
+            hitSlop={12}
+            style={styles.close}
+            accessibilityRole="button"
+            accessibilityLabel={Strings.dialogCancel}
+          >
+            <Ionicons name="close" size={20} color={AppColors.white} />
           </Pressable>
         </View>
-
-        <Text style={styles.name}>{user?.name ?? ''}</Text>
-        <Text style={styles.mobile}>
-          {`+${Strings.commonCountryCode} ${user?.mobileNumber ?? ''}`}
-        </Text>
-
-        <View style={styles.divider} />
 
         <ScrollView
           style={styles.menu}
@@ -197,7 +202,7 @@ export function Sidebar({ visible, onClose }: Props) {
               different behaviour is nearly always two different builds, and
               without this there is no way to tell them apart from the outside. */}
           <Text style={styles.version}>
-            {`v${Application.nativeApplicationVersion ?? ''} (${Application.nativeBuildVersion ?? ''})`}
+            {`Tiles Drop Saathi  v${Application.nativeApplicationVersion ?? ''} (${Application.nativeBuildVersion ?? ''})`}
           </Text>
         </ScrollView>
       </View>
@@ -287,23 +292,34 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.white,
     paddingHorizontal: 20,
   },
-  header: {
+  profileCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: AppColors.primary,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: Primary.c300,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    borderColor: AppColors.white,
   },
-  close: { width: 24, height: 24, resizeMode: 'contain' },
-  name: { ...Typography.subtitle1.extraBold, color: AppColors.text, marginTop: 10 },
-  mobile: { ...Typography.subtitle1.regular, color: TextShade.c700, marginTop: 5 },
-  divider: { height: 1, backgroundColor: Primary.c300, marginTop: 20 },
-  menu: { flex: 1, marginTop: 10 },
+  profileText: { flex: 1, marginLeft: 12, marginRight: 8 },
+  name: { ...Typography.subtitle1.extraBold, color: AppColors.white },
+  mobile: { ...Typography.body2.medium, color: Primary.c100, marginTop: 3 },
+  close: {
+    alignSelf: 'flex-start',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  menu: { flex: 1, marginTop: 12 },
   menuContent: { flexGrow: 1 },
   logoutGap: { height: 16 },
   cell: {
