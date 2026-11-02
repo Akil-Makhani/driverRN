@@ -1,6 +1,6 @@
 /**
  * The driver's photo when one was uploaded (admin Add New Driver Info, the
- * app's registration or Profile), else the stock avatar.
+ * app's registration or Profile), else the Tiles Drop Saathi logo.
  *
  * The stock avatar is always drawn underneath, so the frame is never empty
  * while the photo loads - opening the sidebar re-reads the profile and used to
@@ -22,7 +22,7 @@ export function DriverAvatar({ style }: { style: StyleProp<ImageStyle> }) {
 
   return (
     <View>
-      <Image source={Images.avatar} style={style} />
+      <Image source={Images.saathiAvatar} style={style} />
       {url && !failed ? (
         <Image
           source={{ uri: url }}

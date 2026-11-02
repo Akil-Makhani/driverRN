@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { Alert, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppColors } from '@/core/constants/colors';
+import { AppColors, Primary } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
 import { UserRepository } from '@/core/services/user-repository';
@@ -22,6 +22,12 @@ export function useProfilePhoto() {
   /** Take / choose / view / remove the photo. */
   const [sheetOpen, setSheetOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  /**
+   * The cropped photo, waiting for the driver to press Add photo. The crop
+   * screen's own button only finishes the crop, so nothing is uploaded until
+   * the driver has seen the result and said yes.
+   */
+  const [pending, setPending] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const url = useSession((s) => s.user?.profilePhotoUrl);
   const hasPhoto = !!url;
 
@@ -58,8 +64,14 @@ export function useProfilePhoto() {
         ? await ImagePicker.launchCameraAsync(options)
         : await ImagePicker.launchImageLibraryAsync(options);
     if (result.canceled || result.assets.length === 0) return;
-    const asset = result.assets[0];
-    await runPhoto(() =>
+    setPending(result.assets[0]);
+  };
+
+  const addPending = () => {
+    const asset = pending;
+    setPending(null);
+    if (!asset) return;
+    void runPhoto(() =>
       UserRepository.updateProfilePhoto(asset.uri, asset.mimeType ?? 'image/jpeg'),
     );
   };
@@ -102,6 +114,15 @@ export function useProfilePhoto() {
           choosePhoto();
         }}
       />
+      <PhotoConfirm
+        uri={pending?.uri}
+        onAdd={addPending}
+        onPickAnother={() => {
+          setPending(null);
+          setSheetOpen(true);
+        }}
+        onClose={() => setPending(null)}
+      />
     </>
   );
 
@@ -141,6 +162,49 @@ function PhotoViewer({
   );
 }
 
+/** The cropped photo in the circle it will be shown in, with Add photo to save it. */
+function PhotoConfirm({
+  uri,
+  onAdd,
+  onPickAnother,
+  onClose,
+}: {
+  /** Shown while set. */
+  uri?: string;
+  onAdd: () => void;
+  onPickAnother: () => void;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={!!uri} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+      <View style={styles.confirmScrim}>
+        <View style={[styles.confirmCard, { marginBottom: insets.bottom }]}>
+          <Pressable
+            onPress={onClose}
+            style={styles.confirmClose}
+            hitSlop={12}
+            accessibilityLabel={Strings.lrClose}
+          >
+            <Ionicons name="close" size={22} color={AppColors.text} />
+          </Pressable>
+          <Text style={styles.confirmTitle}>{Strings.profilePhotoConfirmTitle}</Text>
+          {uri ? <Image source={{ uri }} style={styles.confirmPhoto} /> : null}
+          <Text style={styles.confirmHint}>{Strings.profilePhotoConfirmHint}</Text>
+          <Pressable onPress={onAdd} style={styles.confirmAdd}>
+            <Ionicons name="checkmark-circle" size={20} color={AppColors.white} />
+            <Text style={styles.confirmAddText}>{Strings.profilePhotoAdd}</Text>
+          </Pressable>
+          <Pressable onPress={onPickAnother} style={styles.confirmAnother}>
+            <Ionicons name="images-outline" size={18} color={AppColors.primary} />
+            <Text style={styles.confirmAnotherText}>{Strings.profilePhotoPickAnother}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
   viewer: { flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
   viewerImage: { width: '100%', height: '100%' },
@@ -165,4 +229,62 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.white,
   },
   viewerChangeText: { ...Typography.button2.extraBold, color: AppColors.text },
+  confirmScrim: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  confirmCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 18,
+    backgroundColor: AppColors.white,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 20,
+  },
+  confirmClose: { position: 'absolute', top: 12, right: 12, padding: 4 },
+  confirmTitle: { ...Typography.subtitle1.extraBold, color: AppColors.text },
+  confirmPhoto: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    marginTop: 18,
+    borderWidth: 3,
+    borderColor: Primary.c100,
+  },
+  confirmHint: {
+    ...Typography.body2.medium,
+    color: AppColors.text,
+    textAlign: 'center',
+    marginTop: 14,
+  },
+  confirmAdd: {
+    alignSelf: 'stretch',
+    height: 50,
+    marginTop: 20,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: AppColors.primary,
+  },
+  confirmAddText: { ...Typography.button2.extraBold, color: AppColors.white },
+  confirmAnother: {
+    alignSelf: 'stretch',
+    height: 48,
+    marginTop: 10,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Primary.c300,
+  },
+  confirmAnotherText: { ...Typography.button2.extraBold, color: AppColors.primary },
 });

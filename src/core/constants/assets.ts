@@ -22,6 +22,8 @@ export const Images = {
   locationRed: require('../../../assets/images/location_red.png'),
   loginImage: require('../../../assets/images/login_image.png'),
   majuri: require('../../../assets/images/majuri.png'),
+  /** The Tiles Drop Saathi logo, standing in for a driver with no photo. */
+  saathiAvatar: require('../../../assets/images/saathi_avatar.png'),
   splashLogo: require('../../../assets/images/splash_logo.png'),
   appMark: require('../../../assets/images/icon/app_mark.png'),
   truck: require('../../../assets/images/truck.png'),

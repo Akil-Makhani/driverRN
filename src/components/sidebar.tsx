@@ -32,6 +32,7 @@ import { resetTo } from '@/core/navigation';
 import { useSession } from '@/core/session';
 import { useAuthStore } from '@/features/auth/auth-store';
 import { DriverAvatar } from '@/components/driver-avatar';
+import { useProfilePhoto } from '@/features/profile/use-profile-photo';
 
 interface Props {
   visible: boolean;
@@ -61,6 +62,8 @@ export function Sidebar({ visible, onClose }: Props) {
   }, [visible]);
 
   const [dialog, setDialog] = useState<'logout' | 'delete' | null>(null);
+  // Same as Profile: tap the photo to see it large, or to add one.
+  const photo = useProfilePhoto();
 
   const go = (destination: Destination) => {
     onClose();
@@ -103,7 +106,13 @@ export function Sidebar({ visible, onClose }: Props) {
     >
       <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
         <View style={styles.profileCard}>
-          <DriverAvatar style={styles.avatar} />
+          <Pressable
+            onPress={photo.showPhoto}
+            accessibilityRole="imagebutton"
+            accessibilityLabel={Strings.profilePhotoTitle}
+          >
+            <DriverAvatar style={styles.avatar} />
+          </Pressable>
           <View style={styles.profileText}>
             <Text style={styles.name} numberOfLines={1}>
               {user?.name ?? ''}
@@ -237,6 +246,8 @@ export function Sidebar({ visible, onClose }: Props) {
         onConfirm={() => void handleDelete()}
         onCancel={() => setDialog(null)}
       />
+      {/* Inside the sidebar's Modal, so the viewer opens over the menu. */}
+      {photo.overlays}
     </Modal>
   );
 }

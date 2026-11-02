@@ -87,6 +87,7 @@
           "microphonePermission": false
         }
       ],
+      "./plugins/with-crop-button-label",
       [
         "expo-location",
         {
