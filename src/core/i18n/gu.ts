@@ -177,4 +177,8 @@ export const gu: Translations = {
   // Language picker (profile)
   language: 'ભાષા',
   languageHint: 'એપ તમે પસંદ કરેલી ભાષામાં દેખાશે.',
+  updateRequiredTitle: 'અપડેટ જરૂરી છે',
+  updateRequiredMessage:
+    'BST Driver નું નવું વર્ઝન આવી ગયું છે. એપ વાપરતા રહેવા માટે કૃપા કરીને અપડેટ કરો. તમારી ટ્રિપ અને ડેટા જેમ છે તેમ રહેશે.',
+  updateNow: 'હમણાં અપડેટ કરો',
 };

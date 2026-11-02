@@ -184,6 +184,11 @@ export const en = {
   // Language picker (profile)
   language: 'Language',
   languageHint: 'The app will show in the language you choose.',
+  // Forced update, when a newer version is on the Play Store
+  updateRequiredTitle: 'Update required',
+  updateRequiredMessage:
+    'A new version of BST Driver is available. Please update to keep using the app. Your trips and data stay as they are.',
+  updateNow: 'UPDATE NOW',
 };
 
 export type StringKey = keyof typeof en;

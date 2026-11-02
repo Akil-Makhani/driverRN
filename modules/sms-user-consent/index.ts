@@ -9,11 +9,29 @@ type SmsUserConsentEvents = {
 declare class SmsUserConsentModule extends NativeModule<SmsUserConsentEvents> {
   start(): void;
   stop(): void;
+  requestPhoneNumberHint(): Promise<string | null>;
 }
 
 // Android-only. Null on iOS/web (and in a build made before this module was
 // added), so callers simply fall back to typing the OTP.
 const native = requireOptionalNativeModule<SmsUserConsentModule>("SmsUserConsent");
+
+/**
+ * Android: opens Play Services' sheet listing the SIM's phone numbers and
+ * resolves with the picked one as 10 digits (country code dropped). Null when
+ * there is no SIM number, the driver dismisses the sheet, or on iOS / an
+ * older build without this function.
+ */
+export async function requestPhoneNumberHint(): Promise<string | null> {
+  if (!native?.requestPhoneNumberHint) return null;
+  try {
+    const number = await native.requestPhoneNumberHint();
+    const digits = number?.replace(/\D/g, '') ?? '';
+    return digits.length >= 10 ? digits.slice(-10) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Listens for the OTP SMS while mounted. When it arrives Android shows a

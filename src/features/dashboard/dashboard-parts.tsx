@@ -3,10 +3,10 @@
  *   dashboard_deliver_all_cell.dart, dashboard_top_view.dart,
  *   dashboard_emptyview.dart.
  */
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { DriverAvatar } from '@/components/driver-avatar';
 import { LanguageButton } from '@/components/language-button';
-import { Images } from '@/core/constants/assets';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
 import { Typography } from '@/core/constants/typography';
@@ -33,7 +33,7 @@ export function DashboardTopView({ completedTripCount }: { completedTripCount: n
   const user = useSession((s) => s.user);
   return (
     <View style={styles.topView}>
-      <Image source={Images.avatar} style={styles.topAvatar} />
+      <DriverAvatar size={60} />
       <View style={styles.topText}>
         <Text style={styles.topName}>{user?.name ?? ''}</Text>
         <Text style={styles.topCount}>
@@ -81,13 +81,6 @@ const styles = StyleSheet.create({
     borderColor: Primary.c300,
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  topAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    backgroundColor: Primary.c300,
-    resizeMode: 'cover',
   },
   topText: { marginLeft: 15, justifyContent: 'center', flex: 1 },
   topName: { ...Typography.h4.extraBold, color: AppColors.text },

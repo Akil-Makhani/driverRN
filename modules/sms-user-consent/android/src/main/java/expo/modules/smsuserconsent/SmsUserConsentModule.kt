@@ -6,13 +6,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import com.google.android.gms.auth.api.identity.GetPhoneNumberHintIntentRequest
+import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.auth.api.phone.SmsRetriever
 import com.google.android.gms.common.api.CommonStatusCodes
 import com.google.android.gms.common.api.Status
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 private const val CONSENT_REQUEST_CODE = 0x5C0D
+private const val HINT_REQUEST_CODE = 0x5C0E
 
 /**
  * Wraps Google's SMS User Consent API. After `start()`, the next SMS (within
@@ -23,6 +27,7 @@ private const val CONSENT_REQUEST_CODE = 0x5C0D
  */
 class SmsUserConsentModule : Module() {
   private var receiver: BroadcastReceiver? = null
+  private var hintPromise: Promise? = null
 
   private val context: Context?
     get() = appContext.reactContext?.applicationContext
@@ -40,11 +45,32 @@ class SmsUserConsentModule : Module() {
       unregister()
     }
 
-    OnDestroy {
-      unregister()
+    // Resolves with the number the driver picked from the SIM sheet, e.g.
+    // "+919876543210", or null when there is none, the sheet was dismissed,
+    // or Play Services cannot show it.
+    AsyncFunction("requestPhoneNumberHint") { promise: Promise ->
+      requestPhoneNumberHint(promise)
     }
 
-    OnActivityResult { _, payload ->
+    OnDestroy {
+      unregister()
+      finishHint(null)
+    }
+
+    OnActivityResult { activity, payload ->
+      if (payload.requestCode == HINT_REQUEST_CODE) {
+        val number = if (payload.resultCode == Activity.RESULT_OK) {
+          try {
+            Identity.getSignInClient(activity).getPhoneNumberFromIntent(payload.data)
+          } catch (_: Exception) {
+            null
+          }
+        } else {
+          null
+        }
+        finishHint(number)
+        return@OnActivityResult
+      }
       if (payload.requestCode != CONSENT_REQUEST_CODE) return@OnActivityResult
       val message = payload.data?.getStringExtra(SmsRetriever.EXTRA_SMS_MESSAGE)
       if (payload.resultCode == Activity.RESULT_OK && message != null) {
@@ -95,6 +121,36 @@ class SmsUserConsentModule : Module() {
       ctx.registerReceiver(r, filter, SmsRetriever.SEND_PERMISSION, null)
     }
     receiver = r
+  }
+
+  private fun requestPhoneNumberHint(promise: Promise) {
+    val activity = appContext.currentActivity
+    if (activity == null) {
+      promise.resolve(null)
+      return
+    }
+    // One sheet at a time; an older request that never came back answers null.
+    finishHint(null)
+    hintPromise = promise
+
+    val request = GetPhoneNumberHintIntentRequest.builder().build()
+    Identity.getSignInClient(activity)
+      .getPhoneNumberHintIntent(request)
+      .addOnSuccessListener { pending ->
+        try {
+          activity.startIntentSenderForResult(pending.intentSender, HINT_REQUEST_CODE, null, 0, 0, 0)
+        } catch (_: Exception) {
+          finishHint(null)
+        }
+      }
+      // No SIM, no number on it, or Play Services too old.
+      .addOnFailureListener { finishHint(null) }
+  }
+
+  private fun finishHint(number: String?) {
+    val p = hintPromise ?: return
+    hintPromise = null
+    p.resolve(number)
   }
 
   private fun unregister() {

@@ -3,6 +3,7 @@
  * sub_view/login_mobileno_view.dart.
  */
 import { useRouter } from 'expo-router';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -23,6 +24,13 @@ import { Typography } from '@/core/constants/typography';
 import { digitsOnly, groupDigits } from '@/core/utils/number-format';
 import { useAuthStore } from '@/features/auth/auth-store';
 import { LoginTopImages } from '@/features/auth/login-top-images';
+import {
+  InlineMobileSuggestions,
+  KeyboardMobileSuggestions,
+  SUGGESTION_STRIP_HEIGHT,
+  useMobileSuggestions,
+} from '@/features/auth/mobile-suggestions';
+import { requestPhoneNumberHint } from '../../../modules/sms-user-consent';
 
 const MOBILE_LENGTH = 10;
 
@@ -34,6 +42,36 @@ export default function LoginScreen() {
   const invalidMobile = useAuthStore((s) => s.invalidMobile);
   const errorMessage = useAuthStore((s) => s.errorMessage);
   const isLoading = useAuthStore((s) => s.isLoading);
+
+  const inputRef = useRef<TextInput>(null);
+  const [focused, setFocused] = useState(false);
+  const { suggestions, showOnKeyboard, showInline } = useMobileSuggestions(mobile, focused);
+  const pickSuggestion = (n: string) => {
+    useAuthStore.getState().setMobile(n);
+    useAuthStore.getState().setInvalidMobile(false);
+    Keyboard.dismiss();
+  };
+
+  /**
+   * The first time the empty field is tapped on a phone with no number saved
+   * yet, offer the SIM's own number (Android's Phone Number Hint sheet). Once
+   * per visit: a driver who dismisses it wants to type, and gets the keyboard
+   * back.
+   */
+  const askedSim = useRef(false);
+  const onFocus = async () => {
+    setFocused(true);
+    if (askedSim.current || mobile !== '' || suggestions.length > 0) return;
+    askedSim.current = true;
+    const number = await requestPhoneNumberHint();
+    if (number) {
+      pickSuggestion(number);
+    } else {
+      // The sheet took the keyboard away; bring it back for typing.
+      inputRef.current?.blur();
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  };
 
   const onSubmit = async () => {
     if (mobile.length !== MOBILE_LENGTH) {
@@ -60,7 +98,7 @@ export default function LoginScreen() {
           keyboard, matching TruckRN's AuthScaffold. */}
       <KeyboardAwareScrollView
         contentContainerStyle={styles.scroll}
-        bottomOffset={20}
+        bottomOffset={showOnKeyboard ? SUGGESTION_STRIP_HEIGHT + 20 : 20}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -81,6 +119,7 @@ export default function LoginScreen() {
         <View style={styles.inputRow}>
           <Text style={styles.countryCode}>{`+ ${Strings.commonCountryCode}`}</Text>
           <TextInput
+            ref={inputRef}
             style={styles.input}
             value={groupDigits(mobile)}
             onChangeText={(text) => {
@@ -93,8 +132,18 @@ export default function LoginScreen() {
             placeholder="12345 67890"
             placeholderTextColor={TextShade.c700}
             maxLength={11} // 10 digits + the group separator
+            // Lets the keyboard (Gboard autofill) offer the phone's number.
+            autoComplete="tel"
+            textContentType="telephoneNumber"
+            importantForAutofill="yes"
+            onFocus={() => void onFocus()}
+            onBlur={() => setFocused(false)}
           />
         </View>
+
+        {showInline ? (
+          <InlineMobileSuggestions numbers={suggestions} onPick={pickSuggestion} />
+        ) : null}
 
         {showError ? (
           <Text style={styles.error}>
@@ -111,6 +160,10 @@ export default function LoginScreen() {
         </Pressable>
         </View>
       </KeyboardAwareScrollView>
+
+      {showOnKeyboard ? (
+        <KeyboardMobileSuggestions numbers={suggestions} onPick={pickSuggestion} />
+      ) : null}
 
       {isLoading && (
         <View style={styles.loadingOverlay} pointerEvents="auto">

@@ -8,7 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppBar } from '@/components/app-bar';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { LanguageOptions } from '@/components/language-options';
+import { DriverAvatar } from '@/components/driver-avatar';
 import { Sidebar } from '@/components/sidebar';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
@@ -42,9 +42,7 @@ export default function ProfileScreen() {
       <View style={styles.body}>
         <View style={styles.card}>
           <View style={styles.headerRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initialsOf(user?.name ?? '')}</Text>
-            </View>
+            <DriverAvatar size={56} />
             <Text style={styles.name}>{user?.name ?? ''}</Text>
           </View>
 
@@ -65,8 +63,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <LanguagePicker />
-
         <Pressable onPress={() => setLogoutOpen(true)} style={styles.logoutButton}>
           <Text style={styles.logoutText}>{Strings.logout.toUpperCase()}</Text>
         </Pressable>
@@ -85,17 +81,6 @@ export default function ProfileScreen() {
   );
 }
 
-/** Switches the whole app between English, Hindi and Gujarati. */
-function LanguagePicker() {
-  return (
-    <View style={[styles.card, styles.languageCard]}>
-      <Text style={styles.languageTitle}>{Strings.language}</Text>
-      <Text style={styles.languageHint}>{Strings.languageHint}</Text>
-      <LanguageOptions />
-    </View>
-  );
-}
-
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.field}>
@@ -110,14 +95,6 @@ function formatAadhar(aadhar: string): string {
   return aadhar.replace(/[^0-9]/g, '').replace(/(\d{4})(?=\d)/g, '$1-');
 }
 
-/** First letters of the first two words, uppercased. */
-function initialsOf(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '';
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: AppColors.white },
   body: { flex: 1, padding: 15 },
@@ -128,17 +105,6 @@ const styles = StyleSheet.create({
     borderColor: Primary.c300,
   },
   headerRow: { flexDirection: 'row', alignItems: 'center' },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: Primary.c300,
-    backgroundColor: Primary.c100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { ...Typography.h4.extraBold, color: AppColors.primary },
   name: {
     ...Typography.h4.extraBold,
     color: AppColors.text,
@@ -154,14 +120,6 @@ const styles = StyleSheet.create({
     ...Typography.body2.extraBold,
     color: AppColors.text,
     marginTop: 3,
-  },
-  languageCard: { marginTop: 15 },
-  languageTitle: { ...Typography.body1.extraBold, color: AppColors.text },
-  languageHint: {
-    ...Typography.body2.regular,
-    color: TextShade.c700,
-    marginTop: 3,
-    marginBottom: 5,
   },
   logoutButton: {
     marginTop: 15,

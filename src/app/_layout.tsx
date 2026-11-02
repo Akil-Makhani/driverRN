@@ -8,6 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { UpdateGate } from '@/components/update-gate';
 import { useLanguageStore } from '@/core/i18n/language';
 import { useAppFonts } from '@/core/theme/use-app-fonts';
 
@@ -53,6 +54,9 @@ export default function RootLayout() {
             <Stack.Screen name="notifications" />
             <Stack.Screen name="trip/[id]" />
           </Stack>
+          {/* After the stack so it covers every screen. Keyed like the stack
+              so its copy follows a language switch. */}
+          <UpdateGate key={`update-${language}`} />
         </SafeAreaProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>

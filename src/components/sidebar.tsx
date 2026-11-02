@@ -25,6 +25,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { DriverAvatar } from '@/components/driver-avatar';
 import { Images } from '@/core/constants/assets';
 import { AppColors, Primary, TextShade } from '@/core/constants/colors';
 import { Strings } from '@/core/constants/strings';
@@ -91,7 +92,7 @@ export function Sidebar({ visible, onClose }: Props) {
     >
       <View style={[styles.container, { paddingTop: insets.top + 20 }]}>
         <View style={styles.header}>
-          <Image source={Images.avatar} style={styles.avatar} />
+          <DriverAvatar size={60} />
           <Pressable onPress={onClose} hitSlop={12}>
             <Image source={Images.close} style={styles.close} />
           </Pressable>
@@ -190,13 +191,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: Primary.c300,
   },
   close: { width: 24, height: 24, resizeMode: 'contain' },
   name: { ...Typography.subtitle1.extraBold, color: AppColors.text, marginTop: 10 },

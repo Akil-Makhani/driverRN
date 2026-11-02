@@ -177,4 +177,8 @@ export const hi: Translations = {
   // Language picker (profile)
   language: 'भाषा',
   languageHint: 'ऐप आपकी चुनी हुई भाषा में दिखेगा।',
+  updateRequiredTitle: 'अपडेट ज़रूरी है',
+  updateRequiredMessage:
+    'BST Driver का नया वर्ज़न आ गया है। ऐप चलाते रहने के लिए कृपया अपडेट करें। आपकी ट्रिप और डेटा वैसे ही रहेंगे।',
+  updateNow: 'अभी अपडेट करें',
 };

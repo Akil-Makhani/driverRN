@@ -12,6 +12,8 @@
  *   401/403/404/409 → UnauthorisedException(server `message`)
  *   500/other → FetchDataException
  */
+import * as Application from 'expo-application';
+
 import { API_BASE_URL } from './endpoints';
 import {
   BadRequestException,
@@ -28,6 +30,16 @@ type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
  */
 const DEFAULT_TIMEOUT_MS = 30000;
 
+/**
+ * Tells the server which app is asking. BST Driver is for own (BST's truck)
+ * drivers only, so `own` makes the server refuse a market (Tiles Drop) driver,
+ * even on a number that is also an own driver's. The same code built as Tiles
+ * Drop Saathi says `market`.
+ */
+const DRIVER_APP_HEADER = {
+  'X-Driver-App': Application.applicationId === 'com.tilesdrop.partner' ? 'market' : 'own',
+};
+
 async function request<T = any>(
   method: Method,
   url: string,
@@ -39,6 +51,7 @@ async function request<T = any>(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
+    ...DRIVER_APP_HEADER,
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 

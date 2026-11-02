@@ -31,8 +31,8 @@
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./firebase/google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#004B64",
-        "foregroundImage": "./assets/images/icon/app_logo.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/images/icon/adaptive_foreground.png"
       },
       "permissions": [
         "android.permission.INTERNET",
@@ -90,6 +90,13 @@
           "ios": {
             "useFrameworks": "static"
           }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon/notification_icon.png",
+          "color": "#004B64"
         }
       ],
       "@react-native-firebase/app",

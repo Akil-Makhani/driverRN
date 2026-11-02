@@ -17,6 +17,11 @@ export interface AppUser {
   refreshToken: string;
   tripCount?: number;
   completedTripCount?: number;
+  /**
+   * The driver's photo, ready to load: the one set in the app, else the one
+   * the admin uploaded for an own driver. Absent when there is neither.
+   */
+  profilePhotoUrl?: string;
 }
 
 export function parseAppUser(json: any): AppUser {
@@ -37,6 +42,7 @@ export function parseAppUser(json: any): AppUser {
     refreshToken: json?.refreshToken ?? '',
     tripCount: num(json?.tripCount),
     completedTripCount: num(json?.completedTripCount),
+    profilePhotoUrl: str(json?.profilePhotoUrl),
   };
 }
 

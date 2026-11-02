@@ -18,4 +18,7 @@ dependencies {
   // SMS User Consent API: Play Services shows a one-tap "allow this app to
   // read this message?" sheet — no READ_SMS permission, no app hash in the SMS.
   implementation 'com.google.android.gms:play-services-auth-api-phone:18.2.0'
+  // Phone Number Hint API: a Play Services sheet listing the SIM's numbers,
+  // so the login field can be filled with a tap — no READ_PHONE_NUMBERS.
+  implementation 'com.google.android.gms:play-services-auth:21.3.0'
 }
