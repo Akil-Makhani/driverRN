@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.bst.driver",
-      "versionCode": 14,
+      "versionCode": 15,
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./firebase/google-services.json",
       "adaptiveIcon": {
@@ -109,9 +109,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "beb26929-e9f8-428c-866b-19d34d9168e7"
+        "projectId": "4dc032d4-d6c5-46b9-9599-c7a7aa8f94fa"
       }
     },
-    "owner": "faiz_kureshi"
+    "owner": "webminiindia"
   }
 }
