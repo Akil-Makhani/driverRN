@@ -5,6 +5,10 @@
  *
  * The wording stays at "can" because the API prices the load, in steps, after
  * CONFIRM: only quantity is known not to matter, as fares follow weight alone.
+ *
+ * Green when the load went up (more weight, e.g. 200 -> 202 KG; or, with the
+ * weight unchanged, more quantity), yellow when it went down or only the
+ * products changed.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
@@ -72,11 +76,15 @@ export function LoadChangeNotice({
   if (productChanged) lines.push(Strings.loadNoticeProductChanged);
   if (hasFare && weightDiff !== 0) lines.push(Strings.loadNoticeAfterConfirm);
 
+  // Up is good news for the driver (more weight, more pay), so it reads green.
+  const increased = weightDiff > 0 || (weightDiff === 0 && qtyDiff > 0);
+  const ink = increased ? UP_INK : ALERT_INK;
+
   return (
-    <View style={[styles.box, styles.alert]}>
-      <Ionicons name="alert-circle" size={20} color={ALERT_INK} />
+    <View style={[styles.box, increased ? styles.up : styles.alert]}>
+      <Ionicons name={increased ? 'arrow-up-circle' : 'alert-circle'} size={20} color={ink} />
       <View style={styles.body}>
-        <Text style={styles.title}>{Strings.loadNoticeChanged}</Text>
+        <Text style={[styles.title, { color: ink }]}>{Strings.loadNoticeChanged}</Text>
         {lines.map((line) => (
           <Text key={line} style={styles.text}>
             {line}
@@ -88,6 +96,7 @@ export function LoadChangeNotice({
 }
 
 const ALERT_INK = '#B54708';
+const UP_INK = '#067647';
 
 const styles = StyleSheet.create({
   box: {
@@ -101,6 +110,7 @@ const styles = StyleSheet.create({
   },
   info: { backgroundColor: Primary.c100, borderColor: Primary.c300 },
   alert: { backgroundColor: '#FFFAEB', borderColor: '#FEDF89' },
+  up: { backgroundColor: '#ECFDF3', borderColor: '#ABEFC6' },
   body: { flex: 1, marginLeft: 8 },
   title: { ...Typography.body2.extraBold, color: ALERT_INK, marginBottom: 2 },
   text: { ...Typography.body2.medium, color: TextShade.c800 },

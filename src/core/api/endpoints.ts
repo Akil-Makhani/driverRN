@@ -73,6 +73,12 @@ export const ApiUrls = {
   /** The driver's own photo, from Profile: an upload link, then the key (or null). */
   profilePhotoUploadUrl: '/driver/account/photo/upload-url',
   profilePhoto: '/driver/account/photo',
+  /**
+   * Tiles Drop "Complete your details": what is on file (GET), an upload link
+   * for one document photo, and saving what was filled in (PATCH).
+   */
+  driverDetails: '/driver/account/details',
+  driverDetailsUploadUrl: '/driver/account/details/upload-url',
   language: '/driver/account/language',
   /** Re-registers this device's push token; see UserRepository.registerFcmToken. */
   fcmToken: '/driver/account/fcm-token',

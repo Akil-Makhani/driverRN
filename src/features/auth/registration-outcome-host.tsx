@@ -13,7 +13,8 @@
  * Each outcome has exactly one thing to do, which is why nothing here is
  * passed in from a screen:
  *   approved    → open the app, trading the device secret for a session
- *   rejected    → back to login; registering again starts there
+ *   rejected    → REGISTER AGAIN: an OTP to the same number, then the form
+ *                 filled in with what they sent; or back to login
  *   hasAccount  → back to login, where the account they already have is used
  *   required    → the registration they have not started yet
  *   exists      → nothing: the form behind it is what needs correcting
@@ -67,6 +68,33 @@ export function RegistrationOutcomeHost() {
     goToLogin();
   };
 
+  /**
+   * Registering again after a rejection: an OTP to the same number (the
+   * server wants the number proved again before it takes a new submission),
+   * and once it verifies, the OTP screen opens the form filled in with the
+   * rejected registration's details and photos (registration-store verifyOtp),
+   * with the admin's reason above it. Without a number on hand, the ordinary
+   * register flow asks for it.
+   */
+  const registerAgain = async () => {
+    const mobile = outcome?.mobile ?? useRegistrationStore.getState().pendingMobile ?? '';
+    dismiss();
+    useRegistrationStore.getState().clearPending();
+    resetTo('/(auth)/login');
+    if (!mobile) {
+      router.push('/(auth)/register-mobile');
+      return;
+    }
+    const sent = await useAuthStore.getState().startRegistration(mobile);
+    if (!sent.ok) {
+      router.push('/(auth)/register-mobile');
+      return;
+    }
+    useAuthStore.getState().resetOtp();
+    useAuthStore.getState().startTimer();
+    router.push({ pathname: '/(auth)/otp', params: { mobile } });
+  };
+
   const onDismiss = () => {
     switch (outcome?.kind) {
       case 'approved':
@@ -89,6 +117,7 @@ export function RegistrationOutcomeHost() {
       outcome={isSignedIn ? null : outcome}
       onDismiss={onDismiss}
       onGoToLogin={goToLogin}
+      onRegisterAgain={() => void registerAgain()}
       onRegister={() => {
         dismiss();
         router.push('/(auth)/register-mobile');

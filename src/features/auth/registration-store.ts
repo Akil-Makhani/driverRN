@@ -19,7 +19,11 @@ import { UnauthorisedException } from '@/core/api/errors';
 import { RegistrationRepository } from '@/core/services/registration-repository';
 import { Preference } from '@/core/storage/preference';
 import { Strings } from '@/core/constants/strings';
+import { dobFromIso, dobToIso } from '@/core/utils/dob';
 import { toAsciiDigits } from '@/core/utils/number-format';
+
+// The DOB box types DD-MM-YYYY; see core/utils/dob.
+export { formatDobInput } from '@/core/utils/dob';
 import { isSuccess } from '@/types/api';
 import { REGISTRATION_DOCUMENT_KEYS, isRegistrationComplete } from '@/types/registration';
 import type {
@@ -74,6 +78,8 @@ export interface RegistrationOutcome {
   message: string;
   /** Admin's reason — only ever set for 'rejected'. */
   reason?: string;
+  /** The number a 'rejected' registration was made with, to register again. */
+  mobile?: string;
 }
 
 /** What a status check settled on, for the caller that has to route on it. */
@@ -178,6 +184,8 @@ interface RegistrationState {
 
   /** Takes or chooses a photo for one slot and starts uploading it. */
   pickPhoto: (key: RegistrationPhotoKey, source: PhotoSource) => Promise<void>;
+  /** Takes a photo off the form, uploaded or not; the slot is empty again. */
+  removePhoto: (key: RegistrationPhotoKey) => void;
   /**
    * Uploads one picked photo. 'needs-otp' is the server refusing because the
    * mobile verification has lapsed — the same ending submit has.
@@ -238,6 +246,7 @@ const EMPTY_FORM: RegistrationForm = {
   driverName: '',
   mobileNo: '',
   vehicleNumber: '',
+  vehicleCapacity: '',
   driverLicenceNumber: '',
   dob: '',
   documents: {},
@@ -267,6 +276,14 @@ const MOBILE_RE = /^[0-9]{10}$/;
 
 const MIN_AGE_YEARS = 18;
 
+/** What a tempo can carry, in KG — the same bounds the server checks. */
+export const MIN_CAPACITY_KG = 100;
+export const MAX_CAPACITY_KG = 20000;
+
+/** Digits only, as typed into the capacity box. */
+export const formatCapacityInput = (raw: string): string =>
+  toAsciiDigits(raw).replace(/[^0-9]/g, '').slice(0, 5);
+
 /** True only for a real calendar date — "2005-02-31" must not pass. */
 function isRealDate(iso: string): boolean {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
@@ -293,6 +310,8 @@ function validateForm(
 ): Partial<Record<FieldKey, string>> {
   const errors: Partial<Record<FieldKey, string>> = {};
 
+  // Required: the driver's name, the vehicle number and its capacity (the
+  // mobile is proved).
   if (form.driverName.trim().length < 3) {
     errors.driverName = Strings.registerNameValidation;
   }
@@ -302,15 +321,40 @@ function validateForm(
   if (!VEHICLE_RE.test(compact(form.vehicleNumber))) {
     errors.vehicleNumber = Strings.registerVehicleValidation;
   }
-  if (!LICENCE_RE.test(compact(form.driverLicenceNumber))) {
-    errors.driverLicenceNumber = Strings.registerLicenceValidation;
-  }
-  if (!isRealDate(form.dob)) {
-    errors.dob = Strings.registerDobValidation;
-  } else if (ageOn(form.dob) < MIN_AGE_YEARS) {
-    errors.dob = Strings.registerDobAgeValidation;
+  const capacity = Number(form.vehicleCapacity);
+  if (!form.vehicleCapacity || capacity < MIN_CAPACITY_KG || capacity > MAX_CAPACITY_KG) {
+    errors.vehicleCapacity = Strings.registerCapacityValidation;
   }
 
+  // Optional: checked only when filled in, so a typo is caught here rather
+  // than stored. Left blank, they follow from "Complete your details".
+  return { ...errors, ...validateOptionalDetails(form) };
+}
+
+/**
+ * The optional details (name, licence, date of birth): each is checked only
+ * when it has been filled in. Shared with the "Complete your details" screen.
+ */
+export function validateOptionalDetails(form: {
+  driverName: string;
+  driverLicenceNumber: string;
+  dob: string;
+}): Partial<Record<'driverName' | 'driverLicenceNumber' | 'dob', string>> {
+  const errors: Partial<Record<'driverName' | 'driverLicenceNumber' | 'dob', string>> = {};
+  if (form.driverName.trim() && form.driverName.trim().length < 3) {
+    errors.driverName = Strings.registerNameValidation;
+  }
+  if (form.driverLicenceNumber.trim() && !LICENCE_RE.test(compact(form.driverLicenceNumber))) {
+    errors.driverLicenceNumber = Strings.registerLicenceValidation;
+  }
+  if (form.dob.trim()) {
+    const iso = dobToIso(form.dob);
+    if (!isRealDate(iso)) {
+      errors.dob = Strings.registerDobValidation;
+    } else if (ageOn(iso) < MIN_AGE_YEARS) {
+      errors.dob = Strings.registerDobAgeValidation;
+    }
+  }
   return errors;
 }
 
@@ -319,14 +363,14 @@ function validateForm(
  * typed, as opposed to the mobile number the flow puts there for them.
  */
 const isFormStarted = (f: RegistrationForm): boolean =>
-  [f.driverName, f.vehicleNumber, f.driverLicenceNumber, f.dob].some(
+  [f.driverName, f.vehicleNumber, f.vehicleCapacity, f.driverLicenceNumber, f.dob].some(
     (v) => v.trim() !== '',
   ) || Object.keys(f.documents).length > 0;
 
 /** Whether a field is complete enough to be worth a ULIP round trip. */
 const vehicleReady = (f: RegistrationForm) => VEHICLE_RE.test(compact(f.vehicleNumber));
 const licenceReady = (f: RegistrationForm) =>
-  LICENCE_RE.test(compact(f.driverLicenceNumber)) && isRealDate(f.dob);
+  LICENCE_RE.test(compact(f.driverLicenceNumber)) && isRealDate(dobToIso(f.dob));
 
 /**
  * The lookup currently in flight, if any. Held outside the store because a
@@ -336,6 +380,72 @@ const licenceReady = (f: RegistrationForm) =>
  */
 let vehicleInFlight: Promise<void> | null = null;
 let licenceInFlight: Promise<void> | null = null;
+
+// ── Draft ────────────────────────────────────────────────────
+// What the driver has typed and picked, kept on the phone per mobile number,
+// so leaving the app halfway (to find a paper, or by accident) does not cost
+// them the form. Saved on every change, put back after the OTP or when they
+// return from the waiting screen, and cleared once the form is submitted.
+
+const DRAFT_NAME = 'registration';
+
+interface RegistrationDraft {
+  mobileNo: string;
+  form: RegistrationForm;
+  /** Picked photos: the local picture and, once uploaded, nothing else needed. */
+  photos: Partial<Record<RegistrationPhotoKey, { uri: string; mimeType?: string; uploaded: boolean }>>;
+}
+
+function saveDraft(form: RegistrationForm, photos: Record<RegistrationPhotoKey, PhotoSlot>) {
+  if (!MOBILE_RE.test(form.mobileNo) || !isFormStarted(form)) return;
+  const kept: RegistrationDraft['photos'] = {};
+  for (const [key, slot] of Object.entries(photos) as [RegistrationPhotoKey, PhotoSlot][]) {
+    if (slot.uri) {
+      kept[key] = { uri: slot.uri, mimeType: slot.mimeType, uploaded: !!form.documents[key] };
+    }
+  }
+  Preference.saveDraft(DRAFT_NAME, { mobileNo: form.mobileNo, form, photos: kept });
+}
+
+/** The draft for this number, laid over `base`: typed values win, blanks do not. */
+function withDraft(
+  mobileNo: string,
+  base: RegistrationForm,
+  basePhotos: Record<RegistrationPhotoKey, PhotoSlot>,
+  /** Read beforehand by a caller about to change the form (which saves over it). */
+  saved: RegistrationDraft | undefined = Preference.getDraft<RegistrationDraft>(DRAFT_NAME),
+): { form: RegistrationForm; photos: Record<RegistrationPhotoKey, PhotoSlot> } | null {
+  const draft = saved;
+  if (!draft || draft.mobileNo !== mobileNo || !draft.form) return null;
+  const pick = (value: string | undefined, fallback: string) => (value?.trim() ? value : fallback);
+  const form: RegistrationForm = {
+    ...base,
+    mobileNo,
+    driverName: pick(draft.form.driverName, base.driverName),
+    vehicleNumber: pick(draft.form.vehicleNumber, base.vehicleNumber),
+    vehicleCapacity: pick(draft.form.vehicleCapacity, base.vehicleCapacity),
+    driverLicenceNumber: pick(draft.form.driverLicenceNumber, base.driverLicenceNumber),
+    dob: pick(draft.form.dob, base.dob),
+    documents: { ...base.documents },
+  };
+  const photos = { ...basePhotos };
+  for (const [key, photo] of Object.entries(draft.photos ?? {}) as [
+    RegistrationPhotoKey,
+    RegistrationDraft['photos'][RegistrationPhotoKey],
+  ][]) {
+    if (!photo?.uri) continue;
+    const fileKey = draft.form.documents?.[key];
+    if (photo.uploaded && fileKey) {
+      form.documents[key] = fileKey;
+      photos[key] = { uri: photo.uri, mimeType: photo.mimeType, status: 'done' };
+    } else {
+      // Picked but never uploaded: submit uploads it.
+      delete form.documents[key];
+      photos[key] = { uri: photo.uri, mimeType: photo.mimeType, status: 'idle' };
+    }
+  }
+  return { form, photos };
+}
 
 export const useRegistrationStore = create<RegistrationState>((set, get) => ({
   form: { ...EMPTY_FORM },
@@ -384,12 +494,10 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
 
   validate() {
     const errors = validateForm(get().form);
-    // All four photos are compulsory. Picked is enough here — submit uploads
-    // whichever have not gone up yet.
-    const photos = get().photos;
-    const photosMissing = REGISTRATION_DOCUMENT_KEYS.some((k) => !photos[k].uri);
-    set({ errors, photoError: photosMissing ? Strings.registerPhotosRequired : null });
-    return Object.keys(errors).length === 0 && !photosMissing;
+    // The photos are optional: any that were picked go up with the form, and
+    // the rest can follow from "Complete your details".
+    set({ errors, photoError: null });
+    return Object.keys(errors).length === 0;
   },
 
   async pickPhoto(key, source) {
@@ -429,6 +537,20 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
       submitError: null,
     });
     await get().uploadPhoto(key);
+  },
+
+  removePhoto(key) {
+    // Its uploaded key goes too, so submit does not send a photo that is no
+    // longer on screen. An upload still in flight finds the slot changed and
+    // drops its result (see uploadPhoto).
+    const documents = { ...get().form.documents };
+    delete documents[key];
+    set({
+      form: { ...get().form, documents },
+      photos: { ...get().photos, [key]: { status: 'idle' } },
+      photoError: null,
+      submitError: null,
+    });
   },
 
   async uploadPhoto(key) {
@@ -520,18 +642,22 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
   },
 
   prepareDetailsForm() {
-    const { pendingMobile, statusInfo, form } = get();
+    const { pendingMobile, statusInfo, form, photos } = get();
     if (!pendingMobile) return;
 
+    const base: RegistrationForm = {
+      ...form,
+      mobileNo: pendingMobile,
+      driverName: form.driverName || statusInfo?.driverName || '',
+      vehicleNumber: form.vehicleNumber || statusInfo?.vehicleNumber || '',
+      driverLicenceNumber:
+        form.driverLicenceNumber || statusInfo?.driverLicenceNumber || '',
+    };
+    // After a fresh launch the form in memory is empty; the draft is not.
+    const restored = withDraft(pendingMobile, base, photos);
     set({
-      form: {
-        ...form,
-        mobileNo: pendingMobile,
-        driverName: form.driverName || statusInfo?.driverName || '',
-        vehicleNumber: form.vehicleNumber || statusInfo?.vehicleNumber || '',
-        driverLicenceNumber:
-          form.driverLicenceNumber || statusInfo?.driverLicenceNumber || '',
-      },
+      form: restored?.form ?? base,
+      ...(restored ? { photos: restored.photos } : {}),
       errors: {},
       submitError: null,
     });
@@ -577,7 +703,7 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
       try {
         const info = await RegistrationRepository.lookupLicence(
           form.driverLicenceNumber,
-          form.dob,
+          dobToIso(form.dob),
         );
         const now = get().form;
         if (
@@ -615,9 +741,10 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
     // whether or not the panels above managed to fetch anything. The server
     // makes its own best-effort ULIP call when it files the record.
     //
-    // What does gate it is every photo being uploaded: any that failed or
-    // never started (picked offline) get one more go here.
+    // The photos are optional, but any the driver picked must actually go up:
+    // those that failed or never started (picked offline) get one more go.
     for (const key of REGISTRATION_DOCUMENT_KEYS) {
+      if (!get().photos[key].uri) continue;
       const uploaded = await get().uploadPhoto(key);
       if (uploaded === 'needs-otp') {
         set({ isSubmitting: false, submitError: Strings.registerVerifyExpired });
@@ -685,6 +812,7 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
         checkFailed: false,
         outcome: null,
       });
+      Preference.clearDraft(DRAFT_NAME);
       return 'submitted';
     } catch (e) {
       set({ isSubmitting: false });
@@ -719,7 +847,8 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
           });
           Preference.clearDetailsPending();
           set({ isLocalDraft: false });
-          return 'submitted';
+          Preference.clearDraft(DRAFT_NAME);
+      return 'submitted';
         }
 
         // The other record is theirs, and already approved: they have an
@@ -758,7 +887,8 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
         const filed = await RegistrationRepository.status(form.mobileNo).catch(() => null);
         if (filed?.status === 'Pending') {
           get().showPending(form.mobileNo, filed);
-          return 'submitted';
+          Preference.clearDraft(DRAFT_NAME);
+      return 'submitted';
         }
         if (filed?.status === 'Approved') {
           set({
@@ -788,7 +918,10 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
   async verifyOtp(mobileNo, otp) {
     set({ isCheckingStatus: true });
     try {
-      const info = await RegistrationRepository.verifyOtp(mobileNo, otp);
+      const { info, previous } = await RegistrationRepository.verifyOtp(mobileNo, otp);
+      // Read before anything below fills the form in: every form change saves
+      // a draft, and would replace this one before it could be put back.
+      const draft = Preference.getDraft<RegistrationDraft>(DRAFT_NAME);
 
       // A form already filled in for this same number is one the driver is
       // re-verifying, not starting: the 15-minute window lapsed while they
@@ -816,7 +949,14 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
             }),
       });
 
-      if (!info) return 'form';
+      if (!info) {
+        // A driver who left the app partway through comes back to it.
+        if (!keepForm) {
+          const restored = withDraft(mobileNo, get().form, get().photos, draft);
+          if (restored) set({ form: restored.form, photos: restored.photos });
+        }
+        return 'form';
+      }
 
       if (info.status === 'Approved') {
         get().clearPending();
@@ -830,6 +970,18 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
         // digit should not mean typing all of it again. Skipped when the
         // driver is re-verifying a form they are already partway through
         // correcting, which would otherwise undo those corrections.
+        // Everything the rejected registration carried comes back, photos
+        // included (already uploaded, so they need no second upload): the
+        // driver only corrects what the admin's reason points at.
+        const photos = EMPTY_PHOTOS();
+        const documents: RegistrationForm['documents'] = {};
+        for (const [key, photo] of Object.entries(previous?.photos ?? {}) as [
+          RegistrationPhotoKey,
+          { fileKey: string; url?: string },
+        ][]) {
+          documents[key] = photo.fileKey;
+          photos[key] = { uri: photo.url, status: 'done' };
+        }
         set({
           ...(keepForm
             ? {}
@@ -837,10 +989,15 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
                 form: {
                   ...EMPTY_FORM,
                   mobileNo,
-                  driverName: info.driverName ?? '',
-                  vehicleNumber: info.vehicleNumber ?? '',
-                  driverLicenceNumber: info.driverLicenceNumber ?? '',
+                  driverName: previous?.driverName || info.driverName || '',
+                  vehicleNumber: previous?.vehicleNumber || info.vehicleNumber || '',
+                  vehicleCapacity: previous?.vehicleCapacity ?? '',
+                  driverLicenceNumber:
+                    previous?.driverLicenceNumber || info.driverLicenceNumber || '',
+                  dob: dobFromIso(previous?.dob),
+                  documents,
                 },
+                photos,
               }),
           // Deliberately no popup. This one path ends on the form rather than
           // at a dead end, and the rejection popup's only button goes back to
@@ -853,6 +1010,12 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
           isDetailsPending: false,
           isLocalDraft: false,
         });
+        // Anything typed since (and not yet submitted) goes over the rejected
+        // details, since it is the newer of the two.
+        if (!keepForm) {
+          const restored = withDraft(mobileNo, get().form, get().photos, draft);
+          if (restored) set({ form: restored.form, photos: restored.photos });
+        }
         return 'rejected';
       }
 
@@ -1013,6 +1176,7 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
             kind: 'rejected',
             message: Strings.registerRejectedMessage,
             reason: info.rejectionReason,
+            mobile: mobileNo,
           },
         });
       }
@@ -1049,6 +1213,7 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
               kind: 'rejected',
               message: Strings.registerRejectedMessage,
               reason: reason?.trim() || undefined,
+              mobile: get().pendingMobile ?? undefined,
             },
     });
   },
@@ -1070,18 +1235,6 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
     }),
 }));
 
-/**
- * Masks typed digits into "YYYY-MM-DD" as the driver types. A date picker
- * would mean a new native module and therefore a full rebuild; the licence
- * DOB is a number people know by heart, so typing it is no hardship.
- */
-export function formatDobInput(raw: string): string {
-  const digits = toAsciiDigits(raw).replace(/\D/g, '').slice(0, 8);
-  if (digits.length <= 4) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
-}
-
 /** Uppercases and strips punctuation as the driver types a vehicle number. */
 export function formatVehicleInput(raw: string): string {
   return raw.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 11);
@@ -1091,3 +1244,10 @@ export function formatVehicleInput(raw: string): string {
 export function formatLicenceInput(raw: string): string {
   return raw.replace(/[^A-Za-z0-9 ]/g, '').toUpperCase().slice(0, 20);
 }
+
+// Kept on the phone as it changes; see Draft above.
+useRegistrationStore.subscribe((state, prev) => {
+  if (state.form !== prev.form || state.photos !== prev.photos) {
+    saveDraft(state.form, state.photos);
+  }
+});

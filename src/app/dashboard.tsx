@@ -31,6 +31,7 @@ import {
   DeliverAllCell,
 } from '@/features/dashboard/dashboard-parts';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
+import { DetailsReminder } from '@/features/dashboard/details-reminder';
 import { PendingOffersStrip } from '@/features/job/pending-offers-strip';
 import { useNotificationStore } from '@/features/notification/notification-store';
 import type { TripItem } from '@/types/trip';
@@ -190,6 +191,10 @@ export default function DashboardScreen() {
         <View style={styles.topWrap}>
           <DashboardTopView completedTripCount={completedTripCount} />
         </View>
+
+        {/* Tiles Drop: the registration details still owed, and once past the
+            admin's trip limit, that no new trips come until they are in. */}
+        <DetailsReminder hasTrips={!isEmpty} />
 
         {/* Offers the driver pushed aside. Renders nothing when there are
             none, so the dashboard is unchanged for everyone else. */}

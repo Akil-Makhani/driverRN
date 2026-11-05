@@ -109,6 +109,7 @@ export default function RootLayout() {
             <Stack.Screen name="dashboard" />
             <Stack.Screen name="history" />
             <Stack.Screen name="profile" />
+            <Stack.Screen name="complete-details" />
             <Stack.Screen name="notifications" />
             <Stack.Screen name="trip/[id]" />
             <Stack.Screen name="trip/lr/[id]" />

@@ -138,6 +138,27 @@ export const Preference = {
     return storage.getBoolean(TEST_LOCATION_ACCESS_KEY) === true;
   },
 
+  /**
+   * A half-filled form, kept so a driver who leaves the app comes back to
+   * what they typed (registration, "Complete your details"). JSON under
+   * `draft.<name>`; cleared once the form is sent.
+   */
+  saveDraft(name: string, value: unknown): void {
+    storage.set(`draft.${name}`, JSON.stringify(value));
+  },
+  getDraft<T>(name: string): T | undefined {
+    const raw = storage.getString(`draft.${name}`);
+    if (!raw) return undefined;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return undefined;
+    }
+  },
+  clearDraft(name: string): void {
+    storage.remove(`draft.${name}`);
+  },
+
   /** Logout / delete-account. Mirrors clearAuthData(). */
   clearAuthData(): void {
     storage.remove(ACCESS_TOKEN_KEY);

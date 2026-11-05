@@ -11,15 +11,18 @@ import messaging from '@react-native-firebase/messaging';
 import { ApiService } from '../api/api-service';
 import { ApiUrls } from '../api/endpoints';
 import { Preference } from '../storage/preference';
+import { dobToIso } from '../utils/dob';
 import type { CommonResponse } from '@/types/api';
 import {
   type DriverLicenceInfo,
+  type PreviousRegistration,
   type RegistrationDetails,
   type RegistrationPhotoKey,
   type RegistrationForm,
   type RegistrationStatusInfo,
   type VehicleInfo,
   parseDriverLicenceInfo,
+  parsePreviousRegistration,
   parseRegistrationStatus,
   parseVehicleInfo,
 } from '@/types/registration';
@@ -54,11 +57,16 @@ async function deviceBody(): Promise<Record<string, unknown>> {
 function detailsBody(details: RegistrationDetails): Record<string, unknown> {
   // The driver's own photo travels beside the four documents, not among them.
   const { profilePhoto, ...documents } = details.documents;
+  // Optional fields go up only when filled in, so a blank is never stored as
+  // if it were a value.
+  const optional = (value: string) => (value.trim() ? value.trim() : undefined);
   return {
-    driverName: details.driverName.trim(),
     vehicleNumber: details.vehicleNumber.trim().toUpperCase(),
-    driverLicenceNumber: details.driverLicenceNumber.trim(),
-    dob: details.dob.trim(),
+    vehicleCapacity: Number(details.vehicleCapacity),
+    driverName: optional(details.driverName),
+    driverLicenceNumber: optional(details.driverLicenceNumber),
+    // Typed as DD-MM-YYYY; the server takes YYYY-MM-DD.
+    dob: optional(dobToIso(details.dob)),
     documents,
     ...(profilePhoto ? { profilePhoto } : {}),
   };
@@ -82,13 +90,17 @@ export const RegistrationRepository = {
   async verifyOtp(
     mobileNo: string,
     otp: string,
-  ): Promise<RegistrationStatusInfo | null> {
+  ): Promise<{ info: RegistrationStatusInfo | null; previous: PreviousRegistration | null }> {
     const raw = await ApiService.post(ApiUrls.registerVerifyOtp, {
       mobileNumber: mobileNo,
       otp,
     });
-    // The envelope nests it one deeper than the status endpoint does.
-    return parseRegistrationStatus({ data: raw?.data?.registration });
+    return {
+      // The envelope nests it one deeper than the status endpoint does.
+      info: parseRegistrationStatus({ data: raw?.data?.registration }),
+      // A rejected registration's details, to fill the form in again.
+      previous: parsePreviousRegistration(raw?.data?.previous),
+    };
   },
 
   /**

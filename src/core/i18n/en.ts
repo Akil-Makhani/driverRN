@@ -279,8 +279,7 @@ export const en = {
   registerSendOtp: 'SEND OTP',
   registerHaveAccount: 'Already registered? Go back and log in.',
   registerTitle: 'Driver Registration',
-  registerSubtitle:
-    'Fill in your details below. An admin will review them and approve your account.',
+  registerSubtitle: 'Only your vehicle number and tempo capacity are needed now. Everything else you can add later from the app.',
   registerDriverName: 'Driver Name',
   registerDriverNameHint: 'As printed on your licence',
   registerMobile: 'Mobile Number',
@@ -293,7 +292,7 @@ export const en = {
   registerLicenceNumber: 'Driver Licence Number',
   registerLicenceHint: 'XXXX XXXXXXXXXXX',
   registerDob: 'Date of Birth',
-  registerDobHint: 'YYYY-MM-DD',
+  registerDobHint: 'DD-MM-YYYY',
   // Sits above the form when it opens carrying a rejected registration's
   // details. Said here rather than in a popup: the reason is worth reading
   // while the fields it is about are on screen and being corrected.
@@ -304,8 +303,7 @@ export const en = {
   // Their place in the queue is already taken by the OTP step, so this is a
   // "later", not a "never" — the waiting screen keeps asking for the rest.
   registerSkip: 'SKIP FOR NOW',
-  registerSkipNote:
-    'No papers on you? Skip this and fill it in later — but an admin can only approve you once these details are in.',
+  registerSkipNote: 'Not ready yet? Skip this and come back later. An admin can approve you once your vehicle number and tempo capacity are in.',
   registerBackToLogin: 'Back to login',
   // The mobile verification is good for 15 minutes, which a driver waiting on
   // the two ULIP lookups can outlast. Said as a step, not a failure, because
@@ -318,7 +316,7 @@ export const en = {
   registerNameValidation: 'Please enter your full name',
   registerVehicleValidation: 'Enter a valid vehicle number, e.g. UP32KH0320',
   registerLicenceValidation: 'Enter a valid licence number, e.g. GJ18 20220001846',
-  registerDobValidation: 'Enter your date of birth as YYYY-MM-DD',
+  registerDobValidation: 'Enter your date of birth as DD-MM-YYYY, e.g. 12-05-1990',
   registerDobAgeValidation: 'A driver must be at least 18 years old',
   somethingWentWrong: 'Something went Wrong',
 
@@ -328,10 +326,10 @@ export const en = {
   registerVerifying: 'Fetching details...',
   // A failed lookup no longer blocks the submit — the four document photos
   // stand in for it — so this reassures rather than stops the driver.
-  registerVerifyFailed: 'Could not fetch details right now. You can still submit — the 4 photos below are enough.',
+  registerVerifyFailed: 'Could not fetch details right now. You can still submit.',
   registerRetryLookup: 'TRY AGAIN',
   registerPhotosTitle: 'Document Photos',
-  registerPhotosNote: 'All 4 photos are required. Make sure the text is clear and readable.',
+  registerPhotosNote: 'Optional for now: you can add these later from the app. Make sure the text is clear and readable.',
   registerPhotoDlFront: 'Licence — Front',
   registerPhotoDlBack: 'Licence — Back',
   registerPhotoRcFront: 'RC Book — Front',
@@ -340,6 +338,7 @@ export const en = {
   registerPhotoUploading: 'Uploading...',
   registerPhotoRetry: 'Upload failed — tap to retry',
   registerPhotoChange: 'Change',
+  registerPhotoRemove: 'Remove',
   registerPhotoSourceTitle: 'Add photo',
   registerPhotoCamera: 'Take photo',
   registerPhotoGallery: 'Choose from gallery',
@@ -356,6 +355,32 @@ export const en = {
   registerLicenceValidUpto: 'Valid upto',
   registerLicenceClasses: 'Vehicle classes',
   registerRto: 'RTO',
+  registerCapacity: 'Tempo Capacity (KG)',
+  registerCapacityHint: 'e.g. 1500',
+  registerCapacityNote: 'How much weight your tempo can carry, in KG.',
+  registerCapacityValidation: 'Enter your tempo capacity in KG (100 to 20000)',
+  registerOptional: '(optional)',
+  registerOptionalTitle: 'Other details (optional)',
+  registerOptionalNote: 'You can skip these now and add them later from the app. They become compulsory after a few trips.',
+  photoSourceSubtitle: 'How do you want to add this photo?',
+  photoSourceCameraNote: 'Open the camera and click a photo',
+  photoSourceGalleryNote: 'Pick a photo already on your phone',
+  detailsTitle: 'Complete your details',
+  detailsSubtitle: 'Add your name, licence details and document photos. You need these to keep getting trips.',
+  detailsSave: 'SAVE DETAILS',
+  detailsSaved: 'Your details have been saved.',
+  detailsAllDone: 'All your details are complete. Thank you!',
+  detailsMissingCount: '{count} details still missing',
+  detailsLoadFailed: 'Could not load your details. Pull down to try again.',
+  detailsNothingToSave: 'Fill in at least one detail or add a photo to save.',
+  detailsBannerTitle: 'Complete your details',
+  detailsBannerTripsLeft: 'Add your licence and document photos. {count} trips left before this is required.',
+  detailsBannerNoLimit: 'Add your licence and document photos to complete your profile.',
+  detailsBannerAction: 'COMPLETE NOW',
+  detailsBlockedTitle: 'Details required',
+  detailsBlockedBody: 'You have completed {count} trips. To keep getting new trips, please add your name, licence details and document photos.',
+  detailsBlockedAction: 'FILL DETAILS NOW',
+  detailsMenu: 'My Details',
 
   // The outcome popups.
   registerRequiredTitle: 'Registration pending',
@@ -365,7 +390,8 @@ export const en = {
   registerApprovedTitle: 'Registration approved',
   registerApprovedMessage: 'Your registration has been approved. You can now log in with your mobile number.',
   registerRejectedTitle: 'Registration rejected',
-  registerRejectedMessage: 'Your registration was not approved by the admin.',
+  registerRejectedMessage: 'Your registration was not approved by the admin. Please register again and correct what was wrong. Your earlier details will already be filled in.',
+  registerAgain: 'REGISTER AGAIN',
   registerRejectedReasonLabel: 'Reason',
   // The form was refused because the vehicle or licence is on someone else's
   // record. Titled as an error, not as an approval — the message under it is

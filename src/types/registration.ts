@@ -71,7 +71,8 @@ export function isRegistrationComplete(
 ): boolean {
   if (!info) return false;
   if (typeof info.isComplete === 'boolean') return info.isComplete;
-  return Boolean(info.vehicleNumber && info.driverLicenceNumber);
+  // A vehicle is all registration needs now; the rest can follow later.
+  return Boolean(info.vehicleNumber);
 }
 
 export function parseVehicleInfo(json: any): VehicleInfo | null {
@@ -139,7 +140,7 @@ export function parseRegistrationStatus(json: any): RegistrationStatusInfo | nul
 export type RegistrationDetails = Omit<RegistrationForm, 'mobileNo'>;
 
 /**
- * The four document photos a registration must carry. The names match the
+ * The four document photos a driver can add. The names match the
  * `documents` object on the backend's appdriver record.
  */
 export const REGISTRATION_DOCUMENT_KEYS = ['dlFront', 'dlBack', 'rcFront', 'rcBack'] as const;
@@ -152,19 +153,56 @@ export type RegistrationPhotoKey = RegistrationDocumentKey | 'profilePhoto';
 /** S3 keys of the uploaded photos, as the server hands them back. */
 export type RegistrationDocuments = Partial<Record<RegistrationPhotoKey, string>>;
 
-/** Fields the registration form collects. */
+/**
+ * Fields the registration form collects. Only the vehicle number and the tempo
+ * capacity are required (the mobile number is proved by OTP); the rest may be
+ * filled in later from the app's "Complete your details" screen, before the
+ * admin's trip limit makes them compulsory.
+ */
 export interface RegistrationForm {
   driverName: string;
   mobileNo: string;
   vehicleNumber: string;
+  /** What the tempo can carry, in KG, as typed (digits only). */
+  vehicleCapacity: string;
   driverLicenceNumber: string;
-  /** Always 'YYYY-MM-DD' — the format ULIP's sarthi-driver requires. */
+  /** As typed, DD-MM-YYYY; sent to the server as YYYY-MM-DD (core/utils/dob). */
   dob: string;
-  /**
-   * The four documents are required, profilePhoto is not; filled in by the
-   * store as each upload lands.
-   */
+  /** All optional; filled in by the store as each upload lands. */
   documents: RegistrationDocuments;
 }
 
 export type RegistrationStatusResponse = Envelope<RegistrationStatusInfo>;
+
+/**
+ * What a rejected registration carried, handed back by verify-otp (and only
+ * there, after the OTP) so registering again starts from a filled-in form.
+ */
+export interface PreviousRegistration {
+  driverName: string;
+  vehicleNumber: string;
+  /** KG, as a string for the form; '' when the old record had none. */
+  vehicleCapacity: string;
+  driverLicenceNumber: string;
+  dob: string;
+  /** Photos already uploaded: their S3 key and a link to show them. */
+  photos: Partial<Record<RegistrationPhotoKey, { fileKey: string; url?: string }>>;
+}
+
+export function parsePreviousRegistration(json: any): PreviousRegistration | null {
+  if (!json || typeof json !== 'object') return null;
+  const photos: PreviousRegistration['photos'] = {};
+  const keys: RegistrationPhotoKey[] = [...REGISTRATION_DOCUMENT_KEYS, 'profilePhoto'];
+  for (const key of keys) {
+    const photo = json.photos?.[key];
+    if (photo?.fileKey) photos[key] = { fileKey: String(photo.fileKey), url: str(photo.url) };
+  }
+  return {
+    driverName: str(json.driverName) ?? '',
+    vehicleNumber: str(json.vehicleNumber) ?? '',
+    vehicleCapacity: json.vehicleCapacity != null ? String(json.vehicleCapacity) : '',
+    driverLicenceNumber: str(json.driverLicenceNumber) ?? '',
+    dob: str(json.dob) ?? '',
+    photos,
+  };
+}

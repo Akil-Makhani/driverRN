@@ -1,5 +1,6 @@
 /** Port of lib/screens/login_otp/model/user.dart. */
 import { Envelope, num, str } from './api';
+import { type DriverDetailsStatus, parseDriverDetailsStatus } from './driver-details';
 
 export interface AppUser {
   id: string;
@@ -26,6 +27,12 @@ export interface AppUser {
   driverLicenceNumber?: string;
   /** 'YYYY-MM-DD', as registered. */
   dob?: string;
+  /**
+   * Tiles Drop: which registration details are still missing and how many
+   * trips are left before they are compulsory. Absent for own drivers and on
+   * an API that predates it.
+   */
+  detailsStatus?: DriverDetailsStatus;
 }
 
 export function parseAppUser(json: any): AppUser {
@@ -54,6 +61,7 @@ export function parseAppUser(json: any): AppUser {
     // Market drivers carry driverLicenceNumber; own drivers, licenceNumber.
     driverLicenceNumber: str(json?.driverLicenceNumber ?? json?.licenceNumber),
     dob: str(json?.dob),
+    detailsStatus: parseDriverDetailsStatus(json?.detailsStatus) ?? undefined,
   };
 }
 

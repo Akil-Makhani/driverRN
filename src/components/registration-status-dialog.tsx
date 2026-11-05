@@ -24,6 +24,8 @@ interface Props {
   onGoToLogin?: () => void;
   /** "Register now" — only offered when there is no registration to speak of. */
   onRegister?: () => void;
+  /** A rejected driver registering again, on a form filled with what they sent. */
+  onRegisterAgain?: () => void;
 }
 
 /** Icon, tint and wash for each outcome. Tints come from AppColors as-is. */
@@ -68,6 +70,7 @@ export function RegistrationStatusDialog({
   onDismiss,
   onGoToLogin,
   onRegister,
+  onRegisterAgain,
 }: Props) {
   // Rendering nothing when there is no outcome keeps the Modal unmounted
   // between showings, so it animates in each time rather than only the first.
@@ -84,8 +87,10 @@ export function RegistrationStatusDialog({
   const showLogin = outcome.kind === 'hasAccount' && onGoToLogin != null;
   // The whole point of the "not registered yet" popup: the way out of it.
   const showRegister = outcome.kind === 'required' && onRegister != null;
+  // A rejection is not the end: the driver registers again and corrects it.
+  const showRegisterAgain = outcome.kind === 'rejected' && onRegisterAgain != null;
   /** No button above it, so the dismiss button carries the popup on its own. */
-  const soleAction = !showLogin && !showRegister;
+  const soleAction = !showLogin && !showRegister && !showRegisterAgain;
   // A rejection's only button is the way out of it, so it is named after where
   // it goes rather than left as a bare "OK".
   const dismissLabel =
@@ -115,6 +120,12 @@ export function RegistrationStatusDialog({
           {showLogin ? (
             <Pressable style={styles.primaryButton} onPress={onGoToLogin} hitSlop={4}>
               <Text style={styles.primaryText}>{Strings.registerGoToLogin}</Text>
+            </Pressable>
+          ) : null}
+
+          {showRegisterAgain ? (
+            <Pressable style={styles.primaryButton} onPress={onRegisterAgain} hitSlop={4}>
+              <Text style={styles.primaryText}>{Strings.registerAgain}</Text>
             </Pressable>
           ) : null}
 

@@ -45,6 +45,7 @@ type Destination =
   | '/cancelled'
   | '/wallet'
   | '/profile'
+  | '/complete-details'
   | '/test-location';
 
 export function Sidebar({ visible, onClose }: Props) {
@@ -166,6 +167,16 @@ export function Sidebar({ visible, onClose }: Props) {
             selected={pathname === '/profile'}
             onPress={() => go('/profile')}
           />
+          {/* Tiles Drop drivers: the registration details (licence, photos)
+              they can add or change at any time. */}
+          {user?.detailsStatus && (
+            <SidebarCell
+              icon="id-card-outline"
+              title={Strings.detailsMenu}
+              selected={pathname === '/complete-details'}
+              onPress={() => go('/complete-details')}
+            />
+          )}
           {/* Only for drivers the admin gave access (Tempo > Driver Access):
               lets a tester outside Morbi receive tempo offers as if they were
               near the pickup. */}
