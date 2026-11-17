@@ -47,6 +47,9 @@ export interface DriverDetails {
   driverName: string;
   vehicleNumber: string;
   vehicleCapacity: number | null;
+  /** The load range, in KG, that rings this driver; null on older records. */
+  minCapacity: number | null;
+  maxCapacity: number | null;
   driverLicenceNumber: string;
   dob: string;
   documents: Partial<Record<RegistrationDocumentKey, DriverDocumentPhoto>>;
@@ -65,6 +68,8 @@ export function parseDriverDetails(json: any): DriverDetails | null {
     driverName: str(d.driverName) ?? '',
     vehicleNumber: str(d.vehicleNumber) ?? '',
     vehicleCapacity: d.vehicleCapacity == null ? null : num(d.vehicleCapacity) ?? null,
+    minCapacity: d.minCapacity == null ? null : num(d.minCapacity) ?? null,
+    maxCapacity: d.maxCapacity == null ? null : num(d.maxCapacity) ?? null,
     driverLicenceNumber: str(d.driverLicenceNumber) ?? '',
     dob: str(d.dob) ?? '',
     documents,

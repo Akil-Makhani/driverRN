@@ -246,7 +246,8 @@ const EMPTY_FORM: RegistrationForm = {
   driverName: '',
   mobileNo: '',
   vehicleNumber: '',
-  vehicleCapacity: '',
+  minCapacity: '',
+  maxCapacity: '',
   driverLicenceNumber: '',
   dob: '',
   documents: {},
@@ -276,8 +277,8 @@ const MOBILE_RE = /^[0-9]{10}$/;
 
 const MIN_AGE_YEARS = 18;
 
-/** What a tempo can carry, in KG — the same bounds the server checks. */
-export const MIN_CAPACITY_KG = 100;
+/** Bounds for the minimum and maximum load, in KG — the same the server checks. */
+export const MIN_CAPACITY_KG = 0;
 export const MAX_CAPACITY_KG = 20000;
 
 /** Digits only, as typed into the capacity box. */
@@ -310,7 +311,7 @@ function validateForm(
 ): Partial<Record<FieldKey, string>> {
   const errors: Partial<Record<FieldKey, string>> = {};
 
-  // Required: the driver's name, the vehicle number and its capacity (the
+  // Required: the driver's name, the vehicle number and its min-max capacity (the
   // mobile is proved).
   if (form.driverName.trim().length < 3) {
     errors.driverName = Strings.registerNameValidation;
@@ -321,9 +322,15 @@ function validateForm(
   if (!VEHICLE_RE.test(compact(form.vehicleNumber))) {
     errors.vehicleNumber = Strings.registerVehicleValidation;
   }
-  const capacity = Number(form.vehicleCapacity);
-  if (!form.vehicleCapacity || capacity < MIN_CAPACITY_KG || capacity > MAX_CAPACITY_KG) {
-    errors.vehicleCapacity = Strings.registerCapacityValidation;
+  const min = Number(form.minCapacity);
+  const max = Number(form.maxCapacity);
+  if (!form.minCapacity || min < MIN_CAPACITY_KG || min > MAX_CAPACITY_KG) {
+    errors.minCapacity = Strings.registerMinCapacityValidation;
+  }
+  if (!form.maxCapacity || max < 1 || max > MAX_CAPACITY_KG) {
+    errors.maxCapacity = Strings.registerMaxCapacityValidation;
+  } else if (!errors.minCapacity && max <= min) {
+    errors.maxCapacity = Strings.registerMaxAboveMinValidation;
   }
 
   // Optional: checked only when filled in, so a typo is caught here rather
@@ -363,7 +370,7 @@ export function validateOptionalDetails(form: {
  * typed, as opposed to the mobile number the flow puts there for them.
  */
 const isFormStarted = (f: RegistrationForm): boolean =>
-  [f.driverName, f.vehicleNumber, f.vehicleCapacity, f.driverLicenceNumber, f.dob].some(
+  [f.driverName, f.vehicleNumber, f.minCapacity, f.maxCapacity, f.driverLicenceNumber, f.dob].some(
     (v) => v.trim() !== '',
   ) || Object.keys(f.documents).length > 0;
 
@@ -423,7 +430,8 @@ function withDraft(
     mobileNo,
     driverName: pick(draft.form.driverName, base.driverName),
     vehicleNumber: pick(draft.form.vehicleNumber, base.vehicleNumber),
-    vehicleCapacity: pick(draft.form.vehicleCapacity, base.vehicleCapacity),
+    minCapacity: pick(draft.form.minCapacity, base.minCapacity),
+    maxCapacity: pick(draft.form.maxCapacity, base.maxCapacity),
     driverLicenceNumber: pick(draft.form.driverLicenceNumber, base.driverLicenceNumber),
     dob: pick(draft.form.dob, base.dob),
     documents: { ...base.documents },
@@ -991,7 +999,8 @@ export const useRegistrationStore = create<RegistrationState>((set, get) => ({
                   mobileNo,
                   driverName: previous?.driverName || info.driverName || '',
                   vehicleNumber: previous?.vehicleNumber || info.vehicleNumber || '',
-                  vehicleCapacity: previous?.vehicleCapacity ?? '',
+                  minCapacity: previous?.minCapacity ?? '',
+                  maxCapacity: previous?.maxCapacity ?? '',
                   driverLicenceNumber:
                     previous?.driverLicenceNumber || info.driverLicenceNumber || '',
                   dob: dobFromIso(previous?.dob),

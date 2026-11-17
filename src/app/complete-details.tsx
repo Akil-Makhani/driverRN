@@ -323,7 +323,11 @@ export default function CompleteDetailsScreen() {
               <View style={styles.vehicleItem}>
                 <Text style={styles.vehicleLabel}>{Strings.registerCapacity}</Text>
                 <Text style={styles.vehicleValue}>
-                  {details?.vehicleCapacity ? localDigits(`${details.vehicleCapacity} KG`) : '—'}
+                  {details?.minCapacity != null && details?.maxCapacity != null
+                    ? localDigits(`${details.minCapacity} – ${details.maxCapacity} KG`)
+                    : details?.vehicleCapacity
+                      ? localDigits(`${details.vehicleCapacity} KG`)
+                      : '—'}
                 </Text>
               </View>
             </View>

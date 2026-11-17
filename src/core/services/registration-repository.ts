@@ -62,7 +62,11 @@ function detailsBody(details: RegistrationDetails): Record<string, unknown> {
   const optional = (value: string) => (value.trim() ? value.trim() : undefined);
   return {
     vehicleNumber: details.vehicleNumber.trim().toUpperCase(),
-    vehicleCapacity: Number(details.vehicleCapacity),
+    minCapacity: Number(details.minCapacity),
+    maxCapacity: Number(details.maxCapacity),
+    // For a server from before the min-max range, which reads one capacity:
+    // what the tempo carries. A newer server uses the range and ignores it.
+    vehicleCapacity: Number(details.maxCapacity),
     driverName: optional(details.driverName),
     driverLicenceNumber: optional(details.driverLicenceNumber),
     // Typed as DD-MM-YYYY; the server takes YYYY-MM-DD.

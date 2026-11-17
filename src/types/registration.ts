@@ -155,7 +155,7 @@ export type RegistrationDocuments = Partial<Record<RegistrationPhotoKey, string>
 
 /**
  * Fields the registration form collects. Only the vehicle number and the tempo
- * capacity are required (the mobile number is proved by OTP); the rest may be
+ * minimum and maximum capacity are required (the mobile number is proved by OTP); the rest may be
  * filled in later from the app's "Complete your details" screen, before the
  * admin's trip limit makes them compulsory.
  */
@@ -163,8 +163,13 @@ export interface RegistrationForm {
   driverName: string;
   mobileNo: string;
   vehicleNumber: string;
-  /** What the tempo can carry, in KG, as typed (digits only). */
-  vehicleCapacity: string;
+  /**
+   * The load range the driver takes trips for, in KG, as typed (digits
+   * only). Both required: a tempo order lighter than the minimum or heavier
+   * than the maximum never rings this driver.
+   */
+  minCapacity: string;
+  maxCapacity: string;
   driverLicenceNumber: string;
   /** As typed, DD-MM-YYYY; sent to the server as YYYY-MM-DD (core/utils/dob). */
   dob: string;
@@ -181,8 +186,9 @@ export type RegistrationStatusResponse = Envelope<RegistrationStatusInfo>;
 export interface PreviousRegistration {
   driverName: string;
   vehicleNumber: string;
-  /** KG, as a string for the form; '' when the old record had none. */
-  vehicleCapacity: string;
+  /** KG, as strings for the form; '' when the old record had none. */
+  minCapacity: string;
+  maxCapacity: string;
   driverLicenceNumber: string;
   dob: string;
   /** Photos already uploaded: their S3 key and a link to show them. */
@@ -200,7 +206,15 @@ export function parsePreviousRegistration(json: any): PreviousRegistration | nul
   return {
     driverName: str(json.driverName) ?? '',
     vehicleNumber: str(json.vehicleNumber) ?? '',
-    vehicleCapacity: json.vehicleCapacity != null ? String(json.vehicleCapacity) : '',
+    minCapacity: json.minCapacity != null ? String(json.minCapacity) : '',
+    // Records from before the range was asked for had one capacity: what the
+    // tempo carries, so it stands in for the maximum.
+    maxCapacity:
+      json.maxCapacity != null
+        ? String(json.maxCapacity)
+        : json.vehicleCapacity != null
+          ? String(json.vehicleCapacity)
+          : '',
     driverLicenceNumber: str(json.driverLicenceNumber) ?? '',
     dob: str(json.dob) ?? '',
     photos,

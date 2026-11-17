@@ -232,15 +232,27 @@ export default function RegisterScreen() {
           />
 
           <Field
-            label={`${Strings.registerCapacity} *`}
-            placeholder={localDigits(Strings.registerCapacityHint)}
-            value={localDigits(form.vehicleCapacity)}
-            onChangeText={(t) => set('vehicleCapacity')(formatCapacityInput(t))}
-            error={errors.vehicleCapacity}
+            label={`${Strings.registerMinCapacity} *`}
+            placeholder={localDigits(Strings.registerMinCapacityHint)}
+            value={localDigits(form.minCapacity)}
+            onChangeText={(t) => set('minCapacity')(formatCapacityInput(t))}
+            error={errors.minCapacity}
             keyboardType="number-pad"
             maxLength={5}
             suffix="KG"
-            hint={Strings.registerCapacityNote}
+            hint={Strings.registerMinCapacityNote}
+          />
+
+          <Field
+            label={`${Strings.registerMaxCapacity} *`}
+            placeholder={localDigits(Strings.registerMaxCapacityHint)}
+            value={localDigits(form.maxCapacity)}
+            onChangeText={(t) => set('maxCapacity')(formatCapacityInput(t))}
+            error={errors.maxCapacity}
+            keyboardType="number-pad"
+            maxLength={5}
+            suffix="KG"
+            hint={Strings.registerMaxCapacityNote}
           />
 
           <LookupPanel
