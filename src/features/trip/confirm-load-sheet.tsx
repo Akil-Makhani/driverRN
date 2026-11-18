@@ -30,8 +30,17 @@ import { Typography } from '@/core/constants/typography';
 import { useDashboardStore } from '@/features/dashboard/dashboard-store';
 import { type DispatchedProduct, offeredIn, type Product, type RequestedProduct } from '@/types/trip';
 import { LoadChangeNotice } from './load-change-notice';
+import { PhotoViewer } from './photo-viewer';
 import { ProductPicker } from './product-picker';
 import { isAddedItem, useTripDetailStore } from './trip-detail-store';
+import {
+  checkPhotos,
+  closePhotoPicker,
+  PhotoCheckNotice,
+  type PhotoSlot,
+  TripPhotoPicker,
+  TripPhotoSlots,
+} from './trip-photo-slots';
 
 interface Props {
   visible: boolean;
@@ -40,6 +49,9 @@ interface Props {
   orderKind?: string;
   /** The trip pays a fare, so a weight change moves the driver's earning. */
   hasFare: boolean;
+  tripId: string;
+  /** Photos CONFIRM waits for (tempo); none for a truck trip. */
+  photoSlots?: PhotoSlot[];
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -103,6 +115,8 @@ export function ConfirmLoadSheet({
   products,
   orderKind,
   hasFare,
+  tripId,
+  photoSlots,
   onCancel,
   onConfirm,
 }: Props) {
@@ -140,7 +154,9 @@ export function ConfirmLoadSheet({
       transparent
       animationType="slide"
       statusBarTranslucent
-      onRequestClose={onCancel}
+      onRequestClose={() => {
+        if (!closePhotoPicker()) onCancel();
+      }}
     >
       <View style={styles.scrim}>
         {/* A tap outside the sheet closes it, as the delivery sheet does. The
@@ -213,6 +229,8 @@ export function ConfirmLoadSheet({
               <Text style={styles.addText}>{Strings.addItem}</Text>
             </Pressable>
 
+            {photoSlots?.length ? <TripPhotoSlots slots={photoSlots} /> : null}
+
             {/* Hidden from the driver for now — uncomment, along with the two
                 selectors at the top, to bring the charges back.
             <View style={styles.chargesRow}>
@@ -269,6 +287,15 @@ export function ConfirmLoadSheet({
                   Alert.alert(Strings.confirmLoad, Strings.duplicateLoadItem);
                   return;
                 }
+                // The office will not dispatch a tempo load without the
+                // loading photo, weight slip and company invoice.
+                if (
+                  photoSlots?.length &&
+                  !checkPhotos(photoSlots, Strings.confirmLoad, Strings.loadPhotosRequired)
+                ) {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                  return;
+                }
                 onConfirm();
               }}
               style={styles.confirmButton}
@@ -277,6 +304,10 @@ export function ConfirmLoadSheet({
             </Pressable>
           </View>
         </View>
+
+        {photoSlots?.length ? <PhotoCheckNotice /> : null}
+        {photoSlots?.length ? <TripPhotoPicker tripId={tripId} /> : null}
+        {photoSlots?.length ? <PhotoViewer /> : null}
       </View>
     </Modal>
   );

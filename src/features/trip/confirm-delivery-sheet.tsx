@@ -14,6 +14,15 @@ import { Strings } from '@/core/constants/strings';
 import type { DispatchedProduct } from '@/types/trip';
 import { loadSheetStyles as styles, NumberField, RowLine } from './confirm-load-sheet';
 import { LoadChangeNotice } from './load-change-notice';
+import { PhotoViewer } from './photo-viewer';
+import {
+  checkPhotos,
+  closePhotoPicker,
+  PhotoCheckNotice,
+  type PhotoSlot,
+  TripPhotoPicker,
+  TripPhotoSlots,
+} from './trip-photo-slots';
 
 export interface DeliveredLine {
   qty: number;
@@ -26,11 +35,22 @@ interface Props {
   loaded: DispatchedProduct[];
   /** The trip pays a fare, so a weight change moves the driver's earning. */
   hasFare: boolean;
+  tripId: string;
+  /** Photos CONFIRM waits for: the delivery photo and the proof of delivery. */
+  photoSlots: PhotoSlot[];
   onCancel: () => void;
   onConfirm: (lines: DeliveredLine[]) => void;
 }
 
-export function ConfirmDeliverySheet({ visible, loaded, hasFare, onCancel, onConfirm }: Props) {
+export function ConfirmDeliverySheet({
+  visible,
+  loaded,
+  hasFare,
+  tripId,
+  photoSlots,
+  onCancel,
+  onConfirm,
+}: Props) {
   const insets = useSafeAreaInsets();
   const [lines, setLines] = useState<DeliveredLine[]>([]);
 
@@ -54,7 +74,9 @@ export function ConfirmDeliverySheet({ visible, loaded, hasFare, onCancel, onCon
       transparent
       animationType="slide"
       statusBarTranslucent
-      onRequestClose={onCancel}
+      onRequestClose={() => {
+        if (!closePhotoPicker()) onCancel();
+      }}
     >
       <View style={styles.scrim}>
         {/* A tap outside the sheet closes it, as the step dialogs do. Nothing
@@ -122,6 +144,8 @@ export function ConfirmDeliverySheet({ visible, loaded, hasFare, onCancel, onCon
                 </View>
               );
             })}
+
+            <TripPhotoSlots slots={photoSlots} />
           </KeyboardAwareScrollView>
 
           <View style={styles.actions}>
@@ -129,11 +153,23 @@ export function ConfirmDeliverySheet({ visible, loaded, hasFare, onCancel, onCon
               <Text style={styles.cancelText}>{Strings.cancel}</Text>
             </Pressable>
             <View style={styles.actionGap} />
-            <Pressable onPress={() => onConfirm(lines)} style={styles.confirmButton}>
+            <Pressable
+              onPress={() => {
+                if (!checkPhotos(photoSlots, Strings.confirmDelivery, Strings.deliveryPhotosRequired)) {
+                  return;
+                }
+                onConfirm(lines);
+              }}
+              style={styles.confirmButton}
+            >
               <Text style={styles.confirmText}>{Strings.confirm}</Text>
             </Pressable>
           </View>
         </View>
+
+        <PhotoCheckNotice />
+        <TripPhotoPicker tripId={tripId} />
+        <PhotoViewer />
       </View>
     </Modal>
   );

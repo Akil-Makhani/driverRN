@@ -302,6 +302,10 @@ export interface Charge {
 export interface ProductDifferenceRequest {
   productDifferences?: ProductDifferences;
   charges?: Charge[];
+  /** Confirm Loading's photos; sent only when the screen has them. */
+  loadingImages?: FileDetail[];
+  weightSlips?: FileDetail[];
+  invoices?: FileDetail[];
 }
 
 export function productDifferenceRequestToJson(r: ProductDifferenceRequest) {
@@ -316,6 +320,9 @@ export function productDifferenceRequestToJson(r: ProductDifferenceRequest) {
     ...(r.charges && r.charges.length > 0
       ? { charges: r.charges.map((c) => ({ label: c.label, charge: c.charge })) }
       : {}),
+    ...(r.loadingImages ? { loadingImages: r.loadingImages } : {}),
+    ...(r.weightSlips ? { weightSlips: r.weightSlips } : {}),
+    ...(r.invoices ? { invoices: r.invoices } : {}),
   };
 }
 
@@ -396,6 +403,9 @@ export interface TripDetailsData {
   offeredPayout?: number;
   weightSlips: Attachment[];
   invoices: Attachment[];
+  loadingImages: Attachment[];
+  deliveryImages: Attachment[];
+  proofOfDelivery: Attachment[];
 }
 
 export type TripDetailsResponse = Envelope<TripDetailsData>;
@@ -432,6 +442,9 @@ export const parseTripDetailsResponse = (j: any): TripDetailsResponse => ({
         offeredPayout: num(j.data.offeredPayout),
         weightSlips: list(j.data.weightSlips, parseAttachment),
         invoices: list(j.data.invoices, parseAttachment),
+        loadingImages: list(j.data.loadingImages, parseAttachment),
+        deliveryImages: list(j.data.deliveryImages, parseAttachment),
+        proofOfDelivery: list(j.data.proofOfDelivery, parseAttachment),
       }
     : null,
 });

@@ -46,14 +46,20 @@ import { DriverDetailsRepository } from '@/core/services/driver-details-reposito
 import { dobFromIso, dobToIso } from '@/core/utils/dob';
 import { useAuthStore } from '@/features/auth/auth-store';
 import {
+  formatCapacityInput,
   formatDobInput,
   formatLicenceInput,
+  MAX_CAPACITY_KG,
+  MIN_CAPACITY_KG,
   validateOptionalDetails,
 } from '@/features/auth/registration-store';
 import type { DriverDetails, DriverDetailsStatus } from '@/types/driver-details';
 import { REGISTRATION_DOCUMENT_KEYS, type RegistrationDocumentKey } from '@/types/registration';
 
-type TextKey = 'driverName' | 'driverLicenceNumber' | 'dob';
+type TextKey = 'driverName' | 'driverLicenceNumber' | 'dob' | 'minCapacity' | 'maxCapacity';
+
+/** A KG figure as the box shows it: blank when there is none on file. */
+const kgText = (kg: number | null | undefined): string => (kg == null ? '' : String(kg));
 
 interface Slot {
   /** What is on screen: a local pick, or the link to the photo on file. */
@@ -99,6 +105,8 @@ export default function CompleteDetailsScreen() {
     driverName: '',
     driverLicenceNumber: '',
     dob: '',
+    minCapacity: '',
+    maxCapacity: '',
   });
   const [errors, setErrors] = useState<Partial<Record<TextKey, string>>>({});
   const [slots, setSlots] = useState(EMPTY_SLOTS);
@@ -107,7 +115,14 @@ export default function CompleteDetailsScreen() {
   /** Fills the form from what is on file. */
   const apply = useCallback((d: DriverDetails) => {
     setDetails(d);
-    setForm({ driverName: d.driverName, driverLicenceNumber: d.driverLicenceNumber, dob: dobFromIso(d.dob) });
+    setForm({
+      driverName: d.driverName,
+      driverLicenceNumber: d.driverLicenceNumber,
+      dob: dobFromIso(d.dob),
+      // An older record has only the one capacity: offer it as the maximum.
+      minCapacity: kgText(d.minCapacity),
+      maxCapacity: kgText(d.maxCapacity ?? d.vehicleCapacity),
+    });
     const next = EMPTY_SLOTS();
     for (const key of REGISTRATION_DOCUMENT_KEYS) {
       const photo = d.documents[key];
@@ -133,6 +148,8 @@ export default function CompleteDetailsScreen() {
               ? draft.driverLicenceNumber
               : f.driverLicenceNumber,
             dob: draft.dob?.trim() ? draft.dob : f.dob,
+            minCapacity: draft.minCapacity?.trim() ? draft.minCapacity : f.minCapacity,
+            maxCapacity: draft.maxCapacity?.trim() ? draft.maxCapacity : f.maxCapacity,
           }));
         }
         setReady(true);
@@ -164,7 +181,13 @@ export default function CompleteDetailsScreen() {
   const hasUnsavedText = (d: DriverDetails | null, f: Record<TextKey, string>) =>
     (f.driverName.trim() && f.driverName.trim() !== (d?.driverName ?? '')) ||
     (f.driverLicenceNumber.trim() && f.driverLicenceNumber.trim() !== (d?.driverLicenceNumber ?? '')) ||
-    (dobToIso(f.dob) && dobToIso(f.dob) !== (d?.dob ?? ''));
+    (dobToIso(f.dob) && dobToIso(f.dob) !== (d?.dob ?? '')) ||
+    rangeChanged(d, f);
+
+  /** True when the typed load range differs from the one on file. */
+  const rangeChanged = (d: DriverDetails | null, f: Record<TextKey, string>) =>
+    f.minCapacity !== kgText(d?.minCapacity) ||
+    f.maxCapacity !== kgText(d?.maxCapacity ?? d?.vehicleCapacity);
 
   // The latest form, for the photo upload above, which finishes after renders.
   const formRef = useRef(form);
@@ -224,7 +247,21 @@ export default function CompleteDetailsScreen() {
 
   const onSave = async () => {
     Keyboard.dismiss();
-    const found = validateOptionalDetails(form);
+    const found: Partial<Record<TextKey, string>> = validateOptionalDetails(form);
+    // The load range: both ends, the same rules as registration.
+    const sendRange = rangeChanged(details, form);
+    if (sendRange) {
+      const min = Number(form.minCapacity);
+      const max = Number(form.maxCapacity);
+      if (!form.minCapacity || min < MIN_CAPACITY_KG || min > MAX_CAPACITY_KG) {
+        found.minCapacity = Strings.registerMinCapacityValidation;
+      }
+      if (!form.maxCapacity || max < 1 || max > MAX_CAPACITY_KG) {
+        found.maxCapacity = Strings.registerMaxCapacityValidation;
+      } else if (!found.minCapacity && max <= min) {
+        found.maxCapacity = Strings.registerMaxAboveMinValidation;
+      }
+    }
     setErrors(found);
     if (Object.keys(found).length) return;
     if (REGISTRATION_DOCUMENT_KEYS.some((k) => slots[k].status === 'uploading')) return;
@@ -233,7 +270,9 @@ export default function CompleteDetailsScreen() {
     const changed = (key: TextKey) => {
       // The DOB is typed DD-MM-YYYY and stored YYYY-MM-DD.
       const value = key === 'dob' ? dobToIso(form.dob) : form[key].trim();
-      return value && value !== (details?.[key] ?? '') ? value : undefined;
+      return value && value !== (details?.[key as 'driverName' | 'driverLicenceNumber' | 'dob'] ?? '')
+        ? value
+        : undefined;
     };
     const documents: Partial<Record<RegistrationDocumentKey, string>> = {};
     for (const key of REGISTRATION_DOCUMENT_KEYS) {
@@ -243,9 +282,18 @@ export default function CompleteDetailsScreen() {
       driverName: changed('driverName'),
       driverLicenceNumber: changed('driverLicenceNumber'),
       dob: changed('dob'),
+      ...(sendRange
+        ? { minCapacity: Number(form.minCapacity), maxCapacity: Number(form.maxCapacity) }
+        : {}),
       ...(Object.keys(documents).length ? { documents } : {}),
     };
-    if (!update.driverName && !update.driverLicenceNumber && !update.dob && !update.documents) {
+    if (
+      !update.driverName &&
+      !update.driverLicenceNumber &&
+      !update.dob &&
+      !update.documents &&
+      !sendRange
+    ) {
       if (details?.status?.complete) {
         finish();
         return;
@@ -319,17 +367,55 @@ export default function CompleteDetailsScreen() {
                 <Text style={styles.vehicleLabel}>{Strings.registerVehicleNumber}</Text>
                 <Text style={styles.vehicleValue}>{details?.vehicleNumber || '—'}</Text>
               </View>
-              <View style={styles.vehicleDivider} />
-              <View style={styles.vehicleItem}>
-                <Text style={styles.vehicleLabel}>{Strings.registerCapacity}</Text>
-                <Text style={styles.vehicleValue}>
-                  {details?.minCapacity != null && details?.maxCapacity != null
-                    ? localDigits(`${details.minCapacity} – ${details.maxCapacity} KG`)
-                    : details?.vehicleCapacity
-                      ? localDigits(`${details.vehicleCapacity} KG`)
-                      : '—'}
-                </Text>
+            </View>
+
+            {/* The load range that rings this driver, editable here as well as
+                at registration. */}
+            <View style={styles.rangeCard}>
+              <View style={styles.rangeHeader}>
+                <View style={styles.rangeIcon}>
+                  <Ionicons name="barbell-outline" size={18} color={AppColors.primary} />
+                </View>
+                <View style={styles.rangeHeaderText}>
+                  <Text style={styles.rangeTitle}>{Strings.detailsCapacityTitle}</Text>
+                  <Text style={styles.rangeNote}>{Strings.detailsCapacityNote}</Text>
+                </View>
               </View>
+              <View style={styles.rangeRow}>
+                <View style={styles.rangeCol}>
+                  <Field
+                    label={Strings.detailsMinLabel}
+                    placeholder={localDigits(Strings.registerMinCapacityHint)}
+                    value={localDigits(form.minCapacity)}
+                    onChangeText={(t) => setField('minCapacity', formatCapacityInput(t))}
+                    error={errors.minCapacity}
+                    keyboardType="number-pad"
+                    maxLength={5}
+                    suffix="KG"
+                    done={details?.minCapacity != null}
+                  />
+                </View>
+                <View style={styles.rangeCol}>
+                  <Field
+                    label={Strings.detailsMaxLabel}
+                    placeholder={localDigits(Strings.registerMaxCapacityHint)}
+                    value={localDigits(form.maxCapacity)}
+                    onChangeText={(t) => setField('maxCapacity', formatCapacityInput(t))}
+                    error={errors.maxCapacity}
+                    keyboardType="number-pad"
+                    maxLength={5}
+                    suffix="KG"
+                    done={details?.maxCapacity != null}
+                  />
+                </View>
+              </View>
+              {form.minCapacity && form.maxCapacity && Number(form.maxCapacity) > Number(form.minCapacity) ? (
+                <Text style={styles.rangeSummary}>
+                  {localDigits(
+                    `${Strings.detailsCapacityRings} ${form.minCapacity} – ${form.maxCapacity} KG`,
+                  )}
+                </Text>
+              ) : null}
             </View>
 
             <Field
@@ -460,6 +546,8 @@ interface FieldProps {
   maxLength?: number;
   /** Already on file: a tick beside the label. */
   done?: boolean;
+  /** A unit drawn at the end of the box, e.g. KG. */
+  suffix?: string;
 }
 
 function Field({
@@ -472,11 +560,14 @@ function Field({
   autoCapitalize = 'none',
   maxLength,
   done,
+  suffix,
 }: FieldProps) {
   return (
     <View style={styles.field}>
       <View style={styles.labelRow}>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, styles.labelText]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+          {label}
+        </Text>
         {done ? <Ionicons name="checkmark-circle" size={16} color={AppColors.success500} /> : null}
       </View>
       <View style={[styles.inputRow, error ? styles.inputRowError : null]}>
@@ -491,6 +582,7 @@ function Field({
           autoCorrect={false}
           maxLength={maxLength}
         />
+        {suffix ? <Text style={styles.suffix}>{suffix}</Text> : null}
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
@@ -581,6 +673,37 @@ const styles = StyleSheet.create({
   },
   vehicleItem: { flex: 1, paddingHorizontal: 12 },
   vehicleDivider: { width: 1, backgroundColor: TextShade.c100 },
+  rangeCard: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Primary.c200,
+    backgroundColor: AppColors.white,
+  },
+  rangeHeader: { flexDirection: 'row', alignItems: 'center' },
+  rangeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Primary.c100,
+  },
+  rangeHeaderText: { flex: 1, marginLeft: 10 },
+  rangeTitle: { ...Typography.body1.extraBold, color: AppColors.text },
+  rangeNote: { ...Typography.caption.regular, color: TextShade.c700, marginTop: 1 },
+  rangeRow: { flexDirection: 'row', gap: 12 },
+  rangeCol: { flex: 1, minWidth: 0 },
+  rangeSummary: {
+    ...Typography.body2.medium,
+    color: AppColors.primary,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  // Shrinks rather than wraps, so two fields side by side stay level.
+  labelText: { flexShrink: 1 },
+  suffix: { ...Typography.body2.extraBold, color: TextShade.c500, marginLeft: 6 },
   vehicleLabel: { ...Typography.caption.regular, color: TextShade.c700 },
   vehicleValue: { ...Typography.body1.bold, color: AppColors.text, marginTop: 2 },
 

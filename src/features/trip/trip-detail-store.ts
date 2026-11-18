@@ -17,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { downloadUrl } from '@/core/api/endpoints';
 import { AppException } from '@/core/api/errors';
-import { DocumentType, type DocumentTypeValue } from '@/core/constants/enums';
+import type { DocumentTypeValue } from '@/core/constants/enums';
 import { en } from '@/core/i18n/en';
 import { DashboardRepository } from '@/core/services/dashboard-repository';
 import { isSuccess } from '@/types/api';
@@ -50,15 +50,44 @@ export interface TripAttachment {
   size?: number;
 }
 
+/** One photo per document type; null while that slot is empty. */
+export type TripFiles = Record<DocumentTypeValue, TripAttachment[]>;
+
+/** Photos one slot can hold; enough for every side of a load. */
+export const MAX_PHOTOS_PER_SLOT = 10;
+
+const EMPTY_FILES: TripFiles = {
+  loading_image: [],
+  weight_slip: [],
+  invoice: [],
+  delivery_image: [],
+  proof_of_delivery: [],
+};
+
+/** A photo to upload: a local file:// uri plus what the server needs. */
+export interface PickedPhoto {
+  uri: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+  fileSize?: number | null;
+}
+
+/** Where a photo comes from: the camera or the phone's gallery. */
+export type PhotoSource = 'camera' | 'library';
+
+/** Why pickAndUpload did not add a photo, so the screen can tell the driver. */
+export type UploadOutcome = 'ok' | 'cancelled' | 'permission' | 'failed' | 'full';
+
 interface TripDetailState {
   isLoading: boolean;
   /** True while a picked image is being pushed to S3. */
   isUploading: boolean;
+  /** The slot whose photo is uploading right now, for its spinner. */
+  uploading: DocumentTypeValue | null;
   tripCount: number;
   tripDetailData: TripDetailsData | null;
 
-  weightSlip: TripAttachment | null;
-  invoice: TripAttachment | null;
+  files: TripFiles;
 
   // ── Confirm-load sheet (was LoadViewModel) ───────────────
   requestedItems: RequestedProduct[];
@@ -77,8 +106,18 @@ interface TripDetailState {
   updateTrip: (tripId: string) => Promise<boolean>;
   inTransit: (tripId: string, status: string) => Promise<void>;
 
-  pickAndUpload: (tripId: string, documentType: DocumentTypeValue) => Promise<void>;
-  removeAttachment: (documentType: DocumentTypeValue) => Promise<void>;
+  pickAndUpload: (
+    tripId: string,
+    documentType: DocumentTypeValue,
+    source?: PhotoSource,
+  ) => Promise<UploadOutcome>;
+  /** Uploads photos chosen in the in-app gallery, one after another. */
+  uploadPicked: (
+    tripId: string,
+    documentType: DocumentTypeValue,
+    picked: PickedPhoto[],
+  ) => Promise<UploadOutcome>;
+  removeAttachment: (documentType: DocumentTypeValue, key: string) => Promise<void>;
 
   updateProduct: (index: number, product: Product | null) => void;
   updateSubItem: (index: number, product: Product | null) => void;
@@ -99,6 +138,61 @@ const toFileDetail = (a: TripAttachment): FileDetail => ({
   size: a.size != null ? String(a.size) : undefined,
 });
 
+/** A slot as the list the API takes: one file, or none. */
+export const asFileList = (list: TripAttachment[]): FileDetail[] => list.map(toFileDetail);
+
+/** A server list as a slot's photos, skipping any entry without a key. */
+const fromServerList = (list: { name?: string; path?: string; size?: number }[]) =>
+  list.filter((a) => a.path).map(fromServerAttachment);
+
+/** A content type from the file name, for gallery photos that carry none. */
+function mimeOf(name: string): string {
+  const ext = name.split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'heic' || ext === 'heif') return 'image/heic';
+  return 'image/jpeg';
+}
+
+/** Signs, PUTs to S3 and returns one picked photo as an attachment. */
+async function uploadOne(
+  tripId: string,
+  documentType: DocumentTypeValue,
+  asset: PickedPhoto,
+): Promise<TripAttachment> {
+  // Stamped, so two photos with the same name (two "image.jpg"s from the
+  // gallery) do not overwrite each other in S3.
+  const original = asset.fileName ?? asset.uri.split('/').pop() ?? 'upload.jpg';
+  const fileName = `${Date.now()}_${original}`;
+  const contentType = asset.mimeType ?? mimeOf(original);
+
+  const signed = await DashboardRepository.uploadSignedUrl({
+    fileName,
+    contentType,
+    documentType,
+    tripId,
+  });
+  const uploadUrl = signed.data?.uploadUrl;
+  if (!isSuccess(signed) || !uploadUrl) throw new Error('No upload URL returned');
+
+  // PUT the bytes straight to S3. fetch accepts a Blob; reading the file into
+  // a base64 string first would corrupt the binary and blow up memory.
+  const blob = await (await fetch(asset.uri)).blob();
+  const s3 = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: blob,
+  });
+  if (!s3.ok) throw new Error(`Upload failed: ${s3.status}`);
+
+  return {
+    uri: asset.uri,
+    name: fileName,
+    key: signed.data?.fileKey || `${tripId}/${documentType}/${fileName}`,
+    size: asset.fileSize ?? blob.size,
+  };
+}
+
 /** Server attachment → renderable TripAttachment. */
 function fromServerAttachment(
   a: { name?: string; path?: string; size?: number },
@@ -115,17 +209,17 @@ function fromServerAttachment(
 export const useTripDetailStore = create<TripDetailState>((set, get) => ({
   isLoading: false,
   isUploading: false,
+  uploading: null,
   tripCount: 0,
   tripDetailData: null,
-  weightSlip: null,
-  invoice: null,
+  files: EMPTY_FILES,
   requestedItems: [],
   dispatchItems: [],
   majuriCharge: '',
   kataparchiCharge: '',
 
   clearFiles: () =>
-    set({ weightSlip: null, invoice: null, majuriCharge: '', kataparchiCharge: '' }),
+    set({ files: EMPTY_FILES, majuriCharge: '', kataparchiCharge: '' }),
 
   async getTrip(tripId, products) {
     set({ isLoading: true });
@@ -163,10 +257,13 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
           tripCount: data.driverTripNumber ?? 0,
           requestedItems: requested,
           dispatchItems: dispatched,
-          weightSlip: data.weightSlips[0]
-            ? fromServerAttachment(data.weightSlips[0])
-            : null,
-          invoice: data.invoices[0] ? fromServerAttachment(data.invoices[0]) : null,
+          files: {
+            loading_image: fromServerList(data.loadingImages),
+            weight_slip: fromServerList(data.weightSlips),
+            invoice: fromServerList(data.invoices),
+            delivery_image: fromServerList(data.deliveryImages),
+            proof_of_delivery: fromServerList(data.proofOfDelivery),
+          },
         });
       }
     } catch (e) {
@@ -198,7 +295,7 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
 
   async updateTrip(tripId) {
     set({ isLoading: true });
-    const { majuriCharge, kataparchiCharge, requestedItems, dispatchItems } = get();
+    const { majuriCharge, kataparchiCharge, requestedItems, dispatchItems, files } = get();
 
     // Only send a charge the driver actually typed a number into. Labels are
     // saved on the trip for the office, so they stay English whatever the
@@ -218,6 +315,11 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
       const response = await DashboardRepository.updateTrip(tripId, {
         productDifferences: { requested: requestedItems, dispatched: dispatchItems },
         charges,
+        // Confirm Loading's photos go with the load, so the office has them
+        // from the moment it is confirmed.
+        loadingImages: asFileList(files.loading_image),
+        weightSlips: asFileList(files.weight_slip),
+        invoices: asFileList(files.invoice),
       });
       if (isSuccess(response) && response.data) {
         set({ tripDetailData: response.data });
@@ -231,12 +333,12 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
   },
 
   async inTransit(tripId, status) {
-    const { weightSlip, invoice } = get();
+    const { files } = get();
     set({ isLoading: true });
     try {
       const response = await DashboardRepository.inTransit(tripId, status, {
-        weightSlips: weightSlip ? [toFileDetail(weightSlip)] : [],
-        invoice: invoice ? [toFileDetail(invoice)] : [],
+        weightSlips: asFileList(files.weight_slip),
+        invoice: asFileList(files.invoice),
       });
       if (isSuccess(response) && response.data) {
         set({ tripDetailData: response.data });
@@ -247,72 +349,69 @@ export const useTripDetailStore = create<TripDetailState>((set, get) => ({
     set({ isLoading: false });
   },
 
-  async pickAndUpload(tripId, documentType) {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
+  async pickAndUpload(tripId, documentType, source = 'library') {
+    const permission =
+      source === 'camera'
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return 'permission';
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.8,
-    });
-    if (result.canceled || result.assets.length === 0) return;
+    const room = MAX_PHOTOS_PER_SLOT - get().files[documentType].length;
+    if (room <= 0) return 'full';
 
-    const asset = result.assets[0];
-    const fileName = asset.fileName ?? asset.uri.split('/').pop() ?? 'upload.jpg';
-    const contentType = asset.mimeType ?? 'image/jpeg';
-    const key = `${tripId}/${documentType}/${fileName}`;
+    // A photo for the office only has to be legible; 0.6 keeps it small on a
+    // weak connection at the pickup or the drop. The gallery lets the driver
+    // tick several at once; the camera takes one per shot.
+    const result =
+      source === 'camera'
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.6 })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 0.6,
+            allowsMultipleSelection: true,
+            selectionLimit: room,
+            orderedSelection: true,
+          });
+    if (result.canceled || result.assets.length === 0) return 'cancelled';
 
-    set({ isUploading: true });
-    try {
-      const signed = await DashboardRepository.uploadSignedUrl({
-        fileName,
-        contentType,
-        documentType,
-        tripId,
-      });
-      const uploadUrl = signed.data?.uploadUrl;
-      if (!isSuccess(signed) || !uploadUrl) {
-        throw new Error('No upload URL returned');
-      }
-
-      // PUT the bytes straight to S3. fetch accepts a Blob; reading the file
-      // into a base64 string first (as some RN uploads do) would corrupt the
-      // binary and blow up memory on a large photo.
-      const blob = await (await fetch(asset.uri)).blob();
-      const s3 = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': contentType },
-        body: blob,
-      });
-      if (!s3.ok) throw new Error(`Upload failed: ${s3.status}`);
-
-      const attachment: TripAttachment = {
-        uri: asset.uri,
-        name: fileName,
-        key,
-        size: asset.fileSize ?? blob.size,
-      };
-      set(
-        documentType === DocumentType.weightSlip
-          ? { weightSlip: attachment }
-          : { invoice: attachment },
-      );
-    } catch (e) {
-      if (__DEV__) console.log('pickAndUpload failed:', e);
-    }
-    set({ isUploading: false });
+    return get().uploadPicked(tripId, documentType, result.assets);
   },
 
-  async removeAttachment(documentType) {
-    const isWeightSlip = documentType === DocumentType.weightSlip;
-    const attachment = isWeightSlip ? get().weightSlip : get().invoice;
+  async uploadPicked(tripId, documentType, picked) {
+    const room = MAX_PHOTOS_PER_SLOT - get().files[documentType].length;
+    if (room <= 0) return 'full';
+    if (picked.length === 0) return 'cancelled';
+
+    set({ isUploading: true, uploading: documentType });
+    let failed = 0;
+    // One after another: a weak signal at a pickup copes better with that
+    // than with several photos fighting for it.
+    for (const asset of picked.slice(0, room)) {
+      try {
+        const attachment = await uploadOne(tripId, documentType, asset);
+        const files = get().files;
+        set({ files: { ...files, [documentType]: [...files[documentType], attachment] } });
+      } catch (e) {
+        failed += 1;
+        if (__DEV__) console.log('pickAndUpload failed:', e);
+      }
+    }
+    set({ isUploading: false, uploading: null });
+    return failed === 0 ? 'ok' : 'failed';
+  },
+
+  async removeAttachment(documentType, key) {
+    const attachment = get().files[documentType].find((a) => a.key === key);
     if (!attachment) return;
 
     set({ isLoading: true });
     try {
       const response = await DashboardRepository.removeFromS3(attachment.key);
       if (isSuccess(response)) {
-        set(isWeightSlip ? { weightSlip: null } : { invoice: null });
+        const files = get().files;
+        set({
+          files: { ...files, [documentType]: files[documentType].filter((a) => a.key !== key) },
+        });
       }
     } catch (e) {
       if (__DEV__) console.log('removeAttachment failed:', e);

@@ -9,6 +9,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { NetworkBanner } from '@/components/network-banner';
+import { LocationOffDialog } from '@/components/location-off-dialog';
 import { UpdateGate } from '@/components/update-gate';
 import { Dispatch } from '@/core/realtime/dispatch';
 import {
@@ -128,6 +129,10 @@ export default function RootLayout() {
           {/* After the overlay, so its congratulations / "take the next one"
               draws over a following offer card rather than under it. */}
           <OfferCheer key={`offer-cheer-${language}`} />
+
+          {/* "Location is off", from the duty toggle or from dispatch taking
+              the driver off duty. */}
+          <LocationOffDialog key={`location-off-${language}`} />
 
           {/* Over every screen. The offer card is a Modal, so it draws its own. */}
           <NetworkBanner key={`network-${language}`} />

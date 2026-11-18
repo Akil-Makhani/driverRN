@@ -83,6 +83,8 @@ export const ApiUrls = {
   /** Re-registers this device's push token; see UserRepository.registerFcmToken. */
   fcmToken: '/driver/account/fcm-token',
   duty: '/driver/duty',
+  /** The oldest build allowed to run (force update); no auth. */
+  appVersion: '/driver/app-version',
   listTrips: '/driver/trips',
   history: '/driver/trips/history/',
   getNotification: '/driver/notifications/',

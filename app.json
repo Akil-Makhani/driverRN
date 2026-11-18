@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tiles Drop Saathi",
     "slug": "driverRN",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/images/icon/app_logo.png",
     "scheme": "tilesdropsaathi",
@@ -32,7 +32,7 @@
     "android": {
       "allowBackup": false,
       "package": "com.tilesdrop.partner",
-      "versionCode": 9,
+      "versionCode": 10,
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./firebase/google-services.json",
       "adaptiveIcon": {
@@ -85,6 +85,15 @@
           "photosPermission": "This app accesses your photo library so you can attach your driving licence and RC book when registering, and the weight slip and invoice for a trip.",
           "cameraPermission": "This app uses the camera so you can photograph your driving licence and RC book when registering, and the weight slip and invoice for a trip.",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "This app shows your photos so you can attach the loading, weight slip, invoice and delivery photos for a trip.",
+          "savePhotosPermission": false,
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": ["photo"]
         }
       ],
       "./plugins/with-crop-button-label",

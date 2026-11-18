@@ -39,7 +39,9 @@ import { TripLiveMap } from '@/features/trip/trip-live-map';
 import { TripStatusTopView } from '@/features/trip/trip-status-top-view';
 import { TripEarningCard } from '@/features/trip/trip-earning-card';
 import { DeliveryCelebration } from '@/features/trip/delivery-celebration';
-import { useTripDetailStore } from '@/features/trip/trip-detail-store';
+import { PhotoViewer } from '@/features/trip/photo-viewer';
+import { asFileList, useTripDetailStore } from '@/features/trip/trip-detail-store';
+import type { PhotoSlot } from '@/features/trip/trip-photo-slots';
 
 export default function TripDetailScreen() {
   const router = useRouter();
@@ -56,8 +58,7 @@ export default function TripDetailScreen() {
   const isLoading = useTripDetailStore((s) => s.isLoading);
   const trip = useTripDetailStore((s) => s.tripDetailData);
   const tripCount = useTripDetailStore((s) => s.tripCount);
-  const weightSlip = useTripDetailStore((s) => s.weightSlip);
-  const invoice = useTripDetailStore((s) => s.invoice);
+  const files = useTripDetailStore((s) => s.files);
   const products = useDashboardStore((s) => s.products);
 
   // The server finishes an accepted offer's paperwork (tempo, LR number) a
@@ -99,8 +100,8 @@ export default function TripDetailScreen() {
    * Truck deliveries are recorded by the office, so they keep the plain
    * confirm dialog.
    */
-  const loadedLines =
-    trip?.orderKind === 'tempo' ? (trip.productDifferences?.dispatched ?? []) : [];
+  const isTempo = trip?.orderKind === 'tempo';
+  const loadedLines = isTempo ? (trip.productDifferences?.dispatched ?? []) : [];
 
   /**
    * Back to the dashboard once a step has landed: the driver's next move is
@@ -178,7 +179,23 @@ export default function TripDetailScreen() {
         if (await changeStatus(TripStatus.reached)) goHome();
       } else {
         const delivered = deliveredLines.current;
-        if (await changeStatus(TripStatus.delivered, false, delivered ? { delivered } : undefined)) {
+        // The delivery photo and proof of delivery, which the sheet would not
+        // let through without.
+        const { files: photos } = useTripDetailStore.getState();
+        const proof = isTempo
+          ? {
+              deliveryImages: asFileList(photos.delivery_image),
+              proofOfDelivery: asFileList(photos.proof_of_delivery),
+            }
+          : {};
+        const body = { ...(delivered ? { delivered } : {}), ...proof };
+        if (
+          await changeStatus(
+            TripStatus.delivered,
+            false,
+            Object.keys(body).length ? body : undefined,
+          )
+        ) {
           // Fireworks first; its Done (or its own timer) goes home.
           setCelebrating(true);
         }
@@ -295,17 +312,16 @@ export default function TripDetailScreen() {
                 <View style={styles.section}>
                   <PickupLoadingDetail
                     details={trip}
-                    weightSlip={weightSlip}
-                    invoice={invoice}
+                    files={files}
                     onUpload={(documentType) =>
                       void useTripDetailStore
                         .getState()
                         .pickAndUpload(id, documentType as DocumentTypeValue)
                     }
-                    onDelete={(documentType) =>
+                    onDelete={(documentType, key) =>
                       void useTripDetailStore
                         .getState()
-                        .removeAttachment(documentType as DocumentTypeValue)
+                        .removeAttachment(documentType as DocumentTypeValue, key)
                     }
                   />
                 </View>
@@ -368,6 +384,8 @@ export default function TripDetailScreen() {
         visible={deliverOpen}
         loaded={loadedLines}
         hasFare={trip?.driverPayout != null}
+        tripId={id}
+        photoSlots={DELIVERY_PHOTOS()}
         onCancel={() => setDeliverOpen(false)}
         onConfirm={(lines) => {
           setDeliverOpen(false);
@@ -381,6 +399,8 @@ export default function TripDetailScreen() {
         products={products}
         orderKind={trip?.orderKind}
         hasFare={trip?.driverPayout != null}
+        tripId={id}
+        photoSlots={isTempo ? LOAD_PHOTOS() : undefined}
         onCancel={() => setSheetOpen(false)}
         onConfirm={() => {
           setSheetOpen(false);
@@ -398,6 +418,8 @@ export default function TripDetailScreen() {
         }}
       />
 
+      <PhotoViewer />
+
       {busy ? (
         <View style={styles.busy} pointerEvents="auto">
           <ActivityIndicator size="large" color={AppColors.white} />
@@ -406,6 +428,19 @@ export default function TripDetailScreen() {
     </View>
   );
 }
+
+/** Confirm Load's photos on a tempo trip. A function: Strings follow the language. */
+const LOAD_PHOTOS = (): PhotoSlot[] => [
+  { type: DocumentType.loadingImage, label: Strings.loadingPhoto },
+  { type: DocumentType.weightSlip, label: Strings.weightSlipPhoto },
+  { type: DocumentType.invoice, label: Strings.companyInvoicePhoto },
+];
+
+/** Delivered's photos on a tempo trip. */
+const DELIVERY_PHOTOS = (): PhotoSlot[] => [
+  { type: DocumentType.deliveryImage, label: Strings.deliveryPhoto },
+  { type: DocumentType.proofOfDelivery, label: Strings.proofOfDeliveryPhoto },
+];
 
 type ForwardStep = 'vehicleThere' | 'inTransit' | 'reached' | 'delivered';
 

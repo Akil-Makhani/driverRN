@@ -21,8 +21,13 @@ export type TripStatusValue = (typeof TripStatus)[keyof typeof TripStatus];
 
 /** DocumentType.displayString — the `documentType` field on upload-url calls. */
 export const DocumentType = {
+  /** Confirm Loading (tempo): the loaded vehicle, the weight slip, the company invoice. */
+  loadingImage: 'loading_image',
   weightSlip: 'weight_slip',
   invoice: 'invoice',
+  /** Delivered (tempo): the unloaded goods and the signed proof of delivery. */
+  deliveryImage: 'delivery_image',
+  proofOfDelivery: 'proof_of_delivery',
 } as const;
 
 export type DocumentTypeValue =

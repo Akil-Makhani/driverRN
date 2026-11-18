@@ -13,7 +13,8 @@
  * dashboard — and a cycle through three `create()` calls at module scope fails
  * in ways that are painful to debug.
  */
-import { Alert, AppState, type AppStateStatus } from 'react-native';
+import { showLocationOff } from '@/components/location-off-dialog';
+import { AppState, type AppStateStatus } from 'react-native';
 
 import { watchLocationSetting } from '../../../modules/location-setting';
 import { Strings } from '../constants/strings';
@@ -58,7 +59,7 @@ async function enforceLocation(): Promise<void> {
       return;
     }
     if (AppState.currentState === 'active') {
-      Alert.alert(Strings.dutyOffLocationTitle, Strings.dutyOffLocationBody);
+      showLocationOff('wentOff');
     } else {
       void NotificationManager.notifyNow(
         Strings.dutyOffLocationTitle,

@@ -13,6 +13,9 @@ export interface DriverDetailsUpdate {
   driverName?: string;
   driverLicenceNumber?: string;
   dob?: string;
+  /** The load range in KG; sent as a pair. */
+  minCapacity?: number;
+  maxCapacity?: number;
   documents?: Partial<Record<RegistrationDocumentKey, string>>;
 }
 

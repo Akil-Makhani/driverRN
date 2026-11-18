@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { showLocationOff } from '@/components/location-off-dialog';
 import { AppBar } from '@/components/app-bar';
 import { BrandMark } from '@/components/brand-mark';
 import { LocationDisclosureDialog } from '@/components/location-disclosure-dialog';
@@ -125,7 +126,8 @@ export default function DashboardScreen() {
     if (value) {
       await ensureLocationPermission();
       if (!(await LocationTracker.ensureLocationOn())) {
-        Alert.alert(Strings.dutyOffLocationTitle, Strings.dutyNeedsLocationBody);
+        // Its button turns location on and, once it is, finishes going On Duty.
+        showLocationOff('needed', () => void handleDutyChange(true));
         return;
       }
     }
